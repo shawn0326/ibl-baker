@@ -1,0 +1,10 @@
+[package]
+name = "ibl_core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "ibl_core"
+path = "src/lib.rs"
+

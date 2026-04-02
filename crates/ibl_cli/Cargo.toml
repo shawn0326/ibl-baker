@@ -1,0 +1,12 @@
+[package]
+name = "ibl_cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ibl-baker"
+path = "src/main.rs"
+
+[dependencies]
+ibl_core = { path = "../ibl_core" }
