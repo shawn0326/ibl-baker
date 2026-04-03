@@ -74,14 +74,17 @@ export interface ParsedChunk {
   encodedBytes: Uint8Array;
 }
 
+type ManifestEncoding = ParsedIBLA["manifest"]["encoding"];
+type SourceFormat = ParsedIBLA["manifest"]["build"]["sourceFormat"];
+
 const HEADER_BYTE_LENGTH = 16;
 const FORMAT_MAGIC = "IBLA";
 const FORMAT_VERSION = 1;
 const CHUNK_TABLE_ENTRY_BYTE_LENGTH = 8;
 const FACE_ORDER = ["px", "nx", "py", "ny", "pz", "nz"] as const;
-const SUPPORTED_ENCODINGS = new Set(["rgbd-srgb", "srgb", "linear"]);
-const SUPPORTED_QUALITIES = new Set(["low", "medium", "high"]);
-const SUPPORTED_SOURCE_FORMATS = new Set([
+const SUPPORTED_ENCODINGS = new Set<ManifestEncoding>(["rgbd-srgb", "srgb", "linear"]);
+const SUPPORTED_QUALITIES = new Set<BakeQuality>(["low", "medium", "high"]);
+const SUPPORTED_SOURCE_FORMATS = new Set<SourceFormat>([
   "hdr",
   "exr",
   "png",
@@ -261,14 +264,8 @@ function parseManifest(text: string): ParsedIBLA["manifest"] {
     build: {
       rotation: readFiniteNumber(build, "rotation"),
       samples: readPositiveInteger(build, "samples"),
-      quality: readEnum(build, "quality", SUPPORTED_QUALITIES) as BakeQuality,
-      sourceFormat: readEnum(build, "sourceFormat", SUPPORTED_SOURCE_FORMATS) as
-        | "hdr"
-        | "exr"
-        | "png"
-        | "jpg"
-        | "jpeg"
-        | "unknown",
+      quality: readEnum(build, "quality", SUPPORTED_QUALITIES),
+      sourceFormat: readEnum(build, "sourceFormat", SUPPORTED_SOURCE_FORMATS),
     },
   };
 }
@@ -312,6 +309,9 @@ function deriveChunkMetadata(
 
   const mipLevel = Math.floor(index / FACE_ORDER.length);
   const face = FACE_ORDER[index % FACE_ORDER.length];
+  if (face === undefined) {
+    throw new Error("Unexpected cubemap face index.");
+  }
   const size = dimensionAtMip(width, mipLevel);
   return {
     mipLevel,

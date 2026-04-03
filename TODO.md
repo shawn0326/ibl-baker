@@ -55,6 +55,7 @@
 - [ ] 为 `packages/three-loader` 补更高保真、面向运行时的 HDR cubemap 上传路径
 - [ ] 为 `packages/e2e-three` 固化更多 fixture 与手动浏览器联调覆盖
 - [ ] 评估极小 mip 是否需要更轻量 payload 方案；如需支持，再单独设计 codec 元数据
+- [ ] 与 glTF-IBL-Sampler 做算法对比
 
 ## 明确暂不做
 

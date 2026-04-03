@@ -37,15 +37,15 @@ export async function loadIBLACubemap(
     throw new ThreeIBLAError("Expected at least one mip level.");
   }
 
-  const texture = new THREE.CubeTexture(baseLevel.images);
+  const texture = new THREE.CubeTexture<HTMLCanvasElement>(baseLevel.images);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.generateMipmaps = mipmaps.length <= 1;
   texture.needsUpdate = true;
   texture.name = options.label ?? "IBLA cubemap";
 
   // three stores extra mip levels on the generic texture.mipmaps field.
-  // We keep the face order intact so browser integration tests can consume the baked chain.
-  texture.mipmaps = mipmaps.map((mip) => mip.images);
+  // We materialize each additional level as its own CubeTexture to match three's public typings.
+  texture.mipmaps = mipmaps.slice(1).map((mip) => new THREE.CubeTexture<HTMLCanvasElement>(mip.images));
 
   return texture;
 }
@@ -130,10 +130,10 @@ async function decodeChunkToCanvas(
 
   for (let pixelIndex = 0; pixelIndex < sourceCanvas.width * sourceCanvas.height; pixelIndex += 1) {
     const rgbaOffset = pixelIndex * 4;
-    const encodedR = sourcePixels[rgbaOffset] / 255;
-    const encodedG = sourcePixels[rgbaOffset + 1] / 255;
-    const encodedB = sourcePixels[rgbaOffset + 2] / 255;
-    const encodedA = sourcePixels[rgbaOffset + 3] / 255;
+    const encodedR = readRequiredPixelByte(sourcePixels, rgbaOffset) / 255;
+    const encodedG = readRequiredPixelByte(sourcePixels, rgbaOffset + 1) / 255;
+    const encodedB = readRequiredPixelByte(sourcePixels, rgbaOffset + 2) / 255;
+    const encodedA = readRequiredPixelByte(sourcePixels, rgbaOffset + 3) / 255;
 
     const [linearR, linearG, linearB] =
       encoding === "rgbd-srgb"
@@ -166,7 +166,7 @@ async function decodeChunkToCanvas(
 }
 
 async function decodePngToImage(bytes: Uint8Array): Promise<HTMLImageElement> {
-  const blob = new Blob([bytes], { type: "image/png" });
+  const blob = new Blob([toOwnedArrayBuffer(bytes)], { type: "image/png" });
   const objectUrl = URL.createObjectURL(blob);
 
   try {
@@ -179,6 +179,23 @@ async function decodePngToImage(bytes: Uint8Array): Promise<HTMLImageElement> {
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+function readRequiredPixelByte(pixels: Uint8ClampedArray, offset: number): number {
+  const value = pixels[offset];
+  if (value === undefined) {
+    throw new ThreeIBLAError("Decoded PNG pixel buffer was truncated.");
+  }
+
+  return value;
+}
+
+function toOwnedArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  if (bytes.buffer instanceof ArrayBuffer) {
+    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  }
+
+  return Uint8Array.from(bytes).buffer;
 }
 
 function srgbToLinearUnit(value: number): number {

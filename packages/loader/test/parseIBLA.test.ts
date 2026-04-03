@@ -233,9 +233,9 @@ function summarizeChunk(chunk: ParsedIBLA["chunks"][number]) {
   };
 }
 
-function expectDefined<T>(value: T | undefined): T {
+function expectDefined<T>(value: T): Exclude<T, undefined> {
   assert.notEqual(value, undefined);
-  return value;
+  return value as Exclude<T, undefined>;
 }
 
 function assertParseError(action: () => unknown, code: string) {

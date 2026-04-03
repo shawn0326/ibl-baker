@@ -8,11 +8,9 @@
   },
   "dependencies": {
     "@ibltools/three-loader": "0.1.0",
-    "three": "^0.176.0"
+    "three": "^0.180.0"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "typescript": "^5.8.3",
     "vite": "^7.1.3"
   },
   "scripts": {

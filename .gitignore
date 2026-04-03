@@ -7,3 +7,5 @@
 /playwright-report/
 /test-results/
 /.three-e2e-dev.log
+
+*.tsbuildinfo

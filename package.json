@@ -9,7 +9,14 @@
     "test:rust": "cargo test --workspace",
     "test:js": "npm run test -w @ibltools/loader",
     "test:three": "npm run test -w @ibltools/three-loader && npm run test -w @ibltools/e2e-three",
+    "check:rs": "cargo check --workspace",
+    "check:ts": "tsc -b packages/loader packages/three-loader packages/e2e-three --noEmit",
     "dev:three-e2e": "npm run dev -w @ibltools/e2e-three",
     "fixtures:refresh": "node scripts/refresh-fixtures.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "@types/three": "^0.183.1",
+    "typescript": "^6.0.2"
   }
 }

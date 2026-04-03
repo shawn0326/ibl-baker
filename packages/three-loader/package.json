@@ -10,13 +10,15 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@ibltools/loader": "0.1.0",
-    "three": "^0.176.0"
-  },
-  "devDependencies": {
-    "@types/node": "^24.0.0"
+    "@ibltools/loader": "0.1.0"
   },
   "scripts": {
     "test": "node --experimental-strip-types --test --test-concurrency=1"
+  },
+  "peerDependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "three": "^0.180.0"
   }
 }
