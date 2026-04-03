@@ -1,1 +1,9 @@
 /target
+/fixtures/outputs/
+/packages/*/node_modules/
+/packages/*/dist/
+/packages/*/artifacts/
+/node_modules/
+/playwright-report/
+/test-results/
+/.three-e2e-dev.log

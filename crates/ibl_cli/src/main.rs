@@ -335,7 +335,18 @@ fn parse_jpeg_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
 
         if matches!(
             marker,
-            0xC0 | 0xC1 | 0xC2 | 0xC3 | 0xC5 | 0xC6 | 0xC7 | 0xC9 | 0xCA | 0xCB | 0xCD | 0xCE | 0xCF
+            0xC0 | 0xC1
+                | 0xC2
+                | 0xC3
+                | 0xC5
+                | 0xC6
+                | 0xC7
+                | 0xC9
+                | 0xCA
+                | 0xCB
+                | 0xCD
+                | 0xCE
+                | 0xCF
         ) {
             let mut frame_header = vec![0u8; usize::from(segment_length - 2)];
             cursor.read_exact(&mut frame_header).ok()?;
@@ -430,9 +441,30 @@ fn help_text() -> String {
     [
         "ibl-baker",
         "",
-        "Commands:",
-        "  ibl-baker bake <input-image> --out-dir <dir> [--target <specular|irradiance|lut>] [--size <auto|n>] [--irradiance-size <n>] [--encoding <auto|rgbd-srgb|srgb|linear>] [--rotation <deg>] [--samples <n>] [--quality <level>]",
-        "  ibl-baker validate <asset.ibla>",
+        "Commands",
+        "  ibl-baker bake input-image --out-dir ./out",
+        "  ibl-baker bake input-image --out-dir ./out --target specular",
+        "  ibl-baker bake input-image --out-dir ./out --target irradiance --target lut",
+        "  ibl-baker validate ./out/specular.ibla",
+        "",
+        "bake options",
+        "  --out-dir",
+        "  --target <specular|irradiance|lut>",
+        "  --size <auto|n>",
+        "  --irradiance-size <n>",
+        "  --encoding <auto|rgbd-srgb|srgb|linear>",
+        "  --rotation <deg>",
+        "  --samples <n>",
+        "  --quality <low|medium|high>",
+        "",
+        "bake defaults",
+        "  --size auto -> 256 | 512 | 1024 | 2048 | 4096",
+        "  --irradiance-size -> 32",
+        "  --encoding auto -> rgbd-srgb for .hdr/.exr, srgb for .png/.jpg/.jpeg/unknown",
+        "  output files -> specular.ibla, irradiance.ibla, brdf-lut.png",
+        "",
+        "validate output",
+        "  version, face count, chunk count, width, height, mip count, encoding, validation status",
     ]
     .join("\n")
 }
@@ -526,6 +558,7 @@ impl From<IblError> for CliError {
 mod tests {
     use super::*;
     use ibl_core::read_asset;
+    use image::codecs::hdr::HdrEncoder;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -540,15 +573,37 @@ mod tests {
         ))
     }
 
-    fn write_png_header(path: &Path, width: u32, height: u32) {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(b"\x89PNG\r\n\x1a\n");
-        bytes.extend_from_slice(&13u32.to_be_bytes());
-        bytes.extend_from_slice(b"IHDR");
-        bytes.extend_from_slice(&width.to_be_bytes());
-        bytes.extend_from_slice(&height.to_be_bytes());
-        bytes.extend_from_slice(&[8, 6, 0, 0, 0]);
-        fs::write(path, bytes).expect("png header should be written");
+    fn write_test_png(path: &Path, width: u32, height: u32) {
+        let image = image::RgbImage::from_fn(width, height, |x, y| {
+            let r = ((x as f32 / width.max(1) as f32) * 255.0).round() as u8;
+            let g = ((y as f32 / height.max(1) as f32) * 255.0).round() as u8;
+            image::Rgb([r, g, 128])
+        });
+        image.save(path).expect("png fixture should be written");
+    }
+
+    fn write_test_hdr(path: &Path, width: u32, height: u32) {
+        let file = fs::File::create(path).expect("hdr fixture should be created");
+        let encoder = HdrEncoder::new(file);
+        let mut pixels = Vec::new();
+        for y in 0..height {
+            for x in 0..width {
+                let fx = if width > 1 {
+                    x as f32 / (width - 1) as f32
+                } else {
+                    0.0
+                };
+                let fy = if height > 1 {
+                    y as f32 / (height - 1) as f32
+                } else {
+                    0.0
+                };
+                pixels.push(image::Rgb([0.5 + fx, 0.25 + fy, 0.1 + 0.25 * fx]));
+            }
+        }
+        encoder
+            .encode(&pixels, width as usize, height as usize)
+            .expect("hdr fixture should encode");
     }
 
     #[test]
@@ -556,7 +611,7 @@ mod tests {
         let input = unique_temp_path("input");
         let output_dir = unique_temp_path("out-dir");
 
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+        write_test_hdr(&input, 8, 4);
 
         let bake_output = run(vec![
             "ibl-baker".to_string(),
@@ -580,7 +635,7 @@ mod tests {
         let input = unique_temp_path("specular-input");
         let output_dir = unique_temp_path("specular-out");
 
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+        write_test_hdr(&input, 8, 4);
 
         run(vec![
             "ibl-baker".to_string(),
@@ -606,7 +661,7 @@ mod tests {
         let input = unique_temp_path("irradiance-lut-input");
         let output_dir = unique_temp_path("irradiance-lut-out");
 
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+        write_test_hdr(&input, 8, 4);
 
         run(vec![
             "ibl-baker".to_string(),
@@ -635,7 +690,7 @@ mod tests {
         let output_dir = unique_temp_path("validate-specular-out");
         let asset_path = output_dir.join("specular.ibla");
 
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+        write_test_hdr(&input, 8, 4);
 
         run(vec![
             "ibl-baker".to_string(),
@@ -668,7 +723,7 @@ mod tests {
         let output_dir = unique_temp_path("auto-encoding-hdr-out");
         let asset_path = output_dir.join("specular.ibla");
 
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+        write_test_hdr(&input, 8, 4);
 
         run(vec![
             "ibl-baker".to_string(),
@@ -694,7 +749,7 @@ mod tests {
         let output_dir = unique_temp_path("auto-encoding-png-out");
         let asset_path = output_dir.join("specular.ibla");
 
-        write_png_header(&input, 1500, 900);
+        write_test_png(&input, 1500, 900);
 
         run(vec![
             "ibl-baker".to_string(),
@@ -721,7 +776,7 @@ mod tests {
         let output_dir = unique_temp_path("explicit-linear-out");
         let asset_path = output_dir.join("specular.ibla");
 
-        write_png_header(&input, 512, 512);
+        write_test_png(&input, 512, 512);
 
         run(vec![
             "ibl-baker".to_string(),
@@ -749,7 +804,7 @@ mod tests {
         let output_dir = unique_temp_path("validate-irradiance-out");
         let asset_path = output_dir.join("irradiance.ibla");
 
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+        write_test_hdr(&input, 8, 4);
 
         run(vec![
             "ibl-baker".to_string(),
@@ -790,12 +845,66 @@ mod tests {
     #[test]
     fn help_text_reflects_public_command_surface() {
         let help = help_text();
-        assert!(help.contains("bake <input-image> --out-dir <dir>"));
+        assert!(help.contains("ibl-baker bake input-image --out-dir ./out"));
+        assert!(help.contains("ibl-baker validate ./out/specular.ibla"));
+        assert!(help.contains("--target <specular|irradiance|lut>"));
         assert!(help.contains("--size <auto|n>"));
         assert!(help.contains("--encoding <auto|rgbd-srgb|srgb|linear>"));
-        assert!(help.contains("validate <asset.ibla>"));
+        assert!(help.contains("output files -> specular.ibla, irradiance.ibla, brdf-lut.png"));
+        assert!(help.contains("validation status"));
         assert!(!help.contains("inspect"));
         assert!(!help.contains("extract"));
+    }
+
+    #[test]
+    fn bake_requires_out_dir_usage_error() {
+        let input = unique_temp_path("missing-out-dir").with_extension("hdr");
+        write_test_hdr(&input, 4, 2);
+
+        let error = run(vec![
+            "ibl-baker".to_string(),
+            "bake".to_string(),
+            input.to_string_lossy().to_string(),
+        ])
+        .expect_err("bake without out-dir should fail");
+
+        assert_eq!(error.to_string(), "bake requires --out-dir <path>");
+
+        fs::remove_file(&input).ok();
+    }
+
+    #[test]
+    fn validate_requires_exactly_one_asset_path() {
+        let error = run(vec!["ibl-baker".to_string(), "validate".to_string()])
+            .expect_err("validate without path should fail");
+
+        assert_eq!(
+            error.to_string(),
+            "validate requires exactly one asset path"
+        );
+    }
+
+    #[test]
+    fn bake_rejects_unknown_options_with_usage_error() {
+        let input = unique_temp_path("unknown-option").with_extension("hdr");
+        write_test_hdr(&input, 4, 2);
+
+        let error = run(vec![
+            "ibl-baker".to_string(),
+            "bake".to_string(),
+            input.to_string_lossy().to_string(),
+            "--out-dir".to_string(),
+            unique_temp_path("unknown-option-out")
+                .to_string_lossy()
+                .to_string(),
+            "--bogus".to_string(),
+            "value".to_string(),
+        ])
+        .expect_err("unknown option should fail");
+
+        assert_eq!(error.to_string(), "unknown bake option: --bogus");
+
+        fs::remove_file(&input).ok();
     }
 
     #[test]

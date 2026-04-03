@@ -8,3 +8,11 @@ license.workspace = true
 name = "ibl_core"
 path = "src/lib.rs"
 
+[dependencies]
+exr = "1.74.0"
+glam = "0.30.0"
+image = { version = "0.25.10", default-features = false, features = ["hdr", "jpeg", "png"] }
+png = "0.18.0"
+
+[dev-dependencies]
+approx = "0.5.1"

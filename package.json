@@ -1,0 +1,15 @@
+{
+  "name": "ibl-baker-workspace",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test:rust && npm run test:js && npm run test:three",
+    "test:rust": "cargo test --workspace",
+    "test:js": "npm run test -w @ibltools/loader",
+    "test:three": "npm run test -w @ibltools/three-loader && npm run test -w @ibltools/e2e-three",
+    "dev:three-e2e": "npm run dev -w @ibltools/e2e-three",
+    "fixtures:refresh": "node scripts/refresh-fixtures.mjs"
+  }
+}

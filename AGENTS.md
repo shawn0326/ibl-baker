@@ -36,6 +36,7 @@
 - `docs/cli.md`
 - `docs/format-spec.md`
 - `docs/loader-api.md`
+- `docs/three-loader-api.md`
 
 规则：
 
@@ -47,10 +48,11 @@
 ## 当前开发约束
 
 - 当前阶段优先把 v1 规范落成代码，不新增不必要抽象。
-- 保持项目独立于具体渲染库，不添加引擎特定集成。
+- 保持 `.ibla` 格式、Rust core 与 parser-only loader 独立于具体渲染库；如需引擎集成，放在独立包中实现。
 - `ibl_cli` 当前公开命令面以 `docs/cli.md` 为准，不重新引入已移除命令。
 - `.ibla` v1 容器契约以 `docs/format-spec.md` 为准，不擅自扩展 container、encoding 或 chunk 模型。
 - TypeScript loader 在 v1 中保持 parser-only，以 `docs/loader-api.md` 为准，不提前加入引擎上传层或运行时纹理封装。
+- three.js 相关运行时对象与浏览器联调约定以 `docs/three-loader-api.md` 为准，放在独立 npm 包中维护。
 - specular 与 irradiance 继续使用独立 `.ibla` 文件；BRDF LUT 继续为独立 `.png` 输出。
 - 优先稳定、明确、可验证的实现，不为未来能力预留过早的插件化或多后端抽象。
 
@@ -64,6 +66,8 @@
 - `TODO.md` 写“下一步做什么”。
 - `PLAN.md` 写“为什么这样做、整体往哪里走”。
 - 两者保持一致，但不要把同一份规范复制维护两遍。
+- 每次完成 `TODO.md` 中的任务后，必须在同一轮改动里同步更新勾选状态。
+- 如果一次实现覆盖了多个 TODO 项，统一在收尾时批量标记，并保留仍未真正完成的事项为未勾选。
 
 ## 输出风格
 

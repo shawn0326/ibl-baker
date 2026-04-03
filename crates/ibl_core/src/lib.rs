@@ -6,18 +6,24 @@ use std::str::FromStr;
 #[cfg(test)]
 use std::time::{SystemTime, UNIX_EPOCH};
 
+mod bake_pipeline;
+mod source_image;
+
+#[cfg(test)]
+use bake_pipeline::cubemap_direction;
+use bake_pipeline::{
+    build_brdf_lut_chunk_entries, build_irradiance_chunk_entries, build_specular_chunk_entries,
+};
+use source_image::load_source_image;
+#[cfg(test)]
+use source_image::{
+    encode_png_image, encode_rgbd_srgb, write_test_exr, write_test_hdr, write_test_png,
+};
+
 pub const FORMAT_MAGIC: [u8; 4] = *b"IBLA";
 pub const FORMAT_VERSION: u16 = 1;
 pub const HEADER_BYTE_LENGTH: usize = 16;
 pub const BRDF_LUT_SIZE: u32 = 256;
-
-const PLACEHOLDER_PNG_BYTES: &[u8] = &[
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
-    0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x60, 0x60, 0x60, 0xF8,
-    0x0F, 0x00, 0x01, 0x04, 0x01, 0x00, 0x5F, 0xC2, 0x0D, 0xF7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
-    0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
-];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Face {
@@ -76,6 +82,17 @@ impl Face {
             Face::NegativeZ,
         ];
         &FACES
+    }
+
+    pub(crate) fn index(self) -> usize {
+        match self {
+            Self::PositiveX => 0,
+            Self::NegativeX => 1,
+            Self::PositiveY => 2,
+            Self::NegativeY => 3,
+            Self::PositiveZ => 4,
+            Self::NegativeZ => 5,
+        }
     }
 }
 
@@ -343,6 +360,10 @@ pub enum IblError {
     Io(std::io::Error),
     InvalidInput(String),
     InvalidFormat(String),
+    ImageDecode(String),
+    UnsupportedExrLayout(String),
+    UnsupportedExrChannelModel(String),
+    PngEncode(String),
 }
 
 impl Display for IblError {
@@ -351,6 +372,14 @@ impl Display for IblError {
             Self::Io(error) => write!(f, "I/O error: {error}"),
             Self::InvalidInput(message) => write!(f, "Invalid input: {message}"),
             Self::InvalidFormat(message) => write!(f, "Invalid format: {message}"),
+            Self::ImageDecode(message) => write!(f, "Image decode error: {message}"),
+            Self::UnsupportedExrLayout(message) => {
+                write!(f, "Unsupported EXR layout: {message}")
+            }
+            Self::UnsupportedExrChannelModel(message) => {
+                write!(f, "Unsupported EXR channel model: {message}")
+            }
+            Self::PngEncode(message) => write!(f, "PNG encode error: {message}"),
         }
     }
 }
@@ -360,6 +389,12 @@ impl std::error::Error for IblError {}
 impl From<std::io::Error> for IblError {
     fn from(value: std::io::Error) -> Self {
         Self::Io(value)
+    }
+}
+
+impl From<image::ImageError> for IblError {
+    fn from(value: image::ImageError) -> Self {
+        Self::ImageDecode(value.to_string())
     }
 }
 
@@ -404,7 +439,17 @@ pub fn bake_to_asset<P: AsRef<Path>>(input: P, options: BakeOptions) -> Result<I
         chunks: Vec::new(),
     };
 
-    let entries = build_placeholder_chunk_entries(&asset.manifest);
+    let entries = match options.asset_kind {
+        AssetKind::SpecularCubemap => {
+            let source = load_source_image(input_path)?;
+            build_specular_chunk_entries(&source, &options, asset.manifest.mip_count)?
+        }
+        AssetKind::IrradianceCubemap => {
+            let source = load_source_image(input_path)?;
+            build_irradiance_chunk_entries(&source, &options)?
+        }
+        AssetKind::BrdfLut => build_brdf_lut_chunk_entries(BRDF_LUT_SIZE, &options)?,
+    };
     asset.chunk_table = entries.iter().map(|entry| entry.record.clone()).collect();
     asset.chunks = entries.iter().map(|entry| entry.chunk.clone()).collect();
 
@@ -655,12 +700,7 @@ fn build_manifest(input_path: &Path, options: &BakeOptions) -> Manifest {
             estimate_mip_count(options.cube_size),
             6,
         ),
-        AssetKind::IrradianceCubemap => (
-            options.irradiance_size,
-            options.irradiance_size,
-            1,
-            6,
-        ),
+        AssetKind::IrradianceCubemap => (options.irradiance_size, options.irradiance_size, 1, 6),
         AssetKind::BrdfLut => (BRDF_LUT_SIZE, BRDF_LUT_SIZE, 1, 1),
     };
 
@@ -682,58 +722,6 @@ fn build_manifest(input_path: &Path, options: &BakeOptions) -> Manifest {
                 .to_string(),
         },
     }
-}
-
-fn build_placeholder_chunk_entries(manifest: &Manifest) -> Vec<ChunkEntry> {
-    let mut entries = Vec::new();
-
-    match manifest.face_count {
-        6 => {
-            for mip_level in 0..manifest.mip_count {
-                let face_size = dimension_at_mip(manifest.width, mip_level);
-                for face in Face::all() {
-                    entries.push(ChunkEntry {
-                        record: ChunkRecord {
-                            mip_level,
-                            face: Some(*face),
-                            byte_offset: 0,
-                            byte_length: PLACEHOLDER_PNG_BYTES.len() as u64,
-                            width: face_size,
-                            height: face_size,
-                        },
-                        chunk: ChunkData {
-                            mip_level,
-                            face: Some(*face),
-                            bytes: PLACEHOLDER_PNG_BYTES.to_vec(),
-                        },
-                    });
-                }
-            }
-        }
-        1 => {
-            for mip_level in 0..manifest.mip_count {
-                entries.push(ChunkEntry {
-                    record: ChunkRecord {
-                        mip_level,
-                        face: None,
-                        byte_offset: 0,
-                        byte_length: PLACEHOLDER_PNG_BYTES.len() as u64,
-                        width: dimension_at_mip(manifest.width, mip_level),
-                        height: dimension_at_mip(manifest.height, mip_level),
-                    },
-                    chunk: ChunkData {
-                        mip_level,
-                        face: None,
-                        bytes: PLACEHOLDER_PNG_BYTES.to_vec(),
-                    },
-                });
-            }
-        }
-        _ => unreachable!("v1 manifest face count should be 1 or 6"),
-    }
-
-    sort_entries(&mut entries);
-    entries
 }
 
 fn validate_asset_shape(asset: &IblAsset, issues: &mut Vec<ValidationIssue>) {
@@ -1372,6 +1360,7 @@ fn unique_temp_path(label: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn header_round_trip_is_stable() {
@@ -1389,11 +1378,54 @@ mod tests {
     }
 
     #[test]
-    fn asset_round_trip_preserves_manifest_and_chunk_records() {
-        let input = unique_temp_path("asset-roundtrip-input");
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+    fn hdr_input_decodes_into_linear_source_image() {
+        let path = unique_temp_path("decode-hdr").with_extension("hdr");
+        write_test_hdr(&path, 4, 2);
 
-        let asset = bake_to_asset(&input, BakeOptions::default()).expect("asset should bake");
+        let source = load_source_image(&path).expect("hdr should decode");
+        assert_eq!(source_image_dimensions(&source), (4, 2));
+        assert!(source_image_pixel(&source, 3, 1).x > source_image_pixel(&source, 0, 0).x);
+
+        fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn png_input_decodes_as_linearized_srgb() {
+        let path = unique_temp_path("decode-png").with_extension("png");
+        write_test_png(&path, 2, 2);
+
+        let source = load_source_image(&path).expect("png should decode");
+        assert_eq!(source_image_dimensions(&source), (2, 2));
+        assert!(source_image_pixel(&source, 1, 0).x > source_image_pixel(&source, 0, 0).x);
+
+        fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn exr_input_decodes_into_linear_source_image() {
+        let path = unique_temp_path("decode-exr").with_extension("exr");
+        write_test_exr(&path, 4, 2);
+
+        let source = load_source_image(&path).expect("exr should decode");
+        assert_eq!(source_image_dimensions(&source), (4, 2));
+        assert!(source_image_pixel(&source, 3, 1).z > source_image_pixel(&source, 0, 0).z);
+
+        fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn asset_round_trip_preserves_manifest_and_chunk_records() {
+        let input = unique_temp_path("asset-roundtrip-input").with_extension("hdr");
+        write_test_hdr(&input, 8, 4);
+
+        let asset = bake_to_asset(
+            &input,
+            BakeOptions {
+                cube_size: 8,
+                ..BakeOptions::default()
+            },
+        )
+        .expect("asset should bake");
         let encoded = encode_asset_bytes(&asset).expect("asset should encode");
         let asset_path = unique_temp_path("asset-roundtrip-file");
         fs::write(&asset_path, encoded).expect("encoded asset should be written");
@@ -1450,23 +1482,31 @@ mod tests {
 
     #[test]
     fn bake_outputs_expected_cubemap_chunk_count() {
-        let input = unique_temp_path("specular-count-input");
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+        let input = unique_temp_path("specular-count-input").with_extension("hdr");
+        write_test_hdr(&input, 16, 8);
 
-        let asset = bake_to_asset(&input, BakeOptions::default()).expect("asset should bake");
+        let asset = bake_to_asset(
+            &input,
+            BakeOptions {
+                cube_size: 8,
+                ..BakeOptions::default()
+            },
+        )
+        .expect("asset should bake");
         assert_eq!(asset.manifest.face_count, 6);
         assert_eq!(
             asset.chunk_table.len(),
             asset.manifest.mip_count as usize * Face::all().len()
         );
+        assert_eq!(png_dimensions(&asset.chunks[0].bytes), (8, 8));
 
         fs::remove_file(&input).ok();
     }
 
     #[test]
     fn brdf_lut_asset_uses_a_single_two_dimensional_image() {
-        let input = unique_temp_path("brdf-lut-input");
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+        let input = unique_temp_path("brdf-lut-input").with_extension("hdr");
+        write_test_hdr(&input, 4, 2);
 
         let options = BakeOptions {
             asset_kind: AssetKind::BrdfLut,
@@ -1477,12 +1517,22 @@ mod tests {
         assert_eq!(asset.manifest.face_count, 1);
         assert_eq!(asset.chunk_table.len(), 1);
         assert_eq!(asset.chunk_table[0].face, None);
+        assert_eq!(
+            png_dimensions(&asset.chunks[0].bytes),
+            (BRDF_LUT_SIZE, BRDF_LUT_SIZE)
+        );
 
         fs::remove_file(&input).ok();
     }
 
     #[test]
     fn validate_detects_duplicate_keys_and_offset_errors() {
+        let bytes = encode_png_image(
+            &single_color_image(1, 1, glam::Vec3::new(0.25, 0.5, 0.75)),
+            EncodingKind::Srgb,
+        )
+        .expect("png should encode");
+
         let asset = IblAsset {
             header: IblHeader {
                 magic: FORMAT_MAGIC,
@@ -1529,12 +1579,12 @@ mod tests {
                 ChunkData {
                     mip_level: 0,
                     face: Some(Face::PositiveX),
-                    bytes: PLACEHOLDER_PNG_BYTES.to_vec(),
+                    bytes: bytes.clone(),
                 },
                 ChunkData {
                     mip_level: 0,
                     face: Some(Face::PositiveX),
-                    bytes: PLACEHOLDER_PNG_BYTES.to_vec(),
+                    bytes,
                 },
             ],
         };
@@ -1553,10 +1603,17 @@ mod tests {
 
     #[test]
     fn encoding_output_is_deterministic() {
-        let input = unique_temp_path("deterministic-input");
-        fs::write(&input, b"placeholder hdr").expect("input should be created");
+        let input = unique_temp_path("deterministic-input").with_extension("hdr");
+        write_test_hdr(&input, 8, 4);
 
-        let asset = bake_to_asset(&input, BakeOptions::default()).expect("asset should bake");
+        let asset = bake_to_asset(
+            &input,
+            BakeOptions {
+                cube_size: 8,
+                ..BakeOptions::default()
+            },
+        )
+        .expect("asset should bake");
         let first = encode_asset_bytes(&asset).expect("first encoding should work");
         let second = encode_asset_bytes(&asset).expect("second encoding should work");
         assert_eq!(first, second);
@@ -1566,6 +1623,12 @@ mod tests {
 
     #[test]
     fn validate_accepts_all_supported_manifest_encodings() {
+        let bytes = encode_png_image(
+            &single_color_image(4, 4, glam::Vec3::new(0.25, 0.5, 0.75)),
+            EncodingKind::Srgb,
+        )
+        .expect("png should encode");
+
         for encoding in ["rgbd-srgb", "srgb", "linear"] {
             let asset = IblAsset {
                 header: IblHeader {
@@ -1595,14 +1658,14 @@ mod tests {
                     mip_level: 0,
                     face: None,
                     byte_offset: 0,
-                    byte_length: PLACEHOLDER_PNG_BYTES.len() as u64,
+                    byte_length: bytes.len() as u64,
                     width: 4,
                     height: 4,
                 }],
                 chunks: vec![ChunkData {
                     mip_level: 0,
                     face: None,
-                    bytes: PLACEHOLDER_PNG_BYTES.to_vec(),
+                    bytes: bytes.clone(),
                 }],
             };
 
@@ -1618,11 +1681,58 @@ mod tests {
     #[test]
     fn bake_records_source_format_from_input_extension() {
         let input = unique_temp_path("source-format-input").with_extension("EXR");
-        fs::write(&input, b"placeholder exr").expect("input should be created");
+        write_test_exr(&input, 4, 2);
 
-        let asset = bake_to_asset(&input, BakeOptions::default()).expect("asset should bake");
+        let asset = bake_to_asset(
+            &input,
+            BakeOptions {
+                cube_size: 8,
+                ..BakeOptions::default()
+            },
+        )
+        .expect("asset should bake");
         assert_eq!(asset.manifest.build.source_format, "exr");
 
         fs::remove_file(&input).ok();
+    }
+
+    #[test]
+    fn cubemap_direction_is_normalized_and_oriented() {
+        let direction = cubemap_direction(Face::PositiveZ, glam::Vec2::ZERO);
+        assert_relative_eq!(direction.length(), 1.0, epsilon = 1.0e-6);
+        assert!(direction.z > 0.9);
+    }
+
+    #[test]
+    fn rgbd_encoding_preserves_hdr_energy_order() {
+        let (_, dark_d) = encode_rgbd_srgb(glam::Vec3::splat(0.5));
+        let (bright_rgb, bright_d) = encode_rgbd_srgb(glam::Vec3::splat(8.0));
+        assert!(bright_d < dark_d);
+        assert!(bright_rgb.x > 0.9);
+    }
+
+    fn png_dimensions(bytes: &[u8]) -> (u32, u32) {
+        (
+            u32::from_be_bytes(bytes[16..20].try_into().expect("png width bytes")),
+            u32::from_be_bytes(bytes[20..24].try_into().expect("png height bytes")),
+        )
+    }
+
+    fn single_color_image(width: u32, height: u32, color: glam::Vec3) -> source_image::SourceImage {
+        let mut image = source_image::SourceImage::new(width, height);
+        for y in 0..height {
+            for x in 0..width {
+                image.set(x, y, color);
+            }
+        }
+        image
+    }
+
+    fn source_image_dimensions(image: &source_image::SourceImage) -> (u32, u32) {
+        (image.width, image.height)
+    }
+
+    fn source_image_pixel(image: &source_image::SourceImage, x: u32, y: u32) -> glam::Vec3 {
+        image.get(x, y)
     }
 }

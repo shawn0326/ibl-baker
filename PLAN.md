@@ -19,6 +19,7 @@
 
   * `@ibltools/baker`
   * `@ibltools/loader`
+  * `@ibltools/three-loader`
 
 #### 2. 固定仓库结构
 
@@ -31,9 +32,12 @@ ibl-baker/
 ├─ crates/
 │  ├─ ibl_core/
 │  └─ ibl_cli/
+├─ package.json
 ├─ packages/
 │  ├─ baker/
-│  └─ loader/
+│  ├─ loader/
+│  ├─ three-loader/
+│  └─ e2e-three/
 ├─ docs/
 ├─ examples/
 └─ scripts/
@@ -46,6 +50,12 @@ ibl-baker/
 
   * `crates/ibl_core`
   * `crates/ibl_cli`
+
+#### 3.1 npm workspace
+
+* 根 `package.json` 使用 npm workspaces
+* JS 包统一放在 `packages/`
+* 根包只负责脚本编排、lockfile 与工作区管理，不承载业务源码
 
 #### 4. `ibl_core` 必须负责的内容
 
@@ -176,17 +186,21 @@ ibl-baker extract out.ibla --dir ./out
 #### 16. `@ibltools/loader` 必须提供的能力
 
 * `parseIBLA(buffer)`
-* `decodeIBLA(parsed, options?)`
-* `toWebGLUploadData(decoded)`
-* `toWebGPUUploadData(decoded)`
 
 并满足以下要求：
 
 * 返回中立数据结构
+* 保持 parser-only
 * 不直接返回具体渲染引擎纹理对象
-* 第一阶段允许保留 `RGBA8 + metadata`
-* 不强制全量转 `Float32Array`
-* 预留未来 `decodeRGBDToFloat()` 扩展
+* 不在该包内引入运行时上传逻辑
+
+#### 16.1 `@ibltools/three-loader` 必须提供的能力
+
+* 接收 `.ibla` bytes
+* 通过 `@ibltools/loader` 解析 cubemap 资产
+* 在浏览器中解码 payload
+* 返回 three.js 运行时纹理对象
+* 作为 three.js 专用集成层独立维护，不反向污染 parser-only loader
 
 #### 17. `@ibltools/baker` 必须提供的能力
 
@@ -203,14 +217,15 @@ docs/
 ├─ format-spec.md
 ├─ cli.md
 ├─ loader-api.md
+├─ three-loader-api.md
 ```
 
 #### 19. 示例与基础验证必须覆盖
 
 * `.ibla` 读写
-* `bake -> inspect -> validate`
-* `extract`
-* TS loader 的 parse / decode
+* `bake -> validate`
+* TS loader 的 parse
+* three.js 环境中的浏览器联调验证
 
 ---
 
@@ -221,8 +236,8 @@ docs/
 * 不要做 Rust loader
 * 不要做 wasm loader
 * 不要做 KTX2
-* 不要做引擎适配层
-* 不要返回 t3d / three / Babylon 等具体运行时对象
+* 不要做通用多引擎适配层
+* 不要把 three / Babylon / t3d 统一抽象成单一运行时接口
 * 不要做 napi / node addon
 * 不要做 wasm core
 * 不要做进程内 JS binding
@@ -236,7 +251,7 @@ docs/
 # 一句话项目描述
 
 **更适合 GitHub 描述：**
-A renderer-agnostic IBL asset compiler that bakes HDR environments into portable `.ibla` assets with Rust core, CLI, and TypeScript loader.
+A renderer-agnostic IBL asset compiler that bakes HDR environments into portable `.ibla` assets with Rust core, CLI, parser-only TypeScript loader, and dedicated three.js integration.
 
 **更短一点的 README 介绍：**
 A standalone, renderer-agnostic IBL compiler for baking HDR environment maps into portable `.ibla` assets.

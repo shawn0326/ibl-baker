@@ -10,3 +10,6 @@ path = "src/main.rs"
 
 [dependencies]
 ibl_core = { path = "../ibl_core" }
+
+[dev-dependencies]
+image = { version = "0.25.10", default-features = false, features = ["hdr", "png"] }

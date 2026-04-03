@@ -1,31 +1,58 @@
 # ibl-baker
 
-A renderer-agnostic IBL asset compiler that primarily bakes HDR environments into portable `.ibla` texture payloads, with a Rust core, CLI, and future TypeScript tooling.
+A renderer-agnostic IBL asset compiler that bakes HDR environments into portable `.ibla` texture payloads with a Rust core, CLI, parser-only TypeScript loader, and a dedicated three.js integration package.
 
 ## Status
 
-The repository is currently in the initialization phase.
+The repository is currently implementing the v1 pipeline across three layers:
 
-The first milestone is to establish:
+- Rust baking, validation, and `.ibla` read/write
+- a parser-only TypeScript loader in `packages/loader`
+- a three.js-facing integration package in `packages/three-loader`
 
-- a stable `.ibla` asset boundary
-- a Rust workspace with `ibl_core` and `ibl_cli`
-- a minimal command flow for multi-output baking and `.ibla` validation
+The authoritative public contracts live in:
+
+- `docs/cli.md`
+- `docs/format-spec.md`
+- `docs/loader-api.md`
+- `docs/three-loader-api.md`
 
 ## Scope
 
-Phase one focuses on a stable, portable asset format instead of engine-specific runtime integration.
-The main v1 production path is still HDR IBL baking, while `srgb` and `linear`
-encoding variants exist to keep the container and CLI semantics consistent for related payload types.
+The v1 goal is a stable, portable asset format with a small number of explicitly scoped integration layers.
+The main production path remains HDR IBL baking, while `srgb` and `linear`
+encoding variants keep the container semantics consistent for related payload types.
 
 Current priorities:
 
-- define the `.ibla` container structure
-- stabilize the single-file texture topology model around `mipCount` and `faceCount`
-- simplify the v1 manifest around `encoding` and provenance metadata
-- establish the core Rust API surface
-- wire the CLI to the core library
-- add validation and output workflows
+- keep the `.ibla` container stable
+- keep CLI behavior aligned with `docs/cli.md`
+- keep the TypeScript loader parser-only in v1
+- keep three.js integration isolated from the parser package
+- expand verification around real bake outputs, loader parsing, and manual browser validation
+
+## Workspace
+
+The repository uses:
+
+- a Cargo workspace at the repo root for Rust crates
+- an npm workspace at the repo root for JavaScript packages
+
+Common npm entry points from the repo root:
+
+```bash
+npm install
+npm run fixtures:refresh
+npm run test:js
+npm run test:three
+npm run dev:three-e2e
+```
+
+Manual three.js validation runs through the local Vite service in `packages/e2e-three`.
+After starting `npm run dev:three-e2e`, open:
+
+- `http://127.0.0.1:4173/?fixture=royal_esplanade_1k`
+- `http://127.0.0.1:4173/?fixture=grand_canyon_c`
 
 Out of scope for now:
 
