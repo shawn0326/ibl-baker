@@ -1,6 +1,6 @@
 # ibl-baker
 
-A renderer-agnostic IBL asset compiler that bakes HDR environments into portable `.ibla` texture payloads with a Rust core, CLI, and future TypeScript tooling.
+A renderer-agnostic IBL asset compiler that primarily bakes HDR environments into portable `.ibla` texture payloads, with a Rust core, CLI, and future TypeScript tooling.
 
 ## Status
 
@@ -15,12 +15,14 @@ The first milestone is to establish:
 ## Scope
 
 Phase one focuses on a stable, portable asset format instead of engine-specific runtime integration.
+The main v1 production path is still HDR IBL baking, while `srgb` and `linear`
+encoding variants exist to keep the container and CLI semantics consistent for related payload types.
 
 Current priorities:
 
 - define the `.ibla` container structure
 - stabilize the single-file texture topology model around `mipCount` and `faceCount`
-- keep `pixelFormat` future-proof for higher-precision HDR/EXR outputs
+- simplify the v1 manifest around `encoding` and provenance metadata
 - establish the core Rust API surface
 - wire the CLI to the core library
 - add validation and output workflows

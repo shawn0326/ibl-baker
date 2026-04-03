@@ -125,44 +125,88 @@ impl FromStr for AssetKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EncodingKind {
-    Rgbd,
+    RgbdSrgb,
+    Srgb,
+    Linear,
 }
 
 impl EncodingKind {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Rgbd => "rgbd",
+            Self::RgbdSrgb => "rgbd-srgb",
+            Self::Srgb => "srgb",
+            Self::Linear => "linear",
+        }
+    }
+}
+
+impl FromStr for EncodingKind {
+    type Err = IblError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "rgbd-srgb" => Ok(Self::RgbdSrgb),
+            "srgb" => Ok(Self::Srgb),
+            "linear" => Ok(Self::Linear),
+            _ => Err(IblError::InvalidFormat(format!(
+                "invalid encoding: {value}"
+            ))),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PixelFormat {
-    Rgba8,
-    Rgba16F,
-    Rgba32F,
+pub enum SourceFormat {
+    Hdr,
+    Exr,
+    Png,
+    Jpg,
+    Jpeg,
+    Unknown,
 }
 
-impl PixelFormat {
+impl SourceFormat {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Rgba8 => "rgba8",
-            Self::Rgba16F => "rgba16f",
-            Self::Rgba32F => "rgba32f",
+            Self::Hdr => "hdr",
+            Self::Exr => "exr",
+            Self::Png => "png",
+            Self::Jpg => "jpg",
+            Self::Jpeg => "jpeg",
+            Self::Unknown => "unknown",
+        }
+    }
+
+    pub fn from_input_path(path: &Path) -> Self {
+        match path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .map(|extension| extension.to_ascii_lowercase())
+            .as_deref()
+        {
+            Some("hdr") => Self::Hdr,
+            Some("exr") => Self::Exr,
+            Some("png") => Self::Png,
+            Some("jpg") => Self::Jpg,
+            Some("jpeg") => Self::Jpeg,
+            _ => Self::Unknown,
         }
     }
 }
 
-impl FromStr for PixelFormat {
+impl FromStr for SourceFormat {
     type Err = IblError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
-            "rgba8" => Ok(Self::Rgba8),
-            "rgba16f" => Ok(Self::Rgba16F),
-            "rgba32f" => Ok(Self::Rgba32F),
+            "hdr" => Ok(Self::Hdr),
+            "exr" => Ok(Self::Exr),
+            "png" => Ok(Self::Png),
+            "jpg" => Ok(Self::Jpg),
+            "jpeg" => Ok(Self::Jpeg),
+            "unknown" => Ok(Self::Unknown),
             _ => Err(IblError::InvalidFormat(format!(
-                "invalid pixel format: {value}"
+                "invalid source format: {value}"
             ))),
         }
     }
@@ -191,7 +235,6 @@ pub struct BakeOptions {
     pub cube_size: u32,
     pub irradiance_size: u32,
     pub output_encoding: EncodingKind,
-    pub output_pixel_format: PixelFormat,
     pub rotation_degrees: f32,
     pub sample_count: u32,
     pub quality: BakeQuality,
@@ -203,8 +246,7 @@ impl Default for BakeOptions {
             asset_kind: AssetKind::SpecularCubemap,
             cube_size: 512,
             irradiance_size: 32,
-            output_encoding: EncodingKind::Rgbd,
-            output_pixel_format: PixelFormat::Rgba8,
+            output_encoding: EncodingKind::RgbdSrgb,
             rotation_degrees: 0.0,
             sample_count: 1024,
             quality: BakeQuality::Medium,
@@ -226,7 +268,7 @@ pub struct BuildInfo {
     pub rotation_degrees: f32,
     pub sample_count: u32,
     pub quality: String,
-    pub encoding: String,
+    pub source_format: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -235,8 +277,6 @@ pub struct Manifest {
     pub generator_version: String,
     pub encoding: String,
     pub container: String,
-    pub pixel_format: String,
-    pub color_space: String,
     pub width: u32,
     pub height: u32,
     pub mip_count: u32,
@@ -350,7 +390,7 @@ pub fn bake_to_asset<P: AsRef<Path>>(input: P, options: BakeOptions) -> Result<I
         ));
     }
 
-    let manifest = build_manifest(&options);
+    let manifest = build_manifest(input_path, &options);
     let mut asset = IblAsset {
         header: IblHeader {
             magic: FORMAT_MAGIC,
@@ -439,8 +479,10 @@ pub fn validate_asset(asset: &IblAsset) -> ValidationReport {
         });
     }
 
-    if asset.manifest.encoding != EncodingKind::Rgbd.as_str() {
-        issues.push(error_issue("manifest encoding must be rgbd"));
+    if EncodingKind::from_str(&asset.manifest.encoding).is_err() {
+        issues.push(error_issue(
+            "manifest encoding must be rgbd-srgb, srgb, or linear",
+        ));
     }
 
     if asset.manifest.container != "png" {
@@ -461,9 +503,9 @@ pub fn validate_asset(asset: &IblAsset) -> ValidationReport {
         issues.push(error_issue("manifest faceCount must be 1 or 6"));
     }
 
-    if PixelFormat::from_str(&asset.manifest.pixel_format).is_err() {
+    if SourceFormat::from_str(&asset.manifest.build.source_format).is_err() {
         issues.push(error_issue(
-            "manifest pixelFormat must be rgba8, rgba16f, or rgba32f",
+            "manifest build.sourceFormat must be hdr, exr, png, jpg, jpeg, or unknown",
         ));
     }
 
@@ -605,7 +647,7 @@ fn error_issue(message: &str) -> ValidationIssue {
     }
 }
 
-fn build_manifest(options: &BakeOptions) -> Manifest {
+fn build_manifest(input_path: &Path, options: &BakeOptions) -> Manifest {
     let (width, height, mip_count, face_count) = match options.asset_kind {
         AssetKind::SpecularCubemap => (
             options.cube_size,
@@ -627,8 +669,6 @@ fn build_manifest(options: &BakeOptions) -> Manifest {
         generator_version: env!("CARGO_PKG_VERSION").to_string(),
         encoding: options.output_encoding.as_str().to_string(),
         container: "png".to_string(),
-        pixel_format: options.output_pixel_format.as_str().to_string(),
-        color_space: "linear".to_string(),
         width,
         height,
         mip_count,
@@ -637,7 +677,9 @@ fn build_manifest(options: &BakeOptions) -> Manifest {
             rotation_degrees: options.rotation_degrees,
             sample_count: options.sample_count,
             quality: options.quality.as_str().to_string(),
-            encoding: options.output_encoding.as_str().to_string(),
+            source_format: SourceFormat::from_input_path(input_path)
+                .as_str()
+                .to_string(),
         },
     }
 }
@@ -948,13 +990,11 @@ fn refresh_header_lengths(asset: &mut IblAsset) -> Result<(), IblError> {
 
 fn serialize_manifest(manifest: &Manifest) -> String {
     format!(
-        "{{\n  \"generator\": \"{}\",\n  \"generatorVersion\": \"{}\",\n  \"encoding\": \"{}\",\n  \"container\": \"{}\",\n  \"pixelFormat\": \"{}\",\n  \"colorSpace\": \"{}\",\n  \"width\": {},\n  \"height\": {},\n  \"mipCount\": {},\n  \"faceCount\": {},\n  \"build\": {{\n    \"rotation\": {},\n    \"samples\": {},\n    \"quality\": \"{}\",\n    \"encoding\": \"{}\"\n  }}\n}}\n",
+        "{{\n  \"generator\": \"{}\",\n  \"generatorVersion\": \"{}\",\n  \"encoding\": \"{}\",\n  \"container\": \"{}\",\n  \"width\": {},\n  \"height\": {},\n  \"mipCount\": {},\n  \"faceCount\": {},\n  \"build\": {{\n    \"rotation\": {},\n    \"samples\": {},\n    \"quality\": \"{}\",\n    \"sourceFormat\": \"{}\"\n  }}\n}}\n",
         manifest.generator,
         manifest.generator_version,
         manifest.encoding,
         manifest.container,
-        manifest.pixel_format,
-        manifest.color_space,
         manifest.width,
         manifest.height,
         manifest.mip_count,
@@ -962,7 +1002,7 @@ fn serialize_manifest(manifest: &Manifest) -> String {
         format_f32(manifest.build.rotation_degrees),
         manifest.build.sample_count,
         manifest.build.quality,
-        manifest.build.encoding
+        manifest.build.source_format
     )
 }
 
@@ -971,8 +1011,6 @@ fn parse_manifest(text: &str) -> Result<Manifest, IblError> {
     let generator_version = extract_json_string(text, "\"generatorVersion\":")?;
     let encoding = extract_json_string(text, "\"encoding\":")?;
     let container = extract_json_string(text, "\"container\":")?;
-    let pixel_format = extract_json_string(text, "\"pixelFormat\":")?;
-    let color_space = extract_json_string(text, "\"colorSpace\":")?;
     let width = extract_json_u32(text, "\"width\":")?;
     let height = extract_json_u32(text, "\"height\":")?;
     let mip_count = extract_json_u32(text, "\"mipCount\":")?;
@@ -984,8 +1022,6 @@ fn parse_manifest(text: &str) -> Result<Manifest, IblError> {
         generator_version,
         encoding,
         container,
-        pixel_format,
-        color_space,
         width,
         height,
         mip_count,
@@ -994,7 +1030,7 @@ fn parse_manifest(text: &str) -> Result<Manifest, IblError> {
             rotation_degrees: extract_json_f32(build_body, "\"rotation\":")?,
             sample_count: extract_json_u32(build_body, "\"samples\":")?,
             quality: extract_json_string(build_body, "\"quality\":")?,
-            encoding: extract_json_string(build_body, "\"encoding\":")?,
+            source_format: extract_json_string(build_body, "\"sourceFormat\":")?,
         },
     })
 }
@@ -1375,10 +1411,8 @@ mod tests {
         let manifest = Manifest {
             generator: "ibl-baker".to_string(),
             generator_version: "0.1.0".to_string(),
-            encoding: "rgbd".to_string(),
+            encoding: "rgbd-srgb".to_string(),
             container: "png".to_string(),
-            pixel_format: "rgba8".to_string(),
-            color_space: "linear".to_string(),
             width: BRDF_LUT_SIZE,
             height: BRDF_LUT_SIZE,
             mip_count: 2,
@@ -1387,7 +1421,7 @@ mod tests {
                 rotation_degrees: 0.0,
                 sample_count: 1024,
                 quality: "medium".to_string(),
-                encoding: "rgbd".to_string(),
+                source_format: "hdr".to_string(),
             },
         };
         let records = vec![
@@ -1460,10 +1494,8 @@ mod tests {
             manifest: Manifest {
                 generator: "ibl-baker".to_string(),
                 generator_version: "0.1.0".to_string(),
-                encoding: "rgbd".to_string(),
+                encoding: "rgbd-srgb".to_string(),
                 container: "png".to_string(),
-                pixel_format: "rgba8".to_string(),
-                color_space: "linear".to_string(),
                 width: 512,
                 height: 512,
                 mip_count: 1,
@@ -1472,7 +1504,7 @@ mod tests {
                     rotation_degrees: 0.0,
                     sample_count: 1024,
                     quality: "medium".to_string(),
-                    encoding: "rgbd".to_string(),
+                    source_format: "hdr".to_string(),
                 },
             },
             chunk_table: vec![
@@ -1528,6 +1560,68 @@ mod tests {
         let first = encode_asset_bytes(&asset).expect("first encoding should work");
         let second = encode_asset_bytes(&asset).expect("second encoding should work");
         assert_eq!(first, second);
+
+        fs::remove_file(&input).ok();
+    }
+
+    #[test]
+    fn validate_accepts_all_supported_manifest_encodings() {
+        for encoding in ["rgbd-srgb", "srgb", "linear"] {
+            let asset = IblAsset {
+                header: IblHeader {
+                    magic: FORMAT_MAGIC,
+                    version: FORMAT_VERSION,
+                    flags: 0,
+                    manifest_byte_length: 0,
+                    chunk_table_byte_length: 0,
+                },
+                manifest: Manifest {
+                    generator: "ibl-baker".to_string(),
+                    generator_version: "0.1.0".to_string(),
+                    encoding: encoding.to_string(),
+                    container: "png".to_string(),
+                    width: 4,
+                    height: 4,
+                    mip_count: 1,
+                    face_count: 1,
+                    build: BuildInfo {
+                        rotation_degrees: 0.0,
+                        sample_count: 16,
+                        quality: "medium".to_string(),
+                        source_format: "png".to_string(),
+                    },
+                },
+                chunk_table: vec![ChunkRecord {
+                    mip_level: 0,
+                    face: None,
+                    byte_offset: 0,
+                    byte_length: PLACEHOLDER_PNG_BYTES.len() as u64,
+                    width: 4,
+                    height: 4,
+                }],
+                chunks: vec![ChunkData {
+                    mip_level: 0,
+                    face: None,
+                    bytes: PLACEHOLDER_PNG_BYTES.to_vec(),
+                }],
+            };
+
+            let report = validate_asset(&asset);
+            assert!(
+                report.is_valid,
+                "encoding {encoding} should be accepted, got issues: {:?}",
+                report.issues
+            );
+        }
+    }
+
+    #[test]
+    fn bake_records_source_format_from_input_extension() {
+        let input = unique_temp_path("source-format-input").with_extension("EXR");
+        fs::write(&input, b"placeholder exr").expect("input should be created");
+
+        let asset = bake_to_asset(&input, BakeOptions::default()).expect("asset should bake");
+        assert_eq!(asset.manifest.build.source_format, "exr");
 
         fs::remove_file(&input).ok();
     }

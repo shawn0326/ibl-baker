@@ -123,8 +123,6 @@ ibl-baker extract out.ibla --dir ./out
 * `assetType`
 * `encoding`
 * `container`
-* `pixelFormat`
-* `colorSpace`
 * `range`
 * `layout`
 * `width`
@@ -148,10 +146,10 @@ ibl-baker extract out.ibla --dir ./out
 
 #### 13. 第一阶段编码策略必须固定
 
-* `encoding = rgbd`
+* `encoding = rgbd-srgb | srgb | linear`
 * `container = png`
-* manifest 层允许 `pixelFormat = rgba8 | rgba16f | rgba32f`
-* 当前占位实现默认产出 `rgba8`
+* manifest 顶层不再包含 `pixelFormat` / `colorSpace`
+* `build` 至少记录 `rotation`、`samples`、`quality`、`sourceFormat`
 
 #### 14. 第一阶段资产粒度必须固定
 
@@ -205,7 +203,6 @@ docs/
 ├─ format-spec.md
 ├─ cli.md
 ├─ loader-api.md
-└─ roadmap.md
 ```
 
 #### 19. 示例与基础验证必须覆盖
