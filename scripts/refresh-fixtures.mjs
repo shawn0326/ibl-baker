@@ -30,6 +30,7 @@ for (const fixture of fixtures) {
     "cargo",
     [
       "run",
+      "--release",
       "-p",
       "ibl_cli",
       "--",

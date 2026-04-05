@@ -56,6 +56,9 @@
 - [ ] 为 `packages/e2e-three` 固化更多 fixture 与手动浏览器联调覆盖
 - [ ] 评估极小 mip 是否需要更轻量 payload 方案；如需支持，再单独设计 codec 元数据
 - [ ] 与 glTF-IBL-Sampler 做算法对比
+- [ ] 预计算经纬→cubemap 映射表，同时将映射有效cache，包括旋转计算之类的，避免重复计算
+- [ ] 当前 diffuse（irradiance）是通过把经纬图转换为立方体面再对面图进行多次方框模糊来近似实现的，应参考 glTF-IBL-Sampler 使用 Lambertian 重要性采样
+- [ ] 把 computeLod 的 texel_area（omega_p）换成 shader 的经验式（6 * width^2 对于 cubemap），并删除任意 +1 偏移，或者把 +1 变为可配置 lodBias。
 
 ## 明确暂不做
 
