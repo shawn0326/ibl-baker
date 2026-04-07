@@ -913,8 +913,15 @@ fn encode_asset_bytes(asset: &IblAsset) -> Result<Vec<u8>, IblError> {
     let normalized = normalize_asset(asset)?;
     let manifest_json = serialize_manifest(&normalized.manifest);
     let chunk_table_bytes = serialize_chunk_table(&normalized.chunk_table)?;
+    let chunk_bytes_len = normalized
+        .chunks
+        .iter()
+        .map(|chunk| chunk.bytes.len())
+        .sum::<usize>();
 
-    let mut bytes = Vec::new();
+    let mut bytes = Vec::with_capacity(
+        HEADER_BYTE_LENGTH + manifest_json.len() + chunk_table_bytes.len() + chunk_bytes_len,
+    );
     bytes.extend_from_slice(&encode_header(&normalized.header));
     bytes.extend_from_slice(manifest_json.as_bytes());
     bytes.extend_from_slice(&chunk_table_bytes);
@@ -1024,7 +1031,7 @@ fn parse_manifest(text: &str) -> Result<Manifest, IblError> {
 }
 
 fn serialize_chunk_table(records: &[ChunkRecord]) -> Result<Vec<u8>, IblError> {
-    let mut bytes = Vec::new();
+    let mut bytes = Vec::with_capacity(records.len() * std::mem::size_of::<u64>());
     for record in records {
         push_u64(&mut bytes, record.byte_length);
     }

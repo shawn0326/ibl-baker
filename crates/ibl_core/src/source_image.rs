@@ -30,6 +30,15 @@ impl SourceImage {
         }
     }
 
+    pub(crate) fn from_pixels(width: u32, height: u32, pixels: Vec<Vec3>) -> Self {
+        debug_assert_eq!(pixels.len(), (width as usize) * (height as usize));
+        Self {
+            width,
+            height,
+            pixels,
+        }
+    }
+
     pub(crate) fn get(&self, x: u32, y: u32) -> Vec3 {
         self.pixels[(y as usize) * (self.width as usize) + (x as usize)]
     }
@@ -76,6 +85,22 @@ impl SourceImage {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Rotation {
+    cos_theta: f32,
+    sin_theta: f32,
+}
+
+impl Rotation {
+    pub(crate) fn from_degrees(rotation_degrees: f32) -> Self {
+        let radians = rotation_degrees.to_radians();
+        Self {
+            cos_theta: radians.cos(),
+            sin_theta: radians.sin(),
+        }
+    }
+}
+
 pub(crate) fn load_source_image(path: &Path) -> Result<SourceImage, IblError> {
     match SourceFormat::from_input_path(path) {
         SourceFormat::Exr => load_exr_source_image(path),
@@ -83,8 +108,8 @@ pub(crate) fn load_source_image(path: &Path) -> Result<SourceImage, IblError> {
     }
 }
 
-pub(crate) fn sample_latlong(source: &SourceImage, direction: Vec3, rotation_degrees: f32) -> Vec3 {
-    let rotated = rotate_direction_y(direction.normalize_or_zero(), rotation_degrees);
+pub(crate) fn sample_latlong(source: &SourceImage, direction: Vec3, rotation: Rotation) -> Vec3 {
+    let rotated = rotate_direction_y(direction.normalize_or_zero(), rotation);
     let u = 0.5 + rotated.z.atan2(rotated.x) / TAU;
     let v = rotated.y.clamp(-1.0, 1.0).acos() / PI;
     source.sample_bilinear(Vec2::new(u, v), true)
@@ -146,14 +171,6 @@ pub(crate) fn encode_rgbd_srgb(color: Vec3) -> (Vec3, f32) {
         ),
         d,
     )
-}
-
-pub(crate) fn blur_image(image: &SourceImage, radius: u32, passes: u32) -> SourceImage {
-    let mut current = image.clone();
-    for _ in 0..passes {
-        current = blur_once(&current, radius);
-    }
-    current
 }
 
 fn load_image_source_image(
@@ -233,14 +250,11 @@ fn image_format_for_source(source_format: SourceFormat) -> Option<ImageFormat> {
     }
 }
 
-fn rotate_direction_y(direction: Vec3, rotation_degrees: f32) -> Vec3 {
-    let radians = rotation_degrees.to_radians();
-    let cos_theta = radians.cos();
-    let sin_theta = radians.sin();
+fn rotate_direction_y(direction: Vec3, rotation: Rotation) -> Vec3 {
     Vec3::new(
-        direction.x * cos_theta - direction.z * sin_theta,
+        direction.x * rotation.cos_theta - direction.z * rotation.sin_theta,
         direction.y,
-        direction.x * sin_theta + direction.z * cos_theta,
+        direction.x * rotation.sin_theta + direction.z * rotation.cos_theta,
     )
 }
 
@@ -268,33 +282,6 @@ fn encode_pixels_to_rgba8(image: &SourceImage, encoding: EncodingKind) -> Vec<u8
     }
 
     bytes
-}
-
-fn blur_once(image: &SourceImage, radius: u32) -> SourceImage {
-    if radius == 0 {
-        return image.clone();
-    }
-
-    let mut result = SourceImage::new(image.width, image.height);
-    let radius = radius as i32;
-
-    for y in 0..image.height {
-        for x in 0..image.width {
-            let mut accum = Vec3::ZERO;
-            let mut count: f32 = 0.0;
-            for oy in -radius..=radius {
-                for ox in -radius..=radius {
-                    let sx = (x as i32 + ox).clamp(0, image.width.saturating_sub(1) as i32) as u32;
-                    let sy = (y as i32 + oy).clamp(0, image.height.saturating_sub(1) as i32) as u32;
-                    accum += image.get(sx, sy);
-                    count += 1.0;
-                }
-            }
-            result.set(x, y, accum / count.max(1.0));
-        }
-    }
-
-    result
 }
 
 fn float_to_u8(value: f32) -> u8 {
