@@ -21,7 +21,7 @@ It stays independent from renderer-specific runtime upload paths.
 
 - `crates/ibl_cli` exposes the public command-line workflow on top of this crate
 - `packages/loader` is the parser-only TypeScript reader for emitted `.ibla` files
-- `packages/three-loader` provides browser-side three.js integration
+- `packages/e2e-loader` is the private browser-side validation app used to inspect emitted fixtures
 
 The shared `.ibla` container contract is defined in the repository format specification:
 <https://github.com/shawn0326/ibl-baker/blob/main/docs/format-spec.md>

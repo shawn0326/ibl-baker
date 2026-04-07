@@ -19,7 +19,7 @@
 
   * `@ibltools/baker`
   * `@ibltools/loader`
-  * `@ibltools/three-loader`
+  * `@ibltools/e2e-loader`（私有工作区工具，不对外发布）
 
 #### 2. 固定仓库结构
 
@@ -36,8 +36,7 @@ ibl-baker/
 ├─ packages/
 │  ├─ baker/
 │  ├─ loader/
-│  ├─ three-loader/
-│  └─ e2e-three/
+│  └─ e2e-loader/
 ├─ docs/
 ├─ examples/
 └─ scripts/
@@ -194,13 +193,14 @@ ibl-baker extract out.ibla --dir ./out
 * 不直接返回具体渲染引擎纹理对象
 * 不在该包内引入运行时上传逻辑
 
-#### 16.1 `@ibltools/three-loader` 必须提供的能力
+#### 16.1 `packages/e2e-loader` 必须提供的能力
 
-* 接收 `.ibla` bytes
-* 通过 `@ibltools/loader` 解析 cubemap 资产
-* 在浏览器中解码 payload
-* 返回 three.js 运行时纹理对象
-* 作为 three.js 专用集成层独立维护，不反向污染 parser-only loader
+* 作为私有浏览器验收工具存在，不作为公开 npm 包承诺
+* 读取仓库内已提交的 `.ibla` fixtures
+* 通过 `@ibltools/loader` 解析资产
+* 在浏览器中解码 PNG payload，并按 `encoding` 做中立可视化
+* 展示 manifest、chunk、face order 与 mip 结构，服务手动验收
+* 不返回任何特定渲染引擎运行时对象
 
 #### 17. `@ibltools/baker` 必须提供的能力
 
@@ -222,7 +222,6 @@ crates/
 
 packages/
 ├─ loader/README.md
-├─ three-loader/README.md
 ```
 
 #### 19. 示例与基础验证必须覆盖
@@ -230,7 +229,7 @@ packages/
 * `.ibla` 读写
 * `bake -> validate`
 * TS loader 的 parse
-* three.js 环境中的浏览器联调验证
+* 中立浏览器环境中的 loader 验收与手动可视化检查
 
 ---
 
@@ -256,7 +255,7 @@ packages/
 # 一句话项目描述
 
 **更适合 GitHub 描述：**
-A renderer-agnostic IBL asset compiler that bakes HDR environments into portable `.ibla` assets with Rust core, CLI, parser-only TypeScript loader, and dedicated three.js integration.
+A renderer-agnostic IBL asset compiler that bakes HDR environments into portable `.ibla` assets with Rust core, CLI, a parser-only TypeScript loader, and a neutral browser validation app.
 
 **更短一点的 README 介绍：**
 A standalone, renderer-agnostic IBL compiler for baking HDR environment maps into portable `.ibla` assets.

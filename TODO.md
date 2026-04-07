@@ -7,13 +7,12 @@
   - `docs/format-spec.md`
   - `crates/ibl_cli/README.md`
   - `packages/loader/README.md`
-  - `packages/three-loader/README.md`
 - [x] 包级公开文档已迁移到对应 README，`docs/` 仅保留共享格式规范
 - [x] 阶段路线已并入本文件，不再单独维护独立 roadmap 文档
 
 ## 实现前提
 
-- [ ] 所有实现以 `docs/format-spec.md`、`crates/ibl_cli/README.md`、`packages/loader/README.md`、`packages/three-loader/README.md` 为准
+- [ ] 所有实现以 `docs/format-spec.md`、`crates/ibl_cli/README.md`、`packages/loader/README.md` 为准
 - [ ] 任何会改变公开行为或文件契约的改动，必须同步更新对应 README 或 docs
 - [ ] `README.md` 与 `AGENTS.md` 仅保留摘要和链接，不重复展开规格细节
 
@@ -47,15 +46,15 @@
 - [x] 基于 Rust 产物补齐 parser fixtures 与解析测试
 - [x] 将 npm 侧切换到根目录 workspace 编排，并移除 `crates/ibl_e2e`
 - [x] 将 loader fixture 测试切换为读取仓库内已提交 `.ibla` 产物，不再在 npm 测试里直接调用 `cargo`
-- [x] 创建 `packages/three-loader`，承载 three.js 专用 `.ibla` 集成层
-- [x] 创建 `packages/e2e-three`，承载浏览器侧 three.js 联调测试
+- [x] 保持 `packages/loader` 为唯一公开 JS 包
+- [x] 移除 three.js 专用 runtime 集成层，保持 JS 主线只剩 parser-only loader
+- [x] 使用 `packages/e2e-loader` 承载中立浏览器侧 loader 验收
 
 ## 后置事项
 
 - [ ] 在 CLI 稳定、分发方案明确后再创建 `packages/baker`
 - [x] 按实际需要补充 `examples/` 与 `scripts/`
-- [ ] 为 `packages/three-loader` 补更高保真、面向运行时的 HDR cubemap 上传路径
-- [ ] 为 `packages/e2e-three` 固化更多 fixture 与手动浏览器联调覆盖
+- [ ] 为 `packages/e2e-loader` 固化更多 fixture、资产类型与手动浏览器验收覆盖
 - [ ] 评估极小 mip 是否需要更轻量 payload 方案；如需支持，再单独设计 codec 元数据
 - [x] 与 glTF-IBL-Sampler 做算法对比
 - [x] 预计算经纬→cubemap 映射表，同时将映射有效cache，包括旋转计算之类的，避免重复计算

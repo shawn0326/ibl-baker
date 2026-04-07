@@ -83,8 +83,8 @@ test("parseIBLA parses a Rust-generated specular cubemap with mip chain", () => 
 
   assert.equal(parsed.topology.kind, "cubemap");
   assert.equal(parsed.manifest.faceCount, 6);
-  assert.equal(parsed.manifest.mipCount, 11);
-  assert.equal(parsed.chunks.length, 66);
+  assert.equal(parsed.manifest.mipCount, 9);
+  assert.equal(parsed.chunks.length, 54);
   assert.deepEqual(parsed.chunks.slice(0, 6).map((chunk) => chunk.face), [
     "px",
     "nx",
@@ -94,8 +94,8 @@ test("parseIBLA parses a Rust-generated specular cubemap with mip chain", () => 
     "nz",
   ]);
   const firstChunk = expectDefined(parsed.chunks[0]);
-  assert.equal(firstChunk.width, 1024);
-  assert.equal(firstChunk.height, 1024);
+  assert.equal(firstChunk.width, 256);
+  assert.equal(firstChunk.height, 256);
   assert.equal(parsed.chunks.at(-1)?.width, 1);
   assert.equal(parsed.chunks.at(-1)?.height, 1);
 });
@@ -105,9 +105,11 @@ test("parseIBLA parses the committed Grand Canyon specular cubemap fixture", () 
 
   assert.equal(parsed.topology.kind, "cubemap");
   assert.equal(parsed.manifest.faceCount, 6);
-  assert.equal(parsed.manifest.mipCount, 10);
-  assert.equal(parsed.chunks.length, 60);
+  assert.equal(parsed.manifest.mipCount, 8);
+  assert.equal(parsed.chunks.length, 48);
   assert.equal(parsed.manifest.build.sourceFormat, "hdr");
+  assert.equal(parsed.manifest.width, 128);
+  assert.equal(parsed.manifest.height, 128);
   assert.deepEqual(parsed.chunks.slice(0, 6).map((chunk) => chunk.face), [
     "px",
     "nx",
