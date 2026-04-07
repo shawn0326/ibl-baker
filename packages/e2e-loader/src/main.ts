@@ -137,7 +137,7 @@ async function renderSelection(state: { fixture: FixtureName; asset: AssetName }
       `container: ${parsed.manifest.container}`,
       `mip count: ${parsed.manifest.mipCount}`,
       `chunk count: ${parsed.chunks.length}`,
-      `face order: ${parsed.topology.kind === "cubemap" ? parsed.topology.faceOrder.join(" ") : "n/a"}`,
+      `face count: ${parsed.manifest.faceCount}`,
       `build: quality=${parsed.manifest.build.quality}, samples=${parsed.manifest.build.samples}, source=${parsed.manifest.build.sourceFormat}`,
     ].join("\n");
 
@@ -184,7 +184,7 @@ function renderSummary(
     },
     {
       title: "Topology",
-      value: `${parsed.topology.kind} · ${parsed.manifest.faceCount} face`,
+      value: `${parsed.manifest.faceCount === 6 ? "cubemap" : "2d"} · ${parsed.manifest.faceCount} face`,
       detail: `${parsed.manifest.width} x ${parsed.manifest.height} · ${parsed.manifest.mipCount} mip(s)`,
     },
     {
@@ -222,10 +222,7 @@ function renderSummary(
 function renderGrid(gridElement: HTMLElement, parsed: ParsedIBLA, decodedChunks: DecodedChunk[]): void {
   const byIdentity = new Map(decodedChunks.map((entry) => [chunkKey(entry.chunk), entry]));
   const chunksByMip = groupChunksByMip(parsed.chunks);
-  const faceOrder =
-    parsed.topology.kind === "cubemap"
-      ? [...parsed.topology.faceOrder]
-      : (["image"] as const);
+  const faceOrder = parsed.manifest.faceCount === 6 ? [...CANONICAL_FACE_ORDER] : (["image"] as const);
 
   gridElement.replaceChildren(
     ...chunksByMip.map(({ mipLevel, chunks }) => {
@@ -255,7 +252,7 @@ function renderGrid(gridElement: HTMLElement, parsed: ParsedIBLA, decodedChunks:
 
       faceOrder.forEach((faceName) => {
         const chunk = chunks.find((candidate) =>
-          parsed.topology.kind === "cubemap" ? candidate.face === faceName : candidate.face === null,
+          parsed.manifest.faceCount === 6 ? candidate.face === faceName : candidate.face === null,
         );
 
         if (chunk === undefined) {
@@ -271,7 +268,7 @@ function renderGrid(gridElement: HTMLElement, parsed: ParsedIBLA, decodedChunks:
         tile.className = "tile-card";
 
         const label = document.createElement("strong");
-        label.textContent = parsed.topology.kind === "cubemap" ? String(faceName).toUpperCase() : "Image";
+        label.textContent = parsed.manifest.faceCount === 6 ? String(faceName).toUpperCase() : "Image";
 
         const frame = document.createElement("div");
         frame.className = "tile-frame";

@@ -21,23 +21,6 @@ export class IBLAParseError extends Error {
   }
 }
 
-export type TextureTopology =
-  | {
-      kind: "2d";
-      width: number;
-      height: number;
-      mipCount: number;
-      faceCount: 1;
-    }
-  | {
-      kind: "cubemap";
-      width: number;
-      height: number;
-      mipCount: number;
-      faceCount: 6;
-      faceOrder: readonly ["px", "nx", "py", "ny", "pz", "nz"];
-    };
-
 export interface ParsedIBLA {
   header: {
     version: number;
@@ -59,7 +42,6 @@ export interface ParsedIBLA {
       sourceFormat: "hdr" | "exr" | "png" | "jpg" | "jpeg" | "unknown";
     };
   };
-  topology: TextureTopology;
   chunks: ParsedChunk[];
 }
 
@@ -138,7 +120,6 @@ export function parseIBLA(buffer: ArrayBuffer | Uint8Array): ParsedIBLA {
   const manifestBytes = bytes.subarray(manifestStart, manifestEnd);
   const manifestText = decodeUtf8Manifest(manifestBytes);
   const manifest = parseManifest(manifestText);
-  const topology = buildTopology(manifest);
   const expectedChunkCount = manifest.mipCount * manifest.faceCount;
   const expectedChunkTableByteLength = expectedChunkCount * CHUNK_TABLE_ENTRY_BYTE_LENGTH;
   if (chunkTableByteLength !== expectedChunkTableByteLength) {
@@ -198,7 +179,6 @@ export function parseIBLA(buffer: ArrayBuffer | Uint8Array): ParsedIBLA {
       flags,
     },
     manifest,
-    topology,
     chunks,
   };
 }
@@ -267,27 +247,6 @@ function parseManifest(text: string): ParsedIBLA["manifest"] {
       quality: readEnum(build, "quality", SUPPORTED_QUALITIES),
       sourceFormat: readEnum(build, "sourceFormat", SUPPORTED_SOURCE_FORMATS),
     },
-  };
-}
-
-function buildTopology(manifest: ParsedIBLA["manifest"]): TextureTopology {
-  if (manifest.faceCount === 1) {
-    return {
-      kind: "2d",
-      width: manifest.width,
-      height: manifest.height,
-      mipCount: manifest.mipCount,
-      faceCount: 1,
-    };
-  }
-
-  return {
-    kind: "cubemap",
-    width: manifest.width,
-    height: manifest.height,
-    mipCount: manifest.mipCount,
-    faceCount: 6,
-    faceOrder: FACE_ORDER,
   };
 }
 

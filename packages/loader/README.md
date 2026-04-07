@@ -18,7 +18,7 @@ npm install @ibltools/loader
 import { parseIBLA } from "@ibltools/loader";
 
 const parsed = parseIBLA(buffer);
-console.log(parsed.topology.kind, parsed.manifest.encoding);
+console.log(parsed.manifest.faceCount, parsed.manifest.encoding);
 ```
 
 ## Scope
@@ -29,7 +29,6 @@ Its responsibility is limited to:
 
 - parsing the `.ibla` container
 - validating basic format structure while parsing
-- reconstructing texture topology from manifest metadata and deterministic ordering
 - exposing chunk payloads as encoded bytes with derived metadata
 
 It does not:
@@ -82,23 +81,6 @@ export class IBLAParseError extends Error {
   readonly code: IBLAParseErrorCode
 }
 
-export type TextureTopology =
-  | {
-      kind: '2d'
-      width: number
-      height: number
-      mipCount: number
-      faceCount: 1
-    }
-  | {
-      kind: 'cubemap'
-      width: number
-      height: number
-      mipCount: number
-      faceCount: 6
-      faceOrder: readonly ['px', 'nx', 'py', 'ny', 'pz', 'nz']
-    }
-
 export interface ParsedIBLA {
   header: {
     version: number
@@ -120,7 +102,6 @@ export interface ParsedIBLA {
       sourceFormat: 'hdr' | 'exr' | 'png' | 'jpg' | 'jpeg' | 'unknown'
     }
   }
-  topology: TextureTopology
   chunks: ParsedChunk[]
 }
 
@@ -145,7 +126,7 @@ export interface ParsedChunk {
 - reconstruct chunk identity from `mipCount`, `faceCount`, and deterministic ordering
 - derive each chunk's `width` and `height` from manifest `width`, `height`, and `mipLevel`
 - reconstruct `byteOffset` from chunk-table `byteLength` prefix sums
-- expose each chunk as encoded bytes plus derived topology metadata
+- expose each chunk as encoded bytes plus derived chunk metadata
 
 `parseIBLA` must throw `IBLAParseError` when:
 
@@ -154,7 +135,7 @@ export interface ParsedChunk {
 - the manifest contains unsupported enum values
 - `faceCount` is not supported by the format
 - cubemap dimensions are invalid for the format
-- the chunk table length is inconsistent with topology
+- the chunk table length is inconsistent with manifest-declared topology
 - chunk payload ranges exceed the binary section
 
 Recommended v1 error-code mapping:
@@ -206,6 +187,12 @@ Applications can build on top of `ParsedIBLA` to implement:
 - WebGL upload preparation
 - WebGPU upload preparation
 - engine-specific runtime adapters
+
+Those higher-level helpers can derive texture topology directly from manifest metadata:
+
+- `faceCount = 1` means a 2D texture with `mipCount` images
+- `faceCount = 6` means a cubemap with `mipCount * 6` images
+- cubemap face order remains the fixed v1 sequence `px, nx, py, ny, pz, nz`
 
 Reference decode code for `encoding = "rgbd-srgb"`:
 

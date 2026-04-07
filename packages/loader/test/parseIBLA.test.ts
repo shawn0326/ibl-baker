@@ -35,13 +35,10 @@ test("parseIBLA parses a synthetic 2D asset with derived mip metadata", () => {
 
   const parsed = parseIBLA(bytes);
   assert.deepEqual(parsed.header, { version: 1, flags: 0 });
-  assert.deepEqual(parsed.topology, {
-    kind: "2d",
-    width: 4,
-    height: 2,
-    mipCount: 2,
-    faceCount: 1,
-  });
+  assert.equal(parsed.manifest.faceCount, 1);
+  assert.equal(parsed.manifest.width, 4);
+  assert.equal(parsed.manifest.height, 2);
+  assert.equal(parsed.manifest.mipCount, 2);
   assert.equal(parsed.chunks.length, 2);
   const firstChunk = expectDefined(parsed.chunks[0]);
   const secondChunk = expectDefined(parsed.chunks[1]);
@@ -68,10 +65,8 @@ test("parseIBLA parses a synthetic 2D asset with derived mip metadata", () => {
 test("parseIBLA parses a Rust-generated irradiance cubemap", () => {
   const parsed = parseIBLA(loadCommittedFixture("royal_esplanade_1k", "irradiance"));
 
-  assert.equal(parsed.topology.kind, "cubemap");
   assert.equal(parsed.manifest.faceCount, 6);
   assert.equal(parsed.manifest.mipCount, 1);
-  assert.deepEqual(parsed.topology.faceOrder, ["px", "nx", "py", "ny", "pz", "nz"]);
   assert.equal(parsed.chunks.length, 6);
   assert.deepEqual(parsed.chunks.map((chunk) => chunk.face), ["px", "nx", "py", "ny", "pz", "nz"]);
   assert.ok(parsed.chunks.every((chunk) => chunk.width === 32 && chunk.height === 32));
@@ -81,7 +76,6 @@ test("parseIBLA parses a Rust-generated irradiance cubemap", () => {
 test("parseIBLA parses a Rust-generated specular cubemap with mip chain", () => {
   const parsed = parseIBLA(loadCommittedFixture("royal_esplanade_1k", "specular"));
 
-  assert.equal(parsed.topology.kind, "cubemap");
   assert.equal(parsed.manifest.faceCount, 6);
   assert.equal(parsed.manifest.mipCount, 9);
   assert.equal(parsed.chunks.length, 54);
@@ -103,7 +97,6 @@ test("parseIBLA parses a Rust-generated specular cubemap with mip chain", () => 
 test("parseIBLA parses the committed Grand Canyon specular cubemap fixture", () => {
   const parsed = parseIBLA(loadCommittedFixture("grand_canyon_c", "specular"));
 
-  assert.equal(parsed.topology.kind, "cubemap");
   assert.equal(parsed.manifest.faceCount, 6);
   assert.equal(parsed.manifest.mipCount, 8);
   assert.equal(parsed.chunks.length, 48);
@@ -123,7 +116,6 @@ test("parseIBLA parses the committed Grand Canyon specular cubemap fixture", () 
 test("parseIBLA parses the committed Grand Canyon irradiance cubemap fixture", () => {
   const parsed = parseIBLA(loadCommittedFixture("grand_canyon_c", "irradiance"));
 
-  assert.equal(parsed.topology.kind, "cubemap");
   assert.equal(parsed.manifest.faceCount, 6);
   assert.equal(parsed.manifest.mipCount, 1);
   assert.equal(parsed.chunks.length, 6);
