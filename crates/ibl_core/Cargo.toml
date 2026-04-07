@@ -3,6 +3,9 @@ name = "ibl_core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "Renderer-agnostic Rust core for baking, reading, and validating .ibla assets."
+repository = "https://github.com/shawn0326/ibl-baker"
+readme = "README.md"
 
 [lib]
 name = "ibl_core"

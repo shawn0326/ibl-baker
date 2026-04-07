@@ -1,15 +1,49 @@
 {
   "name": "@ibltools/loader",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "description": "Parser-only TypeScript loader for .ibla assets.",
+  "license": "MIT",
   "type": "module",
+  "homepage": "https://github.com/shawn0326/ibl-baker/tree/main/packages/loader#readme",
+  "bugs": {
+    "url": "https://github.com/shawn0326/ibl-baker/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shawn0326/ibl-baker.git",
+    "directory": "packages/loader"
+  },
+  "keywords": [
+    "ibl",
+    "ibla",
+    "loader",
+    "parser",
+    "typescript"
+  ],
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   },
   "engines": {
     "node": ">=24.0.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "test": "node --experimental-strip-types --test --test-concurrency=1"
   }
 }

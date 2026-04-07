@@ -2,7 +2,24 @@
   "name": "@ibltools/three-loader",
   "version": "0.1.0",
   "private": false,
+  "description": "three.js integration for loading cubemap .ibla assets in the browser.",
   "type": "module",
+  "homepage": "https://github.com/shawn0326/ibl-baker/tree/main/packages/three-loader#readme",
+  "bugs": {
+    "url": "https://github.com/shawn0326/ibl-baker/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shawn0326/ibl-baker.git",
+    "directory": "packages/three-loader"
+  },
+  "keywords": [
+    "ibl",
+    "ibla",
+    "three",
+    "cubemap",
+    "loader"
+  ],
   "exports": {
     ".": "./src/index.ts"
   },

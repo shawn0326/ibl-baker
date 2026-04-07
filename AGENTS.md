@@ -33,26 +33,26 @@
 
 以下文档是当前实现阶段的对外契约来源：
 
-- `docs/cli.md`
 - `docs/format-spec.md`
-- `docs/loader-api.md`
-- `docs/three-loader-api.md`
+- `crates/ibl_cli/README.md`
+- `packages/loader/README.md`
+- `packages/three-loader/README.md`
 
 规则：
 
 - 实现必须遵守上述文档。
 - 如果实现需要调整对外行为、文件格式或 loader 契约，先更新对应文档，或在同一改动中一并更新。
 - `README.md`、`AGENTS.md`、`TODO.md` 只保留摘要、约束和执行信息，避免重复抄写规范细节。
-- 能直接链接到 docs 的地方，优先链接，不重复展开。
+- 能直接链接到对应 README 或 docs 的地方，优先链接，不重复展开。
 
 ## 当前开发约束
 
 - 当前阶段优先把 v1 规范落成代码，不新增不必要抽象。
 - 保持 `.ibla` 格式、Rust core 与 parser-only loader 独立于具体渲染库；如需引擎集成，放在独立包中实现。
-- `ibl_cli` 当前公开命令面以 `docs/cli.md` 为准，不重新引入已移除命令。
+- `ibl_cli` 当前公开命令面以 `crates/ibl_cli/README.md` 为准，不重新引入已移除命令。
 - `.ibla` v1 容器契约以 `docs/format-spec.md` 为准，不擅自扩展 container、encoding 或 chunk 模型。
-- TypeScript loader 在 v1 中保持 parser-only，以 `docs/loader-api.md` 为准，不提前加入引擎上传层或运行时纹理封装。
-- three.js 相关运行时对象与浏览器联调约定以 `docs/three-loader-api.md` 为准，放在独立 npm 包中维护。
+- TypeScript loader 在 v1 中保持 parser-only，以 `packages/loader/README.md` 为准，不提前加入引擎上传层或运行时纹理封装。
+- three.js 相关运行时对象与浏览器联调约定以 `packages/three-loader/README.md` 为准，放在独立 npm 包中维护。
 - specular 与 irradiance 继续使用独立 `.ibla` 文件；BRDF LUT 继续为独立 `.png` 输出。
 - 优先稳定、明确、可验证的实现，不为未来能力预留过早的插件化或多后端抽象。
 

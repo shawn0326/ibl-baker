@@ -4,15 +4,17 @@
 
 - [x] Rust workspace、`ibl_core`、`ibl_cli` 基础骨架已建立
 - [x] v1 对外契约已冻结到以下文档：
-  - `docs/cli.md`
   - `docs/format-spec.md`
-  - `docs/loader-api.md`
+  - `crates/ibl_cli/README.md`
+  - `packages/loader/README.md`
+  - `packages/three-loader/README.md`
+- [x] 包级公开文档已迁移到对应 README，`docs/` 仅保留共享格式规范
 - [x] 阶段路线已并入本文件，不再单独维护独立 roadmap 文档
 
 ## 实现前提
 
-- [ ] 所有实现以 `docs/cli.md`、`docs/format-spec.md`、`docs/loader-api.md` 为准
-- [ ] 任何会改变公开行为或文件契约的改动，必须同步更新对应 docs
+- [ ] 所有实现以 `docs/format-spec.md`、`crates/ibl_cli/README.md`、`packages/loader/README.md`、`packages/three-loader/README.md` 为准
+- [ ] 任何会改变公开行为或文件契约的改动，必须同步更新对应 README 或 docs
 - [ ] `README.md` 与 `AGENTS.md` 仅保留摘要和链接，不重复展开规格细节
 
 ## Phase 1：完成真实 bake 主链路
@@ -30,7 +32,7 @@
 
 ## Phase 1：收紧 CLI 与验证链路
 
-- [x] 确认 CLI 行为、帮助文本、错误输出与 `docs/cli.md` 一致
+- [x] 确认 CLI 行为、帮助文本、错误输出与 `crates/ibl_cli/README.md` 一致
 - [x] 保持 `--size auto` 与 `--encoding auto` 的既定语义
 - [x] 为真实 bake 输出补齐 `bake -> validate` 端到端测试
 - [x] 补强 `.ibla` 读写、拓扑、chunk range、face ordering 的验证测试
@@ -39,7 +41,7 @@
 ## Phase 2：实现 TypeScript loader（parser-only）
 
 - [x] 在 Rust 输出稳定后创建 `packages/loader`
-- [x] 实现 `parseIBLA(buffer)`，遵守 `docs/loader-api.md`
+- [x] 实现 `parseIBLA(buffer)`，遵守 `packages/loader/README.md`
 - [x] 落实 `IBLAParseError` 与稳定错误码
 - [x] 输出 parser-only 数据结构，不提前加入 PNG decode / RGBD decode / WebGL / WebGPU 上传封装
 - [x] 基于 Rust 产物补齐 parser fixtures 与解析测试

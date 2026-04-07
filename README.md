@@ -2,6 +2,14 @@
 
 A renderer-agnostic IBL asset compiler that bakes HDR environments into portable `.ibla` texture payloads with a Rust core, CLI, parser-only TypeScript loader, and a dedicated three.js integration package.
 
+## Documentation
+
+- [`crates/ibl_core/README.md`](crates/ibl_core/README.md)
+- [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md)
+- [`packages/loader/README.md`](packages/loader/README.md)
+- [`packages/three-loader/README.md`](packages/three-loader/README.md)
+- [`docs/format-spec.md`](docs/format-spec.md)
+
 ## Status
 
 The repository is currently implementing the v1 pipeline across three layers:
@@ -9,13 +17,6 @@ The repository is currently implementing the v1 pipeline across three layers:
 - Rust baking, validation, and `.ibla` read/write
 - a parser-only TypeScript loader in `packages/loader`
 - a three.js-facing integration package in `packages/three-loader`
-
-The authoritative public contracts live in:
-
-- `docs/cli.md`
-- `docs/format-spec.md`
-- `docs/loader-api.md`
-- `docs/three-loader-api.md`
 
 ## Scope
 
@@ -26,7 +27,7 @@ encoding variants keep the container semantics consistent for related payload ty
 Current priorities:
 
 - keep the `.ibla` container stable
-- keep CLI behavior aligned with `docs/cli.md`
+- keep CLI behavior aligned with `crates/ibl_cli/README.md`
 - keep the TypeScript loader parser-only in v1
 - keep three.js integration isolated from the parser package
 - expand verification around real bake outputs, loader parsing, and manual browser validation

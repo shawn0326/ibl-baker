@@ -242,7 +242,7 @@ fn resolve_requested_size(input: &Path, requested: RequestedSize) -> Result<u32,
 
 fn resolve_auto_size(input: &Path) -> Option<u32> {
     let (width, height) = read_image_dimensions(input).ok()??;
-    Some(choose_auto_specular_size(width.max(height)))
+    Some(choose_auto_specular_size(width, height))
 }
 
 fn resolve_requested_encoding(input: &Path, requested: RequestedEncoding) -> EncodingKind {
@@ -257,14 +257,25 @@ fn resolve_requested_encoding(input: &Path, requested: RequestedEncoding) -> Enc
     }
 }
 
-fn choose_auto_specular_size(long_edge: u32) -> u32 {
-    const AUTO_SIZE_BUCKETS: [u32; 5] = [256, 512, 1024, 2048, 4096];
+fn choose_auto_specular_size(width: u32, height: u32) -> u32 {
+    let estimated_face_size = estimate_equirect_face_size(width, height);
+    choose_supported_specular_size(estimated_face_size)
+}
+
+fn estimate_equirect_face_size(width: u32, height: u32) -> u32 {
+    let width_based = (width / 4).max(1);
+    let height_based = (height / 2).max(1);
+    width_based.min(height_based)
+}
+
+fn choose_supported_specular_size(face_size: u32) -> u32 {
+    const AUTO_SIZE_BUCKETS: [u32; 6] = [128, 256, 512, 1024, 2048, 4096];
 
     AUTO_SIZE_BUCKETS
         .iter()
         .rev()
         .copied()
-        .find(|size| *size <= long_edge)
+        .find(|size| *size <= face_size)
         .unwrap_or(AUTO_SIZE_BUCKETS[0])
 }
 
@@ -458,7 +469,8 @@ fn help_text() -> String {
         "  --quality <low|medium|high>",
         "",
         "bake defaults",
-        "  --size auto -> 256 | 512 | 1024 | 2048 | 4096",
+        "  --size auto -> 128 | 256 | 512 | 1024 | 2048 | 4096",
+        "  derives an equivalent cubemap face size from input dimensions before bucketing",
         "  --irradiance-size -> 32",
         "  --encoding auto -> rgbd-srgb for .hdr/.exr, srgb for .png/.jpg/.jpeg/unknown",
         "  output files -> specular.ibla, irradiance.ibla, brdf-lut.png",
@@ -764,7 +776,7 @@ mod tests {
 
         let asset = read_asset(&asset_path).expect("asset should read");
         assert_eq!(asset.manifest.encoding, "srgb");
-        assert_eq!(asset.manifest.width, 1024);
+        assert_eq!(asset.manifest.width, 256);
 
         fs::remove_file(&input).ok();
         fs::remove_dir_all(&output_dir).ok();
@@ -908,13 +920,13 @@ mod tests {
     }
 
     #[test]
-    fn auto_size_chooses_nearest_supported_bucket_not_exceeding_source_size() {
-        assert_eq!(choose_auto_specular_size(128), 256);
-        assert_eq!(choose_auto_specular_size(256), 256);
-        assert_eq!(choose_auto_specular_size(300), 256);
-        assert_eq!(choose_auto_specular_size(1024), 1024);
-        assert_eq!(choose_auto_specular_size(1500), 1024);
-        assert_eq!(choose_auto_specular_size(4096), 4096);
-        assert_eq!(choose_auto_specular_size(8192), 4096);
+    fn auto_size_uses_equirect_equivalent_face_size_before_bucketing() {
+        assert_eq!(choose_auto_specular_size(128, 64), 128);
+        assert_eq!(choose_auto_specular_size(1024, 512), 256);
+        assert_eq!(choose_auto_specular_size(1500, 750), 256);
+        assert_eq!(choose_auto_specular_size(2048, 1024), 512);
+        assert_eq!(choose_auto_specular_size(4096, 2048), 1024);
+        assert_eq!(choose_auto_specular_size(8192, 4096), 2048);
+        assert_eq!(choose_auto_specular_size(2048, 1536), 512);
     }
 }

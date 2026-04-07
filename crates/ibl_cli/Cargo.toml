@@ -3,6 +3,9 @@ name = "ibl_cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "Command-line interface for baking and validating .ibla assets."
+repository = "https://github.com/shawn0326/ibl-baker"
+readme = "README.md"
 
 [[bin]]
 name = "ibl-baker"

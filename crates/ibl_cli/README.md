@@ -1,4 +1,9 @@
-# CLI Reference
+# ibl-baker CLI
+
+`ibl-baker` is the command-line interface for baking HDR environments into portable `.ibla` assets and validating the results.
+
+The shared `.ibla` container contract is defined in the repository format specification:
+<https://github.com/shawn0326/ibl-baker/blob/main/docs/format-spec.md>
 
 ## Commands
 
@@ -48,9 +53,10 @@ Shared tuning semantics:
 
 Fixed v1 defaults:
 
-- `--size auto` chooses a specular size from `256 | 512 | 1024 | 2048 | 4096`
-- `--size auto` uses the source image long edge and picks the largest bucket that does not exceed it
-- if the source image is smaller than `256`, `--size auto` still resolves to `256`
+- `--size auto` chooses a specular size from `128 | 256 | 512 | 1024 | 2048 | 4096`
+- `--size auto` estimates an equivalent cubemap face size from the source image dimensions as `min(width / 4, height / 2)`
+- `--size auto` picks the largest supported bucket that does not exceed that estimated face size
+- if the source image is smaller than `128`, `--size auto` still resolves to `128`
 - if the source image size cannot currently be detected, `--size auto` falls back to `512`
 - irradiance face size defaults to `32`
 - `--encoding auto` resolves to `rgbd-srgb` for `.hdr` and `.exr` inputs
@@ -65,7 +71,8 @@ Encoding reference:
 - `srgb` is the default LDR color-image export path for non-HDR inputs under `--encoding auto`
 - `linear` remains available as an explicit manual choice for linear data payloads
 
-The exact file-level encoding semantics are defined in `docs/format-spec.md`.
+The exact file-level encoding semantics are defined in the repository format specification:
+<https://github.com/shawn0326/ibl-baker/blob/main/docs/format-spec.md>
 
 ## `validate`
 

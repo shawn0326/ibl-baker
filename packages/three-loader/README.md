@@ -1,4 +1,16 @@
-# Three Loader API Notes
+# @ibltools/three-loader
+
+`@ibltools/three-loader` is the browser-side three.js integration package for `.ibla` cubemap assets.
+
+It builds on top of `@ibltools/loader` and keeps renderer-specific decode and texture construction out of the parser package.
+The shared `.ibla` container contract is defined in the repository format specification:
+<https://github.com/shawn0326/ibl-baker/blob/main/docs/format-spec.md>
+
+## Installation
+
+```bash
+npm install @ibltools/three-loader three
+```
 
 ## Scope
 
@@ -49,8 +61,8 @@ The first cut is aimed at browser integration and visual validation.
 - `linear` payloads are treated as linear data
 - the package returns `THREE.CubeTexture`, not generic upload blobs
 
-This document does not define a renderer-native HDR upload contract yet.
-If a future phase adds a higher-fidelity three.js upload path, it should extend this document directly.
+This package currently targets browser-side decode.
+If a future phase adds a higher-fidelity three.js upload path, it should extend this README directly.
 
 ## Errors
 

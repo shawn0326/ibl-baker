@@ -215,9 +215,14 @@ ibl-baker extract out.ibla --dir ./out
 ```text
 docs/
 ├─ format-spec.md
-├─ cli.md
-├─ loader-api.md
-├─ three-loader-api.md
+
+crates/
+├─ ibl_core/README.md
+├─ ibl_cli/README.md
+
+packages/
+├─ loader/README.md
+├─ three-loader/README.md
 ```
 
 #### 19. 示例与基础验证必须覆盖
