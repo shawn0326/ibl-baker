@@ -3,83 +3,63 @@
 ## 沟通规则
 
 - 与用户沟通时使用中文。
-- 讨论实现细节、取舍和进度时，保持简洁、清晰、以执行为导向。
+- 汇报进度、实现细节和取舍时，保持简洁、清晰、以执行为导向。
 
 ## 项目语言规则
 
-本项目的交付内容默认以英文为主。
+- 默认交付内容使用英文：源代码、标识符、提交信息、代码注释、README、文档、CLI 帮助文本、日志和错误信息、测试名称、示例文件、规范说明文件。
+- 以下文件使用中文：`AGENTS.md`、`TODO.md`。
 
-以下内容必须使用英文：
+## 仓库速览
 
-- 源代码
-- 标识符
-- 提交信息
-- 代码注释
-- README
-- 文档
-- CLI 帮助文本
-- 日志和错误信息
-- 测试名称
-- 示例文件
-- 规范说明文件
+- 根目录同时使用 Cargo workspace 与 npm workspace。
+- `crates/ibl_core`：Rust 核心库，负责源图读取、bake 主流程、`.ibla` 读写与校验。
+- `crates/ibl_cli`：公开 CLI，负责参数解析、调用 `ibl_core`、输出 bake/validate 工作流。
+- `packages/loader`：唯一公开 JS 包，提供 parser-only 的 `parseIBLA(buffer)`。
+- `packages/e2e-loader`：私有浏览器验收工具，用于读取仓库内 fixtures、解析 `.ibla`、解码 PNG payload 并做中立可视化。
+- `fixtures/outputs`：已提交的产物样例，供 loader 测试与浏览器验收复用。
+- `scripts/refresh-fixtures.mjs`：刷新仓库内 fixtures 的入口脚本。
 
-以下文件使用中文编写：
+## 对外契约入口
 
-- `AGENTS.md`
-- `TODO.md`
-- `PLAN.md`
-
-## 规范优先级
-
-以下文档是当前实现阶段的对外契约来源：
+以下文档是当前开发与维护时的优先依据：
 
 - `docs/format-spec.md`
 - `crates/ibl_cli/README.md`
 - `packages/loader/README.md`
-- `packages/three-loader/README.md`
+
+以下文档适合快速理解仓库结构与职责分层：
+
+- `README.md`
+- `crates/ibl_core/README.md`
 
 规则：
 
-- 实现必须遵守上述文档。
-- 如果实现需要调整对外行为、文件格式或 loader 契约，先更新对应文档，或在同一改动中一并更新。
-- `README.md`、`AGENTS.md`、`TODO.md` 只保留摘要、约束和执行信息，避免重复抄写规范细节。
-- 能直接链接到对应 README 或 docs 的地方，优先链接，不重复展开。
+- 实现必须遵守对外契约文档。
+- 如果改动会影响公开行为、文件格式或 loader 契约，必须在同一轮改动里同步更新对应 README 或 docs。
+- 能直接链接到 README 或 docs 的地方，优先链接，不在 `AGENTS.md` / `TODO.md` 里重复展开规格细节。
 
-## 当前开发约束
+## 当前固定边界
 
-- 当前阶段优先把 v1 规范落成代码，不新增不必要抽象。
-- 保持 `.ibla` 格式、Rust core 与 parser-only loader 独立于具体渲染库；如需引擎集成，放在独立包中实现。
-- `ibl_cli` 当前公开命令面以 `crates/ibl_cli/README.md` 为准，不重新引入已移除命令。
-- `.ibla` v1 容器契约以 `docs/format-spec.md` 为准，不擅自扩展 container、encoding 或 chunk 模型。
-- TypeScript loader 在 v1 中保持 parser-only，以 `packages/loader/README.md` 为准，不提前加入引擎上传层或运行时纹理封装。
-- three.js 相关运行时对象与浏览器联调约定以 `packages/three-loader/README.md` 为准，放在独立 npm 包中维护。
-- specular 与 irradiance 继续使用独立 `.ibla` 文件；BRDF LUT 继续为独立 `.png` 输出。
-- 优先稳定、明确、可验证的实现，不为未来能力预留过早的插件化或多后端抽象。
+- `.ibla` v1 继续保持稳定容器契约，不擅自扩展 container、encoding 或 chunk 模型。
+- v1 的 `.ibla` 仍只承载单个纹理资产；specular 与 irradiance 分别输出独立 `.ibla`，BRDF LUT 继续输出独立 `.png`。
+- `packages/loader` 在 v1 中保持 parser-only，不加入 PNG decode、RGBD decode、GPU 上传或运行时纹理封装。
+- `packages/e2e-loader` 是仓库内部验收工具，不作为公开运行时集成层承诺。
+- 如需引擎适配、分发包装或额外运行时能力，放在独立包中实现，不反向污染 `ibl_core` 与 `packages/loader`。
 
-## 计划相关文件
+## 演进原则
 
-- `TODO.md` 记录当前可执行事项，也承担阶段路线图职责。
-- `PLAN.md` 记录更高层的架构方向、边界和阶段性思考。
+- 优先保持 `.ibla` v1 的稳定、明确、可验证，不为了未来能力提前打破当前契约。
+- 继续维持 Rust bake/core、CLI、TypeScript parser-only loader 三层分工，避免把运行时集成反向塞回核心库。
+- 如需新增分发包装、引擎适配或浏览器侧消费层，放在独立包中推进，并以现有格式契约为边界。
+- 如果未来需要引入新的 container、encoding 或更轻量的小 mip payload 方案，应作为显式的新阶段设计处理，而不是隐式扩展 v1。
 
-规则：
+## 计划与维护约定
 
-- `TODO.md` 写“下一步做什么”。
-- `PLAN.md` 写“为什么这样做、整体往哪里走”。
-- 两者保持一致，但不要把同一份规范复制维护两遍。
-- 每次完成 `TODO.md` 中的任务后，必须在同一轮改动里同步更新勾选状态。
-- 如果一次实现覆盖了多个 TODO 项，统一在收尾时批量标记，并保留仍未真正完成的事项为未勾选。
+- `TODO.md` 是当前唯一的执行清单，记录下一步工作和仍可能继续推进的事项。
+- 每次完成 `TODO.md` 中的事项后，必须在同一轮改动里同步更新状态。
 
 ## 输出风格
 
-创建或修改项目文件时：
-
-- 默认使用英文。
-- 保持命名一致。
-- 保持结构清晰、精简。
-- 优先考虑可维护性，而不是炫技式实现。
-
-向用户汇报时：
-
-- 使用中文。
-- 清楚说明改动了什么。
-- 说明重要取舍和假设。
+- 创建或修改项目文件时，默认使用英文，保持命名一致、结构清晰、实现精简。
+- 向用户汇报时，清楚说明改动内容、重要取舍和关键假设。
