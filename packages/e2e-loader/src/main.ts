@@ -4,8 +4,10 @@ import royalSpecularUrl from "../../../fixtures/outputs/royal_esplanade_1k/specu
 import royalIrradianceUrl from "../../../fixtures/outputs/royal_esplanade_1k/irradiance.ibla?url";
 import grandSpecularUrl from "../../../fixtures/outputs/grand_canyon_c/specular.ibla?url";
 import grandIrradianceUrl from "../../../fixtures/outputs/grand_canyon_c/irradiance.ibla?url";
+import spruitSpecularUrl from "../../../fixtures/outputs/spruit_sunrise_2k/specular.ibla?url";
+import spruitIrradianceUrl from "../../../fixtures/outputs/spruit_sunrise_2k/irradiance.ibla?url";
 
-type FixtureName = "royal_esplanade_1k" | "grand_canyon_c";
+type FixtureName = "royal_esplanade_1k" | "grand_canyon_c" | "spruit_sunrise_2k";
 type AssetName = "specular" | "irradiance";
 
 interface FixtureDescriptor {
@@ -44,6 +46,13 @@ const FIXTURES: Record<FixtureName, FixtureDescriptor> = {
     assets: {
       specular: grandSpecularUrl,
       irradiance: grandIrradianceUrl,
+    },
+  },
+  spruit_sunrise_2k: {
+    label: "Spruit Sunrise 2K",
+    assets: {
+      specular: spruitSpecularUrl,
+      irradiance: spruitIrradianceUrl,
     },
   },
 };

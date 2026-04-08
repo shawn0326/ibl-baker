@@ -122,6 +122,35 @@ test("parseIBLA parses the committed Grand Canyon irradiance cubemap fixture", (
   assert.ok(parsed.chunks.every((chunk) => chunk.width === 32 && chunk.height === 32));
 });
 
+test("parseIBLA parses the committed Spruit Sunrise JPEG specular cubemap fixture", () => {
+  const parsed = parseIBLA(loadCommittedFixture("spruit_sunrise_2k", "specular"));
+
+  assert.equal(parsed.manifest.faceCount, 6);
+  assert.equal(parsed.manifest.build.sourceFormat, "jpg");
+  assert.equal(parsed.manifest.encoding, "srgb");
+  assert.ok(parsed.manifest.mipCount >= 1);
+  assert.equal(parsed.chunks.length, parsed.manifest.mipCount * 6);
+  assert.deepEqual(parsed.chunks.slice(0, 6).map((chunk) => chunk.face), [
+    "px",
+    "nx",
+    "py",
+    "ny",
+    "pz",
+    "nz",
+  ]);
+});
+
+test("parseIBLA parses the committed Spruit Sunrise JPEG irradiance cubemap fixture", () => {
+  const parsed = parseIBLA(loadCommittedFixture("spruit_sunrise_2k", "irradiance"));
+
+  assert.equal(parsed.manifest.faceCount, 6);
+  assert.equal(parsed.manifest.build.sourceFormat, "jpg");
+  assert.equal(parsed.manifest.encoding, "srgb");
+  assert.equal(parsed.manifest.mipCount, 1);
+  assert.equal(parsed.chunks.length, 6);
+  assert.ok(parsed.chunks.every((chunk) => chunk.width === 32 && chunk.height === 32));
+});
+
 test("parseIBLA throws INVALID_HEADER for bad magic", () => {
   assertParseError(
     () =>
@@ -241,7 +270,7 @@ function assertParseError(action: () => unknown, code: string) {
 }
 
 function loadCommittedFixture(
-  fixtureName: "royal_esplanade_1k" | "grand_canyon_c",
+  fixtureName: "royal_esplanade_1k" | "grand_canyon_c" | "spruit_sunrise_2k",
   target: "irradiance" | "specular",
 ): Uint8Array {
   const rootDir = path.resolve(import.meta.dirname, "..", "..", "..");

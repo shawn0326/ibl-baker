@@ -17,6 +17,10 @@ const fixtures = [
     inputFile: "Grand_Canyon_C.hdr",
     outputDirName: "grand_canyon_c",
   },
+  {
+    inputFile: "spruit_sunrise_2k.jpg",
+    outputDirName: "spruit_sunrise_2k",
+  },
 ];
 
 for (const fixture of fixtures) {
