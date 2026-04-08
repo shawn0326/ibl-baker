@@ -136,7 +136,7 @@ export interface ParsedChunk {
 - `faceCount` is not supported by the format
 - cubemap dimensions are invalid for the format
 - the chunk table length is inconsistent with manifest-declared topology
-- chunk payload ranges exceed the binary section
+- chunk payload ranges exceed or do not exactly cover the binary section
 
 Recommended v1 error-code mapping:
 
@@ -146,7 +146,7 @@ Recommended v1 error-code mapping:
 - unsupported `faceCount` -> `UNSUPPORTED_FACE_COUNT`
 - invalid cubemap `width` / `height` relationship -> `INVALID_CUBEMAP_DIMENSIONS`
 - inconsistent chunk-table byte length or entry count -> `INVALID_CHUNK_TABLE_LENGTH`
-- payload byte ranges exceeding the binary section -> `CHUNK_RANGE_OUT_OF_BOUNDS`
+- payload byte ranges exceeding or not exactly covering the binary section -> `CHUNK_RANGE_OUT_OF_BOUNDS`
 
 Dimension derivation in v1:
 

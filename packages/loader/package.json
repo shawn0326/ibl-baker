@@ -24,6 +24,7 @@
   "sideEffects": false,
   "files": [
     "dist",
+    "LICENSE",
     "README.md"
   ],
   "main": "./dist/index.js",

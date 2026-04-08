@@ -213,6 +213,7 @@ v1 constraints:
 - each record points to one payload
 - each payload is independently decodable
 - each payload uses the manifest-level `container`
+- chunk-table-declared payload ranges must exactly cover the binary section with no undeclared trailing bytes
 - `faceCount` must be `1` or `6`
 - cubemaps always use the fixed face order `px, nx, py, ny, pz, nz`
 

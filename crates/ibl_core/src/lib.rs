@@ -14,12 +14,12 @@ use bake_pipeline::cubemap_direction;
 use bake_pipeline::{
     build_brdf_lut_chunk_entries, build_irradiance_chunk_entries, build_specular_chunk_entries,
 };
-use source_image::{load_environment_from_cubemap_paths, load_environment_from_file};
 #[cfg(test)]
 use source_image::{
     encode_png_image, encode_rgbd_srgb, load_source_image, write_test_exr, write_test_hdr,
     write_test_png,
 };
+use source_image::{load_environment_from_cubemap_paths, load_environment_from_file};
 
 pub const FORMAT_MAGIC: [u8; 4] = *b"IBLA";
 pub const FORMAT_VERSION: u16 = 1;
@@ -669,6 +669,18 @@ pub fn validate_asset(asset: &IblAsset) -> ValidationReport {
         }
     }
 
+    if let Some((_, last_end, _)) = ranges.last() {
+        if *last_end != total_binary_bytes {
+            issues.push(error_issue(
+                "chunk table does not cover the entire binary section",
+            ));
+        }
+    } else if total_binary_bytes != 0 {
+        issues.push(error_issue(
+            "chunk table does not cover the entire binary section",
+        ));
+    }
+
     validate_asset_shape(asset, &mut issues);
 
     ValidationReport {
@@ -1138,6 +1150,25 @@ fn build_chunks_from_records(
         });
     }
 
+    let covered_binary_bytes = records.iter().try_fold(0usize, |max_end, record| {
+        let start = usize::try_from(record.byte_offset).map_err(|_| {
+            IblError::InvalidFormat("chunk offset exceeds platform usize".to_string())
+        })?;
+        let byte_length = usize::try_from(record.byte_length).map_err(|_| {
+            IblError::InvalidFormat("chunk length exceeds platform usize".to_string())
+        })?;
+        let end = start
+            .checked_add(byte_length)
+            .ok_or_else(|| IblError::InvalidFormat("chunk payload range overflow".to_string()))?;
+        Ok::<usize, IblError>(max_end.max(end))
+    })?;
+
+    if covered_binary_bytes != binary_section.len() {
+        return Err(IblError::InvalidFormat(
+            "chunk table does not cover the entire binary section".to_string(),
+        ));
+    }
+
     Ok(chunks)
 }
 
@@ -1397,9 +1428,8 @@ mod tests {
     use approx::assert_relative_eq;
 
     fn write_solid_png(path: &Path, color: glam::Vec3) {
-        let bytes =
-            encode_png_image(&single_color_image(4, 4, color), EncodingKind::Srgb)
-                .expect("png should encode");
+        let bytes = encode_png_image(&single_color_image(4, 4, color), EncodingKind::Srgb)
+            .expect("png should encode");
         fs::write(path, bytes).expect("png should be written");
     }
 
@@ -1703,6 +1733,33 @@ mod tests {
             .issues
             .iter()
             .any(|issue| issue.message.contains("overlap") || issue.message.contains("range")));
+    }
+
+    #[test]
+    fn read_asset_rejects_trailing_bytes_after_declared_chunks() {
+        let input = unique_temp_path("trailing-bytes-input").with_extension("hdr");
+        let asset_path = unique_temp_path("trailing-bytes-asset").with_extension("ibla");
+        write_test_hdr(&input, 8, 4);
+
+        let asset = bake_to_asset(
+            &input,
+            BakeOptions {
+                cube_size: 8,
+                ..BakeOptions::default()
+            },
+        )
+        .expect("asset should bake");
+        let mut encoded = encode_asset_bytes(&asset).expect("asset should encode");
+        encoded.extend_from_slice(&[9, 9, 9]);
+        fs::write(&asset_path, encoded).expect("asset should be written");
+
+        let error = read_asset(&asset_path).expect_err("trailing bytes should be rejected");
+        assert!(error
+            .to_string()
+            .contains("chunk table does not cover the entire binary section"));
+
+        fs::remove_file(&input).ok();
+        fs::remove_file(&asset_path).ok();
     }
 
     #[test]

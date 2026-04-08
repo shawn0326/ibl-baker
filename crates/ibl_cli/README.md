@@ -5,6 +5,28 @@
 The shared `.ibla` container contract is defined in the repository format specification:
 <https://github.com/shawn0326/ibl-baker/blob/main/docs/format-spec.md>
 
+## Installation
+
+Install the crate from crates.io:
+
+```bash
+cargo install ibl_cli
+ibl-baker --help
+```
+
+The crate name is `ibl_cli`, and the installed executable name is `ibl-baker`.
+This installation path requires a Rust toolchain.
+
+Prebuilt binaries for Windows x64, macOS arm64, and Linux x64 are also attached to GitHub Releases.
+That path does not require installing Rust.
+
+## Quick Start
+
+```bash
+ibl-baker bake ./environment.hdr --out-dir ./out --target specular
+ibl-baker validate ./out/specular.ibla
+```
+
 ## Commands
 
 ```bash

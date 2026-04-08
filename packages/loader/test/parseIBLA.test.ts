@@ -245,6 +245,16 @@ test("parseIBLA throws CHUNK_RANGE_OUT_OF_BOUNDS when payload exceeds binary sec
   assertParseError(() => parseIBLA(bytes), "CHUNK_RANGE_OUT_OF_BOUNDS");
 });
 
+test("parseIBLA throws CHUNK_RANGE_OUT_OF_BOUNDS for trailing bytes in the binary section", () => {
+  const bytes = createRawIblaBytes({
+    manifestText: JSON.stringify(baseManifest()),
+    chunkTableByteLengths: [3],
+    chunkPayloads: [Uint8Array.of(1, 2, 3), Uint8Array.of(9, 9, 9)],
+  });
+
+  assertParseError(() => parseIBLA(bytes), "CHUNK_RANGE_OUT_OF_BOUNDS");
+});
+
 function summarizeChunk(chunk: ParsedIBLA["chunks"][number]) {
   return {
     mipLevel: chunk.mipLevel,

@@ -173,6 +173,13 @@ export function parseIBLA(buffer: ArrayBuffer | Uint8Array): ParsedIBLA {
     byteOffset = end;
   }
 
+  if (byteOffset !== binarySection.byteLength) {
+    throw new IBLAParseError(
+      "CHUNK_RANGE_OUT_OF_BOUNDS",
+      `Chunk table covers ${byteOffset} bytes, but binary section contains ${binarySection.byteLength}.`,
+    );
+  }
+
   return {
     header: {
       version,
