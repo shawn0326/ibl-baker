@@ -6,8 +6,17 @@ import grandSpecularUrl from "../../../fixtures/outputs/grand_canyon_c/specular.
 import grandIrradianceUrl from "../../../fixtures/outputs/grand_canyon_c/irradiance.ibla?url";
 import spruitSpecularUrl from "../../../fixtures/outputs/spruit_sunrise_2k/specular.ibla?url";
 import spruitIrradianceUrl from "../../../fixtures/outputs/spruit_sunrise_2k/irradiance.ibla?url";
+import pisaSpecularUrl from "../../../fixtures/outputs/pisa/specular.ibla?url";
+import pisaIrradianceUrl from "../../../fixtures/outputs/pisa/irradiance.ibla?url";
+import bridge2SpecularUrl from "../../../fixtures/outputs/bridge2/specular.ibla?url";
+import bridge2IrradianceUrl from "../../../fixtures/outputs/bridge2/irradiance.ibla?url";
 
-type FixtureName = "royal_esplanade_1k" | "grand_canyon_c" | "spruit_sunrise_2k";
+type FixtureName =
+  | "royal_esplanade_1k"
+  | "grand_canyon_c"
+  | "spruit_sunrise_2k"
+  | "pisa"
+  | "bridge2";
 type AssetName = "specular" | "irradiance";
 
 interface FixtureDescriptor {
@@ -53,6 +62,20 @@ const FIXTURES: Record<FixtureName, FixtureDescriptor> = {
     assets: {
       specular: spruitSpecularUrl,
       irradiance: spruitIrradianceUrl,
+    },
+  },
+  pisa: {
+    label: "Pisa",
+    assets: {
+      specular: pisaSpecularUrl,
+      irradiance: pisaIrradianceUrl,
+    },
+  },
+  bridge2: {
+    label: "Bridge2",
+    assets: {
+      specular: bridge2SpecularUrl,
+      irradiance: bridge2IrradianceUrl,
     },
   },
 };

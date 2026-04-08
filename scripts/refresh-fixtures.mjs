@@ -10,21 +10,30 @@ const fixtureOutputsDir = path.join(rootDir, "fixtures", "outputs");
 
 const fixtures = [
   {
-    inputFile: "royal_esplanade_1k.hdr",
+    inputPath: "royal_esplanade_1k.hdr",
     outputDirName: "royal_esplanade_1k",
   },
   {
-    inputFile: "Grand_Canyon_C.hdr",
+    inputPath: "Grand_Canyon_C.hdr",
     outputDirName: "grand_canyon_c",
   },
   {
-    inputFile: "spruit_sunrise_2k.jpg",
+    inputPath: "spruit_sunrise_2k.jpg",
     outputDirName: "spruit_sunrise_2k",
+  },
+  {
+    inputPath: "pisa",
+    outputDirName: "pisa",
+  },
+  {
+    inputPath: "Bridge2",
+    outputDirName: "bridge2",
+    extraArgs: ["--faces", "posx.jpg,negx.jpg,posy.jpg,negy.jpg,posz.jpg,negz.jpg"],
   },
 ];
 
 for (const fixture of fixtures) {
-  const inputPath = path.join(fixtureInputsDir, fixture.inputFile);
+  const inputPath = path.join(fixtureInputsDir, fixture.inputPath);
   const outputDir = path.join(fixtureOutputsDir, fixture.outputDirName);
 
   rmSync(outputDir, { recursive: true, force: true });
@@ -42,6 +51,7 @@ for (const fixture of fixtures) {
       inputPath,
       "--out-dir",
       outputDir,
+      ...(fixture.extraArgs ?? []),
     ],
     {
       cwd: rootDir,

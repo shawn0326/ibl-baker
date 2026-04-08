@@ -5,7 +5,7 @@ use std::f32::consts::{PI, TAU};
 use glam::{Vec2, Vec3};
 use rayon::prelude::*;
 
-use crate::source_image::{encode_png_image, sample_latlong, Rotation, SourceImage};
+use crate::source_image::{encode_png_image, sample_environment, EnvironmentSource, Rotation, SourceImage};
 use crate::{
     BakeOptions, BakeQuality, ChunkData, ChunkEntry, ChunkRecord, EncodingKind, Face, IblError,
 };
@@ -90,11 +90,11 @@ struct BakeContext<'a> {
     cubemap_mips: Vec<CubemapFaces>,
     direction_caches: BTreeMap<u32, DirectionCache>,
     kernel_cache: SampleKernelCache,
-    _source: &'a SourceImage,
+    _source: &'a EnvironmentSource,
 }
 
 impl<'a> BakeContext<'a> {
-    fn new(source: &'a SourceImage, base_size: u32, rotation_degrees: f32) -> Self {
+    fn new(source: &'a EnvironmentSource, base_size: u32, rotation_degrees: f32) -> Self {
         let rotation = Rotation::from_degrees(rotation_degrees);
         let base_directions = build_direction_cache(base_size);
         let base_cubemap = render_cubemap_faces(source, rotation, &base_directions, base_size);
@@ -125,7 +125,7 @@ impl<'a> BakeContext<'a> {
 }
 
 pub(crate) fn build_specular_chunk_entries(
-    source: &SourceImage,
+    source: &EnvironmentSource,
     options: &BakeOptions,
     mip_count: u32,
 ) -> Result<Vec<ChunkEntry>, IblError> {
@@ -135,7 +135,7 @@ pub(crate) fn build_specular_chunk_entries(
 }
 
 pub(crate) fn build_irradiance_chunk_entries(
-    source: &SourceImage,
+    source: &EnvironmentSource,
     options: &BakeOptions,
 ) -> Result<Vec<ChunkEntry>, IblError> {
     let mut context = BakeContext::new(source, options.irradiance_size, options.rotation_degrees);
@@ -243,7 +243,7 @@ fn build_direction_cache(size: u32) -> DirectionCache {
 }
 
 fn render_cubemap_faces(
-    source: &SourceImage,
+    source: &EnvironmentSource,
     rotation: Rotation,
     direction_cache: &DirectionCache,
     size: u32,
@@ -257,14 +257,14 @@ fn render_cubemap_faces(
 }
 
 fn render_cubemap_face(
-    source: &SourceImage,
+    source: &EnvironmentSource,
     rotation: Rotation,
     directions: &[Vec3],
     size: u32,
 ) -> SourceImage {
     let pixels = directions
         .iter()
-        .map(|direction| sample_latlong(source, *direction, rotation))
+        .map(|direction| sample_environment(source, *direction, rotation))
         .collect();
     SourceImage::from_pixels(size, size, pixels)
 }
@@ -699,6 +699,7 @@ fn vec_into_cubemap_faces(faces: Vec<SourceImage>) -> CubemapFaces {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::source_image::EnvironmentSource;
 
     fn hotspot_latlong(width: u32, height: u32) -> SourceImage {
         let mut image = SourceImage::new(width, height);
@@ -764,8 +765,12 @@ mod tests {
             ..BakeOptions::default()
         };
 
-        let entries =
-            build_specular_chunk_entries(&source, &options, 4).expect("specular should bake");
+        let entries = build_specular_chunk_entries(
+            &EnvironmentSource::Latlong(source),
+            &options,
+            4,
+        )
+        .expect("specular should bake");
         let mip0 = entries
             .iter()
             .find(|entry| entry.record.mip_level == 0 && entry.record.face == Some(Face::PositiveZ))
@@ -793,8 +798,8 @@ mod tests {
             ..BakeOptions::default()
         };
 
-        let entries =
-            build_irradiance_chunk_entries(&source, &options).expect("irradiance should bake");
+        let entries = build_irradiance_chunk_entries(&EnvironmentSource::Latlong(source), &options)
+            .expect("irradiance should bake");
         let face = entries
             .iter()
             .find(|entry| entry.record.face == Some(Face::PositiveZ))

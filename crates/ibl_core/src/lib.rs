@@ -14,10 +14,11 @@ use bake_pipeline::cubemap_direction;
 use bake_pipeline::{
     build_brdf_lut_chunk_entries, build_irradiance_chunk_entries, build_specular_chunk_entries,
 };
-use source_image::load_source_image;
+use source_image::{load_environment_from_cubemap_paths, load_environment_from_file};
 #[cfg(test)]
 use source_image::{
-    encode_png_image, encode_rgbd_srgb, write_test_exr, write_test_hdr, write_test_png,
+    encode_png_image, encode_rgbd_srgb, load_source_image, write_test_exr, write_test_hdr,
+    write_test_png,
 };
 
 pub const FORMAT_MAGIC: [u8; 4] = *b"IBLA";
@@ -272,6 +273,21 @@ impl Default for BakeOptions {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CubemapInputPaths {
+    pub face_paths: [PathBuf; 6],
+}
+
+impl CubemapInputPaths {
+    pub fn from_face_order(face_paths: [PathBuf; 6]) -> Self {
+        Self { face_paths }
+    }
+
+    pub fn as_array(&self) -> &[PathBuf; 6] {
+        &self.face_paths
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IblHeader {
     pub magic: [u8; 4],
     pub version: u16,
@@ -419,13 +435,30 @@ pub fn bake_to_asset<P: AsRef<Path>>(input: P, options: BakeOptions) -> Result<I
         )));
     }
 
+    let (source, source_format) = load_environment_from_file(input_path)?;
+    bake_environment_to_asset(source_format, &source, options)
+}
+
+pub fn bake_cubemap_to_asset(
+    input: &CubemapInputPaths,
+    options: BakeOptions,
+) -> Result<IblAsset, IblError> {
+    let (source, source_format) = load_environment_from_cubemap_paths(input)?;
+    bake_environment_to_asset(source_format, &source, options)
+}
+
+fn bake_environment_to_asset(
+    source_format: SourceFormat,
+    source: &source_image::EnvironmentSource,
+    options: BakeOptions,
+) -> Result<IblAsset, IblError> {
     if options.cube_size == 0 || options.irradiance_size == 0 {
         return Err(IblError::InvalidInput(
             "image sizes must be greater than zero".to_string(),
         ));
     }
 
-    let manifest = build_manifest(input_path, &options);
+    let manifest = build_manifest(source_format, &options);
     let mut asset = IblAsset {
         header: IblHeader {
             magic: FORMAT_MAGIC,
@@ -441,13 +474,9 @@ pub fn bake_to_asset<P: AsRef<Path>>(input: P, options: BakeOptions) -> Result<I
 
     let entries = match options.asset_kind {
         AssetKind::SpecularCubemap => {
-            let source = load_source_image(input_path)?;
-            build_specular_chunk_entries(&source, &options, asset.manifest.mip_count)?
+            build_specular_chunk_entries(source, &options, asset.manifest.mip_count)?
         }
-        AssetKind::IrradianceCubemap => {
-            let source = load_source_image(input_path)?;
-            build_irradiance_chunk_entries(&source, &options)?
-        }
+        AssetKind::IrradianceCubemap => build_irradiance_chunk_entries(source, &options)?,
         AssetKind::BrdfLut => build_brdf_lut_chunk_entries(BRDF_LUT_SIZE, &options)?,
     };
     asset.chunk_table = entries.iter().map(|entry| entry.record.clone()).collect();
@@ -692,7 +721,7 @@ fn error_issue(message: &str) -> ValidationIssue {
     }
 }
 
-fn build_manifest(input_path: &Path, options: &BakeOptions) -> Manifest {
+fn build_manifest(source_format: SourceFormat, options: &BakeOptions) -> Manifest {
     let (width, height, mip_count, face_count) = match options.asset_kind {
         AssetKind::SpecularCubemap => (
             options.cube_size,
@@ -717,9 +746,7 @@ fn build_manifest(input_path: &Path, options: &BakeOptions) -> Manifest {
             rotation_degrees: options.rotation_degrees,
             sample_count: options.sample_count,
             quality: options.quality.as_str().to_string(),
-            source_format: SourceFormat::from_input_path(input_path)
-                .as_str()
-                .to_string(),
+            source_format: source_format.as_str().to_string(),
         },
     }
 }
@@ -1369,6 +1396,13 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
 
+    fn write_solid_png(path: &Path, color: glam::Vec3) {
+        let bytes =
+            encode_png_image(&single_color_image(4, 4, color), EncodingKind::Srgb)
+                .expect("png should encode");
+        fs::write(path, bytes).expect("png should be written");
+    }
+
     #[test]
     fn header_round_trip_is_stable() {
         let header = IblHeader {
@@ -1418,6 +1452,69 @@ mod tests {
         assert!(source_image_pixel(&source, 3, 1).z > source_image_pixel(&source, 0, 0).z);
 
         fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn cubemap_input_bakes_and_records_png_source_format() {
+        let input_dir = unique_temp_path("cubemap-input");
+        fs::create_dir_all(&input_dir).expect("cubemap dir should be created");
+
+        for (name, color) in [
+            ("px.png", glam::Vec3::new(1.0, 0.0, 0.0)),
+            ("nx.png", glam::Vec3::new(0.0, 1.0, 0.0)),
+            ("py.png", glam::Vec3::new(0.0, 0.0, 1.0)),
+            ("ny.png", glam::Vec3::new(1.0, 1.0, 0.0)),
+            ("pz.png", glam::Vec3::new(1.0, 0.0, 1.0)),
+            ("nz.png", glam::Vec3::new(0.0, 1.0, 1.0)),
+        ] {
+            write_solid_png(&input_dir.join(name), color);
+        }
+
+        let asset = bake_cubemap_to_asset(
+            &CubemapInputPaths::from_face_order([
+                input_dir.join("px.png"),
+                input_dir.join("nx.png"),
+                input_dir.join("py.png"),
+                input_dir.join("ny.png"),
+                input_dir.join("pz.png"),
+                input_dir.join("nz.png"),
+            ]),
+            BakeOptions {
+                cube_size: 8,
+                ..BakeOptions::default()
+            },
+        )
+        .expect("cubemap asset should bake");
+
+        assert_eq!(asset.manifest.build.source_format, "png");
+        fs::remove_dir_all(&input_dir).ok();
+    }
+
+    #[test]
+    fn cubemap_input_rejects_non_square_faces() {
+        let input_dir = unique_temp_path("cubemap-nonsquare");
+        fs::create_dir_all(&input_dir).expect("cubemap dir should be created");
+
+        write_test_png(&input_dir.join("px.png"), 8, 4);
+        for name in ["nx.png", "py.png", "ny.png", "pz.png", "nz.png"] {
+            write_test_png(&input_dir.join(name), 4, 4);
+        }
+
+        let error = bake_cubemap_to_asset(
+            &CubemapInputPaths::from_face_order([
+                input_dir.join("px.png"),
+                input_dir.join("nx.png"),
+                input_dir.join("py.png"),
+                input_dir.join("ny.png"),
+                input_dir.join("pz.png"),
+                input_dir.join("nz.png"),
+            ]),
+            BakeOptions::default(),
+        )
+        .expect_err("non-square cubemap should fail");
+
+        assert!(error.to_string().contains("must be square"));
+        fs::remove_dir_all(&input_dir).ok();
     }
 
     #[test]

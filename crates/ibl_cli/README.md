@@ -8,9 +8,10 @@ The shared `.ibla` container contract is defined in the repository format specif
 ## Commands
 
 ```bash
-ibl-baker bake input-image --out-dir ./out
-ibl-baker bake input-image --out-dir ./out --target specular
-ibl-baker bake input-image --out-dir ./out --target irradiance --target lut
+ibl-baker bake input-path --out-dir ./out
+ibl-baker bake input-path --out-dir ./out --target specular
+ibl-baker bake ./fixtures/inputs/pisa --out-dir ./out --target irradiance
+ibl-baker bake ./fixtures/inputs/Bridge2 --out-dir ./out --faces posx.jpg,negx.jpg,posy.jpg,negy.jpg,posz.jpg,negz.jpg
 ibl-baker validate ./out/specular.ibla
 ```
 
@@ -23,6 +24,7 @@ Supported v1 options:
 - `--size <auto|n>`
 - `--irradiance-size`
 - `--encoding <auto|rgbd-srgb|srgb|linear>`
+- `--faces <px,nx,py,ny,pz,nz>`
 - `--rotation`
 - `--samples`
 - `--quality <low|medium|high>`
@@ -44,18 +46,21 @@ Format/output mapping:
 
 Shared tuning semantics:
 
+- `input-path` accepts either a single latlong image file or a directory containing 6 cubemap faces
 - `--size` controls specular cubemap face size and defaults to `auto`
 - `--irradiance-size` controls irradiance cubemap face size and defaults to `32`
 - `--encoding` applies to `.ibla` outputs and defaults to `auto`
+- `--faces` is only valid for directory inputs and uses the fixed face order `px, nx, py, ny, pz, nz`
 - `--rotation`, `--samples`, and `--quality` apply to the bake run as a whole
 - `--quality` accepts `low`, `medium`, or `high` and defaults to `medium`
-- examples in this document use `input-image` as a generic placeholder; `--encoding auto` currently accepts HDR, EXR, PNG, and JPEG-family inputs
+- `--encoding auto` currently accepts HDR, EXR, PNG, and JPEG-family inputs
 
 Fixed v1 defaults:
 
 - `--size auto` chooses a specular size from `128 | 256 | 512 | 1024 | 2048 | 4096`
-- `--size auto` estimates an equivalent cubemap face size from the source image dimensions as `min(width / 4, height / 2)`
-- `--size auto` picks the largest supported bucket that does not exceed that estimated face size
+- file inputs estimate an equivalent cubemap face size from source dimensions as `min(width / 4, height / 2)`
+- directory inputs use the cubemap face size directly before bucket selection
+- `--size auto` picks the largest supported bucket that does not exceed the estimated or detected face size
 - if the source image is smaller than `128`, `--size auto` still resolves to `128`
 - if the source image size cannot currently be detected, `--size auto` falls back to `512`
 - irradiance face size defaults to `32`
@@ -64,6 +69,14 @@ Fixed v1 defaults:
 - `linear` remains available as an explicit manual choice and is not selected by `auto`
 - BRDF LUT output is always `256x256`
 - `--irradiance-size` remains an explicit numeric override and is not changed by `--size auto`
+
+Directory cubemap auto-detection:
+
+- v1 auto-detection only supports `px, nx, py, ny, pz, nz`
+- v1 also supports `posx, negx, posy, negy, posz, negz`
+- auto-detection succeeds only when exactly one full 6-face preset matches
+- if auto-detection fails or is ambiguous, pass `--faces <px,nx,py,ny,pz,nz>` with file names relative to the input directory
+- directory cubemap inputs must use one shared source format family, identical square dimensions, and all 6 faces must be present
 
 Encoding reference:
 

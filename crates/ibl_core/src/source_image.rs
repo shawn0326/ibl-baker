@@ -12,13 +12,19 @@ use image::Rgb;
 use image::{ImageFormat, ImageReader};
 use png::{BitDepth, ColorType};
 
-use crate::{EncodingKind, IblError, SourceFormat};
+use crate::{CubemapInputPaths, EncodingKind, Face, IblError, SourceFormat};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SourceImage {
     pub(crate) width: u32,
     pub(crate) height: u32,
     pub(crate) pixels: Vec<Vec3>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum EnvironmentSource {
+    Latlong(SourceImage),
+    Cubemap([SourceImage; 6]),
 }
 
 impl SourceImage {
@@ -108,11 +114,92 @@ pub(crate) fn load_source_image(path: &Path) -> Result<SourceImage, IblError> {
     }
 }
 
-pub(crate) fn sample_latlong(source: &SourceImage, direction: Vec3, rotation: Rotation) -> Vec3 {
+pub(crate) fn load_environment_from_file(
+    path: &Path,
+) -> Result<(EnvironmentSource, SourceFormat), IblError> {
+    let source_format = SourceFormat::from_input_path(path);
+    let image = load_source_image(path)?;
+    Ok((EnvironmentSource::Latlong(image), source_format))
+}
+
+pub(crate) fn load_environment_from_cubemap_paths(
+    input: &CubemapInputPaths,
+) -> Result<(EnvironmentSource, SourceFormat), IblError> {
+    let mut resolved_format = None;
+    let mut resolved_size = None;
+    let mut faces = Vec::with_capacity(Face::all().len());
+
+    for path in input.as_array() {
+        if !path.is_file() {
+            return Err(IblError::InvalidInput(format!(
+                "cubemap face does not exist: {}",
+                path.display()
+            )));
+        }
+
+        let source_format = normalize_source_format(SourceFormat::from_input_path(path));
+        if source_format == SourceFormat::Unknown {
+            return Err(IblError::InvalidInput(format!(
+                "unsupported cubemap face format: {}",
+                path.display()
+            )));
+        }
+
+        match resolved_format {
+            Some(expected) if expected != source_format => {
+                return Err(IblError::InvalidInput(
+                    "cubemap faces must use the same source format family".to_string(),
+                ));
+            }
+            None => resolved_format = Some(source_format),
+            _ => {}
+        }
+
+        let image = load_source_image(path)?;
+        if image.width != image.height {
+            return Err(IblError::InvalidInput(format!(
+                "cubemap faces must be square: {} is {}x{}",
+                path.display(),
+                image.width,
+                image.height
+            )));
+        }
+
+        match resolved_size {
+            Some(expected) if expected != image.width => {
+                return Err(IblError::InvalidInput(
+                    "cubemap faces must share the same dimensions".to_string(),
+                ));
+            }
+            None => resolved_size = Some(image.width),
+            _ => {}
+        }
+
+        faces.push(image);
+    }
+
+    let faces: [SourceImage; 6] = faces
+        .try_into()
+        .unwrap_or_else(|_| unreachable!("cubemap inputs should resolve exactly six faces"));
+    Ok((
+        EnvironmentSource::Cubemap(faces),
+        resolved_format.unwrap_or(SourceFormat::Unknown),
+    ))
+}
+
+pub(crate) fn sample_environment(
+    source: &EnvironmentSource,
+    direction: Vec3,
+    rotation: Rotation,
+) -> Vec3 {
     let rotated = rotate_direction_y(direction.normalize_or_zero(), rotation);
-    let u = 0.5 + rotated.z.atan2(rotated.x) / TAU;
-    let v = rotated.y.clamp(-1.0, 1.0).acos() / PI;
-    source.sample_bilinear(Vec2::new(u, v), true)
+    match source {
+        EnvironmentSource::Latlong(image) => sample_latlong(image, rotated),
+        EnvironmentSource::Cubemap(faces) => {
+            let (face, uv) = direction_to_face_uv(rotated);
+            faces[face.index()].sample_bilinear(uv, false)
+        }
+    }
 }
 
 pub(crate) fn encode_png_image(
@@ -250,12 +337,50 @@ fn image_format_for_source(source_format: SourceFormat) -> Option<ImageFormat> {
     }
 }
 
+fn normalize_source_format(source_format: SourceFormat) -> SourceFormat {
+    match source_format {
+        SourceFormat::Jpeg => SourceFormat::Jpg,
+        other => other,
+    }
+}
+
 fn rotate_direction_y(direction: Vec3, rotation: Rotation) -> Vec3 {
     Vec3::new(
         direction.x * rotation.cos_theta - direction.z * rotation.sin_theta,
         direction.y,
         direction.x * rotation.sin_theta + direction.z * rotation.cos_theta,
     )
+}
+
+fn sample_latlong(source: &SourceImage, direction: Vec3) -> Vec3 {
+    let u = 0.5 + direction.z.atan2(direction.x) / TAU;
+    let v = direction.y.clamp(-1.0, 1.0).acos() / PI;
+    source.sample_bilinear(Vec2::new(u, v), true)
+}
+
+fn direction_to_face_uv(direction: Vec3) -> (Face, Vec2) {
+    let abs = direction.abs();
+    let (face, u, v, major_axis) = if abs.x >= abs.y && abs.x >= abs.z {
+        if direction.x >= 0.0 {
+            (Face::PositiveX, -direction.z, -direction.y, abs.x)
+        } else {
+            (Face::NegativeX, direction.z, -direction.y, abs.x)
+        }
+    } else if abs.y >= abs.x && abs.y >= abs.z {
+        if direction.y >= 0.0 {
+            (Face::PositiveY, direction.x, direction.z, abs.y)
+        } else {
+            (Face::NegativeY, direction.x, -direction.z, abs.y)
+        }
+    } else if direction.z >= 0.0 {
+        (Face::PositiveZ, direction.x, -direction.y, abs.z)
+    } else {
+        (Face::NegativeZ, -direction.x, -direction.y, abs.z)
+    };
+
+    let major_axis = major_axis.max(1.0e-8);
+    let uv = Vec2::new(0.5 * (u / major_axis + 1.0), 0.5 * (v / major_axis + 1.0));
+    (face, uv)
 }
 
 fn encode_pixels_to_rgba8(image: &SourceImage, encoding: EncodingKind) -> Vec<u8> {
@@ -363,4 +488,30 @@ fn gradient_hdr_pixels(width: u32, height: u32) -> Vec<Rgb<f32>> {
         }
     }
     pixels
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cubemap_environment_sampling_hits_expected_face() {
+        let cubemap = EnvironmentSource::Cubemap(std::array::from_fn(|index| {
+            let mut image = SourceImage::new(2, 2);
+            for y in 0..2 {
+                for x in 0..2 {
+                    image.set(x, y, Vec3::splat(index as f32));
+                }
+            }
+            image
+        }));
+
+        let color = sample_environment(
+            &cubemap,
+            Vec3::new(0.0, 0.0, 1.0),
+            Rotation::from_degrees(0.0),
+        );
+
+        assert_eq!(color, Vec3::splat(Face::PositiveZ.index() as f32));
+    }
 }

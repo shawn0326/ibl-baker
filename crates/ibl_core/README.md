@@ -7,8 +7,8 @@ It owns HDR/EXR input handling, bake pipeline execution, `.ibla` read/write, and
 
 The crate is responsible for:
 
-- source image loading for HDR, EXR, and supported LDR inputs
-- latlong-to-cubemap conversion
+- environment source loading for latlong HDR/EXR/LDR inputs and 6-face cubemap sets
+- latlong-to-cubemap conversion and cubemap-to-cubemap resampling
 - specular prefilter generation
 - irradiance generation
 - BRDF LUT generation

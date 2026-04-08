@@ -3,6 +3,7 @@
 ## 当前基线
 
 - `.ibla` v1 容器、Rust bake/validate 主链路、parser-only TypeScript loader、浏览器侧验收工具已经落地。
+- CLI 已支持单图 latlong 输入与目录型 6 张图天空盒输入，并覆盖 `px/nx/...`、`posx/negx/...` 自动识别与 `--faces` 显式顺序覆盖。
 - 当前对外契约以 `docs/format-spec.md`、`crates/ibl_cli/README.md`、`packages/loader/README.md` 为准。
 - 当前公开 JS 面仅保留 `packages/loader`；`packages/e2e-loader` 继续作为仓库内私有验收工具存在。
 

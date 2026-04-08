@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::env;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
@@ -6,8 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use ibl_core::{
-    bake_to_asset, inspect_asset, read_asset, validate_asset, write_asset, AssetKind, BakeOptions,
-    BakeQuality, EncodingKind, IblError, SourceFormat,
+    bake_cubemap_to_asset, bake_to_asset, inspect_asset, read_asset, validate_asset, write_asset,
+    AssetKind, BakeOptions, BakeQuality, CubemapInputPaths, EncodingKind, IblError, SourceFormat,
 };
 
 fn main() {
@@ -53,6 +54,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
     let mut requested_encoding = RequestedEncoding::Auto;
     let mut output_dir: Option<PathBuf> = None;
     let mut target_selection = TargetSelection::default();
+    let mut requested_faces: Option<String> = None;
 
     let mut index = 1;
     while index < args.len() {
@@ -70,6 +72,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
             "--rotation" => options.rotation_degrees = parse_f32(value, "--rotation")?,
             "--samples" => options.sample_count = parse_u32(value, "--samples")?,
             "--quality" => options.quality = parse_quality(value)?,
+            "--faces" => requested_faces = Some(value.to_string()),
             _ => return Err(CliError::Usage(format!("unknown bake option: {flag}"))),
         }
 
@@ -80,6 +83,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
         output_dir.ok_or_else(|| CliError::Usage("bake requires --out-dir <path>".to_string()))?;
     fs::create_dir_all(&output_dir).map_err(IblError::from)?;
 
+    let input = resolve_bake_input(input, requested_faces.as_deref())?;
     options.cube_size = resolve_requested_size(&input, requested_size)?;
     options.output_encoding = resolve_requested_encoding(&input, requested_encoding);
 
@@ -89,7 +93,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
             BakeTarget::Specular => {
                 let mut target_options = options.clone();
                 target_options.asset_kind = AssetKind::SpecularCubemap;
-                let asset = bake_to_asset(&input, target_options)?;
+                let asset = bake_input_to_asset(&input, target_options)?;
                 let output = output_dir.join("specular.ibla");
                 write_asset(&output, &asset)?;
                 outputs.push(output);
@@ -97,7 +101,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
             BakeTarget::Irradiance => {
                 let mut target_options = options.clone();
                 target_options.asset_kind = AssetKind::IrradianceCubemap;
-                let asset = bake_to_asset(&input, target_options)?;
+                let asset = bake_input_to_asset(&input, target_options)?;
                 let output = output_dir.join("irradiance.ibla");
                 write_asset(&output, &asset)?;
                 outputs.push(output);
@@ -105,7 +109,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
             BakeTarget::Lut => {
                 let mut target_options = options.clone();
                 target_options.asset_kind = AssetKind::BrdfLut;
-                let asset = bake_to_asset(&input, target_options)?;
+                let asset = bake_input_to_asset(&input, target_options)?;
                 let output = output_dir.join("brdf-lut.png");
                 let bytes = asset
                     .chunks
@@ -126,7 +130,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
     let mut lines = vec![format!(
         "Baked {} output(s) from {} into {}",
         outputs.len(),
-        display_path(&input),
+        display_path(input.path()),
         display_path(&output_dir)
     )];
     lines.extend(
@@ -233,22 +237,27 @@ fn display_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-fn resolve_requested_size(input: &Path, requested: RequestedSize) -> Result<u32, CliError> {
+fn resolve_requested_size(input: &BakeInput, requested: RequestedSize) -> Result<u32, CliError> {
     match requested {
         RequestedSize::Exact(size) => Ok(size),
         RequestedSize::Auto => Ok(resolve_auto_size(input).unwrap_or(DEFAULT_SPECULAR_SIZE)),
     }
 }
 
-fn resolve_auto_size(input: &Path) -> Option<u32> {
-    let (width, height) = read_image_dimensions(input).ok()??;
-    Some(choose_auto_specular_size(width, height))
+fn resolve_auto_size(input: &BakeInput) -> Option<u32> {
+    match input {
+        BakeInput::File { path } => {
+            let (width, height) = read_image_dimensions(path).ok()??;
+            Some(choose_auto_specular_size(width, height))
+        }
+        BakeInput::Cubemap { face_size, .. } => Some(choose_supported_specular_size(*face_size)),
+    }
 }
 
-fn resolve_requested_encoding(input: &Path, requested: RequestedEncoding) -> EncodingKind {
+fn resolve_requested_encoding(input: &BakeInput, requested: RequestedEncoding) -> EncodingKind {
     match requested {
         RequestedEncoding::Explicit(encoding) => encoding,
-        RequestedEncoding::Auto => match SourceFormat::from_input_path(input) {
+        RequestedEncoding::Auto => match input.source_format() {
             SourceFormat::Hdr | SourceFormat::Exr => EncodingKind::RgbdSrgb,
             SourceFormat::Png | SourceFormat::Jpg | SourceFormat::Jpeg | SourceFormat::Unknown => {
                 EncodingKind::Srgb
@@ -277,6 +286,213 @@ fn choose_supported_specular_size(face_size: u32) -> u32 {
         .copied()
         .find(|size| *size <= face_size)
         .unwrap_or(AUTO_SIZE_BUCKETS[0])
+}
+
+fn bake_input_to_asset(input: &BakeInput, options: BakeOptions) -> Result<ibl_core::IblAsset, CliError> {
+    match input {
+        BakeInput::File { path } => bake_to_asset(path, options).map_err(CliError::from),
+        BakeInput::Cubemap { faces, .. } => bake_cubemap_to_asset(faces, options).map_err(CliError::from),
+    }
+}
+
+fn resolve_bake_input(input: PathBuf, requested_faces: Option<&str>) -> Result<BakeInput, CliError> {
+    if input.is_file() {
+        if requested_faces.is_some() {
+            return Err(CliError::Usage(
+                "--faces can only be used when the bake input path is a directory".to_string(),
+            ));
+        }
+        return Ok(BakeInput::File { path: input });
+    }
+
+    if input.is_dir() {
+        let faces = match requested_faces {
+            Some(value) => resolve_explicit_faces(&input, value)?,
+            None => auto_detect_cubemap_faces(&input)?,
+        };
+        let (source_format, face_size) = inspect_cubemap_faces(&faces)?;
+        return Ok(BakeInput::Cubemap {
+            root: input,
+            faces,
+            source_format,
+            face_size,
+        });
+    }
+
+    Err(CliError::Usage(format!(
+        "input path does not exist: {}",
+        display_path(&input)
+    )))
+}
+
+fn resolve_explicit_faces(root: &Path, value: &str) -> Result<CubemapInputPaths, CliError> {
+    let names = value
+        .split(',')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .collect::<Vec<_>>();
+    if names.len() != 6 {
+        return Err(CliError::Usage(
+            "--faces expects exactly 6 file names in px,nx,py,ny,pz,nz order".to_string(),
+        ));
+    }
+
+    let paths = names
+        .into_iter()
+        .map(|name| resolve_face_name(root, name))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(CubemapInputPaths::from_face_order(
+        paths
+            .try_into()
+            .unwrap_or_else(|_| unreachable!("explicit cubemap faces should contain six paths")),
+    ))
+}
+
+fn auto_detect_cubemap_faces(root: &Path) -> Result<CubemapInputPaths, CliError> {
+    const PRESETS: [(&str, [&str; 6]); 2] = [
+        ("px/nx/py/ny/pz/nz", ["px", "nx", "py", "ny", "pz", "nz"]),
+        (
+            "posx/negx/posy/negy/posz/negz",
+            ["posx", "negx", "posy", "negy", "posz", "negz"],
+        ),
+    ];
+
+    let mut files_by_stem: BTreeMap<String, Vec<PathBuf>> = BTreeMap::new();
+    for entry in fs::read_dir(root).map_err(IblError::from)? {
+        let entry = entry.map_err(IblError::from)?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+
+        let source_format = SourceFormat::from_input_path(&path);
+        if source_format == SourceFormat::Unknown {
+            continue;
+        }
+
+        let stem = path
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .ok_or_else(|| {
+                CliError::Usage(format!(
+                    "cubemap face file name must be valid UTF-8: {}",
+                    display_path(&path)
+                ))
+            })?
+            .to_ascii_lowercase();
+        files_by_stem.entry(stem).or_default().push(path);
+    }
+
+    let mut matches = Vec::new();
+    for (label, preset) in PRESETS {
+        let mut resolved = Vec::with_capacity(6);
+        let mut missing = false;
+        for expected in preset {
+            match files_by_stem.get(expected) {
+                Some(paths) if paths.len() == 1 => resolved.push(paths[0].clone()),
+                Some(_) | None => {
+                    missing = true;
+                    break;
+                }
+            }
+        }
+
+        if !missing {
+            matches.push((label, resolved));
+        }
+    }
+
+    match matches.len() {
+        1 => {
+            let (_, resolved) = matches.remove(0);
+            Ok(CubemapInputPaths::from_face_order(
+                resolved
+                    .try_into()
+                    .unwrap_or_else(|_| unreachable!("auto-detected cubemap should contain six paths")),
+            ))
+        }
+        0 => Err(CliError::Usage(format!(
+            "could not auto-detect cubemap faces in {}; supported names are px/nx/py/ny/pz/nz or posx/negx/posy/negy/posz/negz; use --faces <px,nx,py,ny,pz,nz>",
+            display_path(root)
+        ))),
+        _ => Err(CliError::Usage(format!(
+            "multiple cubemap naming presets matched in {}; use --faces <px,nx,py,ny,pz,nz> to disambiguate",
+            display_path(root)
+        ))),
+    }
+}
+
+fn resolve_face_name(root: &Path, name: &str) -> Result<PathBuf, CliError> {
+    let candidate = Path::new(name);
+    if candidate.is_absolute() || candidate.components().count() != 1 {
+        return Err(CliError::Usage(
+            "--faces entries must be file names within the input directory".to_string(),
+        ));
+    }
+
+    Ok(root.join(candidate))
+}
+
+fn inspect_cubemap_faces(faces: &CubemapInputPaths) -> Result<(SourceFormat, u32), CliError> {
+    let mut resolved_format = None;
+    let mut face_size = None;
+
+    for path in faces.as_array() {
+        let source_format = normalize_source_format(SourceFormat::from_input_path(path));
+        if source_format == SourceFormat::Unknown {
+            return Err(CliError::Usage(format!(
+                "unsupported cubemap face format: {}",
+                display_path(path)
+            )));
+        }
+
+        match resolved_format {
+            Some(expected) if expected != source_format => {
+                return Err(CliError::Usage(
+                    "cubemap faces must use the same source format family".to_string(),
+                ));
+            }
+            None => resolved_format = Some(source_format),
+            _ => {}
+        }
+
+        let (width, height) = read_image_dimensions(path)?.ok_or_else(|| {
+            CliError::Usage(format!(
+                "could not read dimensions from cubemap face: {}",
+                display_path(path)
+            ))
+        })?;
+        if width != height {
+            return Err(CliError::Usage(format!(
+                "cubemap faces must be square: {} is {}x{}",
+                display_path(path),
+                width,
+                height
+            )));
+        }
+
+        match face_size {
+            Some(expected) if expected != width => {
+                return Err(CliError::Usage(
+                    "cubemap faces must share the same dimensions".to_string(),
+                ));
+            }
+            None => face_size = Some(width),
+            _ => {}
+        }
+    }
+
+    Ok((
+        resolved_format.unwrap_or(SourceFormat::Unknown),
+        face_size.unwrap_or(0),
+    ))
+}
+
+fn normalize_source_format(source_format: SourceFormat) -> SourceFormat {
+    match source_format {
+        SourceFormat::Jpeg => SourceFormat::Jpg,
+        other => other,
+    }
 }
 
 fn read_image_dimensions(path: &Path) -> Result<Option<(u32, u32)>, CliError> {
@@ -453,9 +669,9 @@ fn help_text() -> String {
         "ibl-baker",
         "",
         "Commands",
-        "  ibl-baker bake input-image --out-dir ./out",
-        "  ibl-baker bake input-image --out-dir ./out --target specular",
-        "  ibl-baker bake input-image --out-dir ./out --target irradiance --target lut",
+        "  ibl-baker bake input-path --out-dir ./out",
+        "  ibl-baker bake input-path --out-dir ./out --target specular",
+        "  ibl-baker bake input-dir --out-dir ./out --faces px.png,nx.png,py.png,ny.png,pz.png,nz.png",
         "  ibl-baker validate ./out/specular.ibla",
         "",
         "bake options",
@@ -464,14 +680,18 @@ fn help_text() -> String {
         "  --size <auto|n>",
         "  --irradiance-size <n>",
         "  --encoding <auto|rgbd-srgb|srgb|linear>",
+        "  --faces <px,nx,py,ny,pz,nz>",
         "  --rotation <deg>",
         "  --samples <n>",
         "  --quality <low|medium|high>",
         "",
         "bake defaults",
         "  --size auto -> 128 | 256 | 512 | 1024 | 2048 | 4096",
-        "  derives an equivalent cubemap face size from input dimensions before bucketing",
+        "  file input derives an equivalent cubemap face size from input dimensions before bucketing",
+        "  directory input uses the cubemap face size before bucketing",
         "  --irradiance-size -> 32",
+        "  directory auto-detect names -> px/nx/py/ny/pz/nz or posx/negx/posy/negy/posz/negz",
+        "  --faces order -> px, nx, py, ny, pz, nz",
         "  --encoding auto -> rgbd-srgb for .hdr/.exr, srgb for .png/.jpg/.jpeg/unknown",
         "  output files -> specular.ibla, irradiance.ibla, brdf-lut.png",
         "",
@@ -482,6 +702,33 @@ fn help_text() -> String {
 }
 
 const DEFAULT_SPECULAR_SIZE: u32 = 512;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum BakeInput {
+    File { path: PathBuf },
+    Cubemap {
+        root: PathBuf,
+        faces: CubemapInputPaths,
+        source_format: SourceFormat,
+        face_size: u32,
+    },
+}
+
+impl BakeInput {
+    fn path(&self) -> &Path {
+        match self {
+            Self::File { path } => path,
+            Self::Cubemap { root, .. } => root,
+        }
+    }
+
+    fn source_format(&self) -> SourceFormat {
+        match self {
+            Self::File { path } => SourceFormat::from_input_path(path),
+            Self::Cubemap { source_format, .. } => *source_format,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RequestedSize {
@@ -616,6 +863,27 @@ mod tests {
         encoder
             .encode(&pixels, width as usize, height as usize)
             .expect("hdr fixture should encode");
+    }
+
+    fn write_solid_png(path: &Path, size: u32, color: [u8; 3]) {
+        let image = image::RgbImage::from_pixel(size, size, image::Rgb(color));
+        image.save(path).expect("solid png fixture should be written");
+    }
+
+    fn write_cubemap_dir(root: &Path, names: [&str; 6], size: u32) {
+        fs::create_dir_all(root).expect("cubemap dir should be created");
+        let colors = [
+            [255, 0, 0],
+            [0, 255, 0],
+            [0, 0, 255],
+            [255, 255, 0],
+            [255, 0, 255],
+            [0, 255, 255],
+        ];
+
+        for (name, color) in names.into_iter().zip(colors) {
+            write_solid_png(&root.join(name), size, color);
+        }
     }
 
     #[test]
@@ -811,6 +1079,228 @@ mod tests {
     }
 
     #[test]
+    fn bake_accepts_auto_detected_px_cubemap_directory() {
+        let input_dir = unique_temp_path("cubemap-px");
+        let output_dir = unique_temp_path("cubemap-px-out");
+        let asset_path = output_dir.join("specular.ibla");
+
+        write_cubemap_dir(
+            &input_dir,
+            ["px.png", "nx.png", "py.png", "ny.png", "pz.png", "nz.png"],
+            16,
+        );
+
+        run(vec![
+            "ibl-baker".to_string(),
+            "bake".to_string(),
+            input_dir.to_string_lossy().to_string(),
+            "--out-dir".to_string(),
+            output_dir.to_string_lossy().to_string(),
+            "--target".to_string(),
+            "specular".to_string(),
+            "--size".to_string(),
+            "16".to_string(),
+        ])
+        .expect("cubemap directory bake should succeed");
+
+        let asset = read_asset(&asset_path).expect("asset should read");
+        assert_eq!(asset.manifest.build.source_format, "png");
+
+        fs::remove_dir_all(&input_dir).ok();
+        fs::remove_dir_all(&output_dir).ok();
+    }
+
+    #[test]
+    fn bake_accepts_auto_detected_posx_cubemap_directory() {
+        let input_dir = unique_temp_path("cubemap-posx");
+        let output_dir = unique_temp_path("cubemap-posx-out");
+
+        write_cubemap_dir(
+            &input_dir,
+            [
+                "posx.png",
+                "negx.png",
+                "posy.png",
+                "negy.png",
+                "posz.png",
+                "negz.png",
+            ],
+            8,
+        );
+
+        run(vec![
+            "ibl-baker".to_string(),
+            "bake".to_string(),
+            input_dir.to_string_lossy().to_string(),
+            "--out-dir".to_string(),
+            output_dir.to_string_lossy().to_string(),
+            "--target".to_string(),
+            "irradiance".to_string(),
+            "--irradiance-size".to_string(),
+            "8".to_string(),
+        ])
+        .expect("posx cubemap directory bake should succeed");
+
+        assert!(output_dir.join("irradiance.ibla").is_file());
+
+        fs::remove_dir_all(&input_dir).ok();
+        fs::remove_dir_all(&output_dir).ok();
+    }
+
+    #[test]
+    fn bake_accepts_faces_override_for_directory_input() {
+        let input_dir = unique_temp_path("cubemap-faces");
+        let output_dir = unique_temp_path("cubemap-faces-out");
+        let asset_path = output_dir.join("specular.ibla");
+
+        write_cubemap_dir(
+            &input_dir,
+            ["a.png", "b.png", "c.png", "d.png", "e.png", "f.png"],
+            8,
+        );
+
+        run(vec![
+            "ibl-baker".to_string(),
+            "bake".to_string(),
+            input_dir.to_string_lossy().to_string(),
+            "--out-dir".to_string(),
+            output_dir.to_string_lossy().to_string(),
+            "--target".to_string(),
+            "specular".to_string(),
+            "--size".to_string(),
+            "8".to_string(),
+            "--faces".to_string(),
+            "a.png,b.png,c.png,d.png,e.png,f.png".to_string(),
+        ])
+        .expect("directory bake with --faces should succeed");
+
+        assert!(asset_path.is_file());
+
+        fs::remove_dir_all(&input_dir).ok();
+        fs::remove_dir_all(&output_dir).ok();
+    }
+
+    #[test]
+    fn bake_rejects_cubemap_directory_with_missing_faces() {
+        let input_dir = unique_temp_path("cubemap-missing");
+        fs::create_dir_all(&input_dir).expect("cubemap dir should be created");
+        for name in ["px.png", "nx.png", "py.png", "ny.png", "pz.png"] {
+            write_solid_png(&input_dir.join(name), 8, [255, 0, 0]);
+        }
+
+        let error = run(vec![
+            "ibl-baker".to_string(),
+            "bake".to_string(),
+            input_dir.to_string_lossy().to_string(),
+            "--out-dir".to_string(),
+            unique_temp_path("cubemap-missing-out")
+                .to_string_lossy()
+                .to_string(),
+        ])
+        .expect_err("missing cubemap faces should fail");
+
+        assert!(error.to_string().contains("could not auto-detect cubemap faces"));
+
+        fs::remove_dir_all(&input_dir).ok();
+    }
+
+    #[test]
+    fn bake_rejects_mixed_format_cubemap_faces() {
+        let input_dir = unique_temp_path("cubemap-mixed");
+        fs::create_dir_all(&input_dir).expect("cubemap dir should be created");
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        fs::copy(
+            repo_root.join("fixtures/inputs/pisa/px.png"),
+            input_dir.join("px.png"),
+        )
+        .expect("px fixture should copy");
+        fs::copy(
+            repo_root.join("fixtures/inputs/Bridge2/negx.jpg"),
+            input_dir.join("nx.jpg"),
+        )
+        .expect("nx fixture should copy");
+        fs::copy(
+            repo_root.join("fixtures/inputs/Bridge2/posy.jpg"),
+            input_dir.join("py.jpg"),
+        )
+        .expect("py fixture should copy");
+        fs::copy(
+            repo_root.join("fixtures/inputs/Bridge2/negy.jpg"),
+            input_dir.join("ny.jpg"),
+        )
+        .expect("ny fixture should copy");
+        fs::copy(
+            repo_root.join("fixtures/inputs/Bridge2/posz.jpg"),
+            input_dir.join("pz.jpg"),
+        )
+        .expect("pz fixture should copy");
+        fs::copy(
+            repo_root.join("fixtures/inputs/Bridge2/negz.jpg"),
+            input_dir.join("nz.jpg"),
+        )
+        .expect("nz fixture should copy");
+
+        let error = run(vec![
+            "ibl-baker".to_string(),
+            "bake".to_string(),
+            input_dir.to_string_lossy().to_string(),
+            "--out-dir".to_string(),
+            unique_temp_path("cubemap-mixed-out")
+                .to_string_lossy()
+                .to_string(),
+        ])
+        .expect_err("mixed-format cubemap should fail");
+
+        assert!(error
+            .to_string()
+            .contains("cubemap faces must use the same source format family"));
+
+        fs::remove_dir_all(&input_dir).ok();
+    }
+
+    #[test]
+    fn bake_faces_override_order_changes_output() {
+        let input_dir = unique_temp_path("cubemap-order");
+        let output_dir_a = unique_temp_path("cubemap-order-a");
+        let output_dir_b = unique_temp_path("cubemap-order-b");
+
+        write_cubemap_dir(
+            &input_dir,
+            ["a.png", "b.png", "c.png", "d.png", "e.png", "f.png"],
+            8,
+        );
+
+        for (output_dir, faces) in [
+            (&output_dir_a, "a.png,b.png,c.png,d.png,e.png,f.png"),
+            (&output_dir_b, "b.png,a.png,c.png,d.png,e.png,f.png"),
+        ] {
+            run(vec![
+                "ibl-baker".to_string(),
+                "bake".to_string(),
+                input_dir.to_string_lossy().to_string(),
+                "--out-dir".to_string(),
+                output_dir.to_string_lossy().to_string(),
+                "--target".to_string(),
+                "specular".to_string(),
+                "--size".to_string(),
+                "8".to_string(),
+                "--faces".to_string(),
+                faces.to_string(),
+            ])
+            .expect("directory bake with --faces should succeed");
+        }
+
+        let first = fs::read(output_dir_a.join("specular.ibla")).expect("first asset should exist");
+        let second =
+            fs::read(output_dir_b.join("specular.ibla")).expect("second asset should exist");
+        assert_ne!(first, second);
+
+        fs::remove_dir_all(&input_dir).ok();
+        fs::remove_dir_all(&output_dir_a).ok();
+        fs::remove_dir_all(&output_dir_b).ok();
+    }
+
+    #[test]
     fn validate_reports_summary_for_irradiance_assets() {
         let input = unique_temp_path("validate-irradiance-input");
         let output_dir = unique_temp_path("validate-irradiance-out");
@@ -857,11 +1347,13 @@ mod tests {
     #[test]
     fn help_text_reflects_public_command_surface() {
         let help = help_text();
-        assert!(help.contains("ibl-baker bake input-image --out-dir ./out"));
+        assert!(help.contains("ibl-baker bake input-path --out-dir ./out"));
         assert!(help.contains("ibl-baker validate ./out/specular.ibla"));
         assert!(help.contains("--target <specular|irradiance|lut>"));
         assert!(help.contains("--size <auto|n>"));
         assert!(help.contains("--encoding <auto|rgbd-srgb|srgb|linear>"));
+        assert!(help.contains("--faces <px,nx,py,ny,pz,nz>"));
+        assert!(help.contains("directory auto-detect names"));
         assert!(help.contains("output files -> specular.ibla, irradiance.ibla, brdf-lut.png"));
         assert!(help.contains("validation status"));
         assert!(!help.contains("inspect"));
