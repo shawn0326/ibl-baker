@@ -18,16 +18,19 @@
 
 ## 下一步
 
-- [ ] 为 `packages/e2e-loader` 增加 `.ktx2` 产物的浏览器侧目视验收。
-- [ ] 增加更多 fixture、资产类型与手动浏览器验收覆盖，降低后续改动只靠单一路径验证的风险。
-- [ ] 补充基于 glTF-IBL-Sampler 参考产物的图像差异回归 fixture，以及 RMSE / PSNR 对比测试。
-- [ ] 评估极小 mip 是否需要更轻量的 payload 方案；如果需要，先独立设计再决定是否进入 v2。
-- [ ] 仅在 CLI 分发与预编译二进制方案明确后，再评估是否创建 `packages/baker`。
+- [ ] 优先排查并修正 irradiance bake 过早绑定 `irradiance_size` 的问题，避免在卷积前先将源环境重采样到过低分辨率后再做 diffuse 过滤。
+- [ ] 优先排查并修正 irradiance 的 sample cap 偏低问题，重新对齐与参考实现的采样预算与 LOD 行为，避免 HDR 小范围高亮贡献被过度抹平。
+- [ ] 新增 `packages/ktx2-loader`，提供浏览器侧 KTX2 加载能力，并在 README 中明确当前仅支持仓库现阶段产物画像（如 `KTX2 + BC6H_UFLOAT + zstd + cubemap`）。
+- [ ] 新增 `packages/ktx2-viewer`，作为私有浏览器验收工具，支持拖拽 `.ktx2` 文件进行预览与错误展示。
+- [ ] `packages/ktx2-viewer` 首版不接仓库内 fixture 目录，优先支持手动拖拽验收，避免目录结构耦合。
 
 ## 需要单独立项再展开的方向
 
 - [ ] 特定渲染引擎的运行时集成（放在独立包中设计）。
+- [ ] 评估后续是否将当前 `packages/loader` / `packages/e2e-loader` 重构收敛为 `ibla-loader` / `ibla-viewer`，作为独立阶段推进。
+- [ ] 评估是否为 LDR 输入提供比 `BC6H_UFLOAT` 更合适的 KTX2 编码路径；仅在收益、兼容性与复杂度权衡明确后再决定是否引入。
 - [ ] 参考实现对比升级为长期质量基线（单独定义基线产物、指标和回归策略）。
+- [ ] 仅在 CLI 分发与预编译二进制方案明确后，再评估是否创建 `packages/cli`。
 
 ## 暂不纳入当前范围
 
