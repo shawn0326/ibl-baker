@@ -38,7 +38,10 @@ It does not:
 - prepare WebGL or WebGPU upload objects
 - create engine-specific runtime textures
 
-Those concerns are left to the application or renderer integration layer, which can choose a higher-performance path such as browser-native image decode, GPU-side decode, or custom runtime-specific pipelines.
+Those concerns are left to the application or renderer integration layer.
+
+For KTX2 assets produced by the CLI (`--output-format ktx2`), applications should use
+ecosystem KTX2 parsers (e.g., `ktx-parse`) directly — this package does not handle `.ktx2` files.
 
 ## Core Model
 

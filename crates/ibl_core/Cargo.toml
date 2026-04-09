@@ -15,6 +15,7 @@ path = "src/lib.rs"
 exr = "1.74.0"
 glam = "0.30.0"
 image = { version = "0.25.10", default-features = false, features = ["hdr", "jpeg", "png"] }
+ktx2_writer = { path = "../ktx2_writer" }
 png = "0.18.0"
 rayon = "1.10.0"
 

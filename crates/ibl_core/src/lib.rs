@@ -12,7 +12,8 @@ mod source_image;
 #[cfg(test)]
 use bake_pipeline::cubemap_direction;
 use bake_pipeline::{
-    build_brdf_lut_chunk_entries, build_irradiance_chunk_entries, build_specular_chunk_entries,
+    build_brdf_lut_chunk_entries, build_irradiance_chunk_entries, build_irradiance_raw,
+    build_specular_chunk_entries, build_specular_raw, encode_mip_chain_to_ktx2,
 };
 #[cfg(test)]
 use source_image::{
@@ -445,6 +446,55 @@ pub fn bake_cubemap_to_asset(
 ) -> Result<IblAsset, IblError> {
     let (source, source_format) = load_environment_from_cubemap_paths(input)?;
     bake_environment_to_asset(source_format, &source, options)
+}
+
+/// Bake an equirectangular (latlong) or single-file HDR/EXR/LDR source to KTX2 bytes
+/// (BC6H + zstd cubemap). Only valid for `SpecularCubemap` and `IrradianceCubemap` asset kinds.
+pub fn bake_to_ktx2<P: AsRef<Path>>(input: P, options: BakeOptions) -> Result<Vec<u8>, IblError> {
+    let input_path = input.as_ref();
+    if !input_path.exists() {
+        return Err(IblError::InvalidInput(format!(
+            "input file does not exist: {}",
+            input_path.display()
+        )));
+    }
+    let (source, _source_format) = load_environment_from_file(input_path)?;
+    bake_environment_to_ktx2(&source, options)
+}
+
+/// Bake 6-face cubemap inputs to KTX2 bytes (BC6H + zstd). Only valid for `SpecularCubemap`
+/// and `IrradianceCubemap` asset kinds.
+pub fn bake_cubemap_to_ktx2(
+    input: &CubemapInputPaths,
+    options: BakeOptions,
+) -> Result<Vec<u8>, IblError> {
+    let (source, _source_format) = load_environment_from_cubemap_paths(input)?;
+    bake_environment_to_ktx2(&source, options)
+}
+
+fn bake_environment_to_ktx2(
+    source: &source_image::EnvironmentSource,
+    options: BakeOptions,
+) -> Result<Vec<u8>, IblError> {
+    if options.cube_size == 0 || options.irradiance_size == 0 {
+        return Err(IblError::InvalidInput(
+            "image sizes must be greater than zero".to_string(),
+        ));
+    }
+    match options.asset_kind {
+        AssetKind::SpecularCubemap => {
+            let mip_count = estimate_mip_count(options.cube_size);
+            let mip_chain = build_specular_raw(source, &options, mip_count);
+            encode_mip_chain_to_ktx2(&mip_chain)
+        }
+        AssetKind::IrradianceCubemap => {
+            let faces = build_irradiance_raw(source, &options);
+            encode_mip_chain_to_ktx2(&[faces])
+        }
+        AssetKind::BrdfLut => Err(IblError::InvalidInput(
+            "BRDF LUT does not support KTX2 output; use bake_to_asset() for PNG".to_string(),
+        )),
+    }
 }
 
 fn bake_environment_to_asset(

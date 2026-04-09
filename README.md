@@ -1,44 +1,47 @@
 # ibl-baker
 
-A renderer-agnostic IBL asset compiler that bakes HDR environments into portable `.ibla` texture payloads with a Rust core, CLI, a parser-only TypeScript loader, and a neutral browser validation app.
+A renderer-agnostic IBL asset compiler that bakes HDR environments into GPU-ready and portable texture assets, with a Rust core, CLI, and a parser-only TypeScript loader.
+
+The CLI produces two output formats:
+
+- **`.ktx2`** — GPU-ready cubemaps with BC6H compression and zstd supercompression, for direct engine and Web consumption.
+- **`.ibla`** — a portable, renderer-agnostic archive with PNG-encoded payloads, for archival and offline workflows.
+
+BRDF LUT is always emitted as a standalone `.png`.
 
 ## Documentation
 
-- [`crates/ibl_core/README.md`](crates/ibl_core/README.md)
-- [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md)
-- [`packages/loader/README.md`](packages/loader/README.md)
-- [`docs/format-spec.md`](docs/format-spec.md)
+| Document | Description |
+| --- | --- |
+| [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md) | CLI usage, options, and output format details |
+| [`docs/format-spec.md`](docs/format-spec.md) | `.ibla` binary format specification |
+| [`crates/ibl_core/README.md`](crates/ibl_core/README.md) | Rust core library scope |
+| [`packages/loader/README.md`](packages/loader/README.md) | TypeScript `.ibla` parser API |
 
 ## Status
 
-The repository is currently implementing the v1 pipeline across three layers:
+The repository implements the bake pipeline across three layers:
 
-- Rust baking, validation, and `.ibla` read/write
-- a parser-only TypeScript loader in `packages/loader`
-- a private browser-side validation app in `packages/e2e-loader`
+- **Rust core** — baking, validation, `.ibla` read/write, and KTX2 export
+- **CLI** — `ibl-baker bake` with `--output-format <ibla|ktx2|both>`, plus `validate`
+- **TypeScript loader** — parser-only `.ibla` reader (`@ibltools/loader`)
+- **Browser validation** — private `packages/e2e-loader` app for fixture inspection
 
 ## Scope
 
-The v1 goal is a stable, portable asset format with a small number of explicitly scoped integration layers.
-The main production path remains HDR IBL baking, while `srgb` and `linear`
-encoding variants keep the container semantics consistent for related payload types.
-
 Current priorities:
 
-- keep the `.ibla` container stable
-- keep CLI behavior aligned with `crates/ibl_cli/README.md`
-- keep the TypeScript loader parser-only in v1
-- keep the public JS surface limited to the parser package
-- expand verification around real bake outputs, loader parsing, and neutral browser validation
+- keep the `.ibla` container stable and well-specified
+- keep KTX2 output aligned with the BC6H + zstd pipeline
+- keep CLI behavior aligned with [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md)
+- keep the TypeScript loader parser-only
+- expand verification around bake outputs, loader parsing, and browser validation
 
 ## Workspace
 
-The repository uses:
+The repository uses a Cargo workspace and an npm workspace at the repo root.
 
-- a Cargo workspace at the repo root for Rust crates
-- an npm workspace at the repo root for JavaScript packages
-
-Common npm entry points from the repo root:
+Common npm entry points:
 
 ```bash
 npm install
@@ -59,4 +62,3 @@ Out of scope for now:
 - browser-side baking
 - engine-specific runtime adapters
 - WebAssembly bindings
-- alternative encodings and containers in the initial milestone

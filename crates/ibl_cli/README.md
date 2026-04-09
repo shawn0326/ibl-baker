@@ -1,9 +1,15 @@
 # ibl-baker CLI
 
-`ibl-baker` is the command-line interface for baking HDR environments into portable `.ibla` assets and validating the results.
+`ibl-baker` is the command-line tool for baking HDR environments into IBL texture assets.
 
-The shared `.ibla` container contract is defined in the repository format specification:
-<https://github.com/shawn0326/ibl-baker/blob/main/docs/format-spec.md>
+It supports two output formats:
+
+- **`.ibla`** — a portable, renderer-agnostic archive with PNG-encoded payloads.
+  Format specification: [`docs/format-spec.md`](../../docs/format-spec.md)
+- **`.ktx2`** — a GPU-ready cubemap with BC6H compression and zstd supercompression.
+  See [KTX2 Output](#ktx2-output) below.
+
+BRDF LUT always outputs as standalone `.png` regardless of format choice.
 
 ## Installation
 
@@ -23,7 +29,16 @@ That path does not require installing Rust.
 ## Quick Start
 
 ```bash
-ibl-baker bake ./environment.hdr --out-dir ./out --target specular
+# .ibla output (default)
+ibl-baker bake ./environment.hdr --out-dir ./out
+
+# KTX2 output (BC6H + zstd)
+ibl-baker bake ./environment.hdr --out-dir ./out --output-format ktx2
+
+# Both formats in one run
+ibl-baker bake ./environment.hdr --out-dir ./out --output-format both
+
+# Validate an .ibla asset
 ibl-baker validate ./out/specular.ibla
 ```
 
@@ -39,98 +54,79 @@ ibl-baker validate ./out/specular.ibla
 
 ## `bake`
 
-Supported v1 options:
+### Options
 
-- `--out-dir`
-- `--target`
-- `--size <auto|n>`
-- `--irradiance-size`
-- `--encoding <auto|rgbd-srgb|srgb|linear>`
-- `--faces <px,nx,py,ny,pz,nz>`
-- `--rotation`
-- `--samples`
-- `--quality <low|medium|high>`
+| Option | Values | Default | Description |
+| --- | --- | --- | --- |
+| `--out-dir` | path | *(required)* | Output directory |
+| `--target` | `specular`, `irradiance`, `lut` | all | Repeatable; filters output set |
+| `--output-format` | `ibla`, `ktx2`, `both` | `ibla` | Output container format |
+| `--size` | `auto` or integer | `auto` | Specular cubemap face size |
+| `--irradiance-size` | integer | `32` | Irradiance cubemap face size |
+| `--encoding` | `auto`, `rgbd-srgb`, `srgb`, `linear` | `auto` | `.ibla` payload encoding (ignored for KTX2) |
+| `--faces` | comma-separated filenames | *(auto-detect)* | Face order for directory inputs |
+| `--rotation` | float | `0` | Y-axis rotation in radians |
+| `--samples` | integer | varies | Sample count for convolution |
+| `--quality` | `low`, `medium`, `high` | `medium` | Bake quality preset |
 
-Default v1 bake workflow:
+### Output Files
 
-- without `--target`, `bake` emits the full output set
-- repeated `--target` filters outputs to a subset
-- output filenames are fixed in v1:
-- `specular.ibla`
-- `irradiance.ibla`
-- `brdf-lut.png`
+| `--output-format` | specular | irradiance | lut |
+| --- | --- | --- | --- |
+| `ibla` (default) | `specular.ibla` | `irradiance.ibla` | `brdf-lut.png` |
+| `ktx2` | `specular.ktx2` | `irradiance.ktx2` | `brdf-lut.png` |
+| `both` | both `.ibla` + `.ktx2` | both `.ibla` + `.ktx2` | `brdf-lut.png` |
 
-Format/output mapping:
+BRDF LUT always outputs as `.png` regardless of `--output-format`.
 
-- `specular` writes `.ibla`
-- `irradiance` writes `.ibla`
-- `lut` writes `.png`
+### Input
 
-Shared tuning semantics:
+- `input-path` accepts a single latlong image file (`.hdr`, `.exr`, `.png`, `.jpg`) or a directory containing 6 cubemap faces.
+- `--faces` is only valid for directory inputs and uses the fixed face order `px, nx, py, ny, pz, nz`.
+- Directory inputs auto-detect face files matching `px/nx/...` or `posx/negx/...` naming. If ambiguous, pass `--faces` explicitly.
+- All 6 faces must share the same format family and identical square dimensions.
 
-- `input-path` accepts either a single latlong image file or a directory containing 6 cubemap faces
-- `--size` controls specular cubemap face size and defaults to `auto`
-- `--irradiance-size` controls irradiance cubemap face size and defaults to `32`
-- `--encoding` applies to `.ibla` outputs and defaults to `auto`
-- `--faces` is only valid for directory inputs and uses the fixed face order `px, nx, py, ny, pz, nz`
-- `--rotation`, `--samples`, and `--quality` apply to the bake run as a whole
-- `--quality` accepts `low`, `medium`, or `high` and defaults to `medium`
-- `--encoding auto` currently accepts HDR, EXR, PNG, and JPEG-family inputs
+### Defaults
 
-Fixed v1 defaults:
+- `--size auto` selects from `128 | 256 | 512 | 1024 | 2048 | 4096`
+  - file inputs: estimates face size as `min(width / 4, height / 2)`
+  - directory inputs: uses detected face size directly
+  - selects the largest bucket not exceeding the estimated size; minimum `128`, fallback `512`
+- `--encoding auto` resolves to `rgbd-srgb` for `.hdr`/`.exr` and `srgb` for `.png`/`.jpg`/`.jpeg`
+- `linear` is only selected via explicit `--encoding linear`
+- BRDF LUT output is always `256×256`
+- `--irradiance-size` is an explicit override independent of `--size auto`
 
-- `--size auto` chooses a specular size from `128 | 256 | 512 | 1024 | 2048 | 4096`
-- file inputs estimate an equivalent cubemap face size from source dimensions as `min(width / 4, height / 2)`
-- directory inputs use the cubemap face size directly before bucket selection
-- `--size auto` picks the largest supported bucket that does not exceed the estimated or detected face size
-- if the source image is smaller than `128`, `--size auto` still resolves to `128`
-- if the source image size cannot currently be detected, `--size auto` falls back to `512`
-- irradiance face size defaults to `32`
-- `--encoding auto` resolves to `rgbd-srgb` for `.hdr` and `.exr` inputs
-- `--encoding auto` resolves to `srgb` for `.png`, `.jpg`, `.jpeg`, and unknown inputs
-- `linear` remains available as an explicit manual choice and is not selected by `auto`
-- BRDF LUT output is always `256x256`
-- `--irradiance-size` remains an explicit numeric override and is not changed by `--size auto`
+### `.ibla` Output
 
-Directory cubemap auto-detection:
+`.ibla` is a portable, renderer-agnostic archive format with PNG-encoded payloads.
 
-- v1 auto-detection only supports `px, nx, py, ny, pz, nz`
-- v1 also supports `posx, negx, posy, negy, posz, negz`
-- auto-detection succeeds only when exactly one full 6-face preset matches
-- if auto-detection fails or is ambiguous, pass `--faces <px,nx,py,ny,pz,nz>` with file names relative to the input directory
-- directory cubemap inputs must use one shared source format family, identical square dimensions, and all 6 faces must be present
+The `--encoding` option controls how pixel data is stored:
 
-Encoding reference:
+- `rgbd-srgb` — HDR values packed into sRGB-transferred RGBA PNG; the default for HDR/EXR inputs
+- `srgb` — standard sRGB color PNG; the default for LDR inputs
+- `linear` — linear-valued PNG for data payloads
 
-- `rgbd-srgb` is the default HDR-oriented export path
-- `srgb` is the default LDR color-image export path for non-HDR inputs under `--encoding auto`
-- `linear` remains available as an explicit manual choice for linear data payloads
+The full binary format specification is defined in [`docs/format-spec.md`](../../docs/format-spec.md).
 
-The exact file-level encoding semantics are defined in the repository format specification:
-<https://github.com/shawn0326/ibl-baker/blob/main/docs/format-spec.md>
+### KTX2 Output
+
+KTX2 outputs are GPU-ready cubemaps using BC6H block compression with zstd supercompression.
+
+- Vulkan format: `VK_FORMAT_BC6H_UFLOAT_BLOCK` (format 131)
+- Compression: BC6H unsigned half-float, 4×4 blocks
+- Supercompression: zstd per-level (scheme 2)
+- Input: linear f32 pixels converted to f16 → BC6H (the `--encoding` option has no effect)
+- BC6H `[0, 65504]` range cleanly represents both HDR and LDR sources
+- Face order: +X, −X, +Y, −Y, +Z, −Z
+- KV metadata: `KTXorientation=rd`, `KTXwriter=ibl-baker v{version}`
 
 ## `validate`
 
-`validate` is the public read/inspect command for `.ibla` assets.
+`validate` reads and inspects `.ibla` assets. It prints:
 
-It always prints:
+- format version, face count, chunk count
+- width, height, mip count, encoding
+- validation status (with issues listed if invalid)
 
-- format version
-- face count
-- chunk count
-- width
-- height
-- mip count
-- encoding
-- validation status
-
-If the asset is invalid, it appends validation issues after the summary.
-
-Validation checks include:
-
-- header magic and version
-- manifest topology integrity
-- canonical face ordering for cubemaps
-- deterministic chunk slot reconstruction
-- payload byte ranges and overlap
-- cubemap-vs-2D face usage
+Validation checks: header magic/version, manifest topology integrity, canonical face ordering, deterministic chunk slot reconstruction, payload byte ranges and overlap.

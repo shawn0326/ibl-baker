@@ -2,6 +2,7 @@
 members = [
     "crates/ibl_core",
     "crates/ibl_cli",
+    "crates/ktx2_writer",
 ]
 resolver = "2"
 

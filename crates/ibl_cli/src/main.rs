@@ -7,8 +7,9 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use ibl_core::{
-    bake_cubemap_to_asset, bake_to_asset, inspect_asset, read_asset, validate_asset, write_asset,
-    AssetKind, BakeOptions, BakeQuality, CubemapInputPaths, EncodingKind, IblError, SourceFormat,
+    bake_cubemap_to_asset, bake_cubemap_to_ktx2, bake_to_asset, bake_to_ktx2, inspect_asset,
+    read_asset, validate_asset, write_asset, AssetKind, BakeOptions, BakeQuality,
+    CubemapInputPaths, EncodingKind, IblError, SourceFormat,
 };
 
 fn main() {
@@ -55,6 +56,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
     let mut output_dir: Option<PathBuf> = None;
     let mut target_selection = TargetSelection::default();
     let mut requested_faces: Option<String> = None;
+    let mut output_format = OutputFormat::Ibla;
 
     let mut index = 1;
     while index < args.len() {
@@ -73,6 +75,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
             "--samples" => options.sample_count = parse_u32(value, "--samples")?,
             "--quality" => options.quality = parse_quality(value)?,
             "--faces" => requested_faces = Some(value.to_string()),
+            "--output-format" => output_format = parse_output_format(value)?,
             _ => return Err(CliError::Usage(format!("unknown bake option: {flag}"))),
         }
 
@@ -93,20 +96,41 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
             BakeTarget::Specular => {
                 let mut target_options = options.clone();
                 target_options.asset_kind = AssetKind::SpecularCubemap;
-                let asset = bake_input_to_asset(&input, target_options)?;
-                let output = output_dir.join("specular.ibla");
-                write_asset(&output, &asset)?;
-                outputs.push(output);
+                let emit_ibla = matches!(output_format, OutputFormat::Ibla | OutputFormat::Both);
+                let emit_ktx2 = matches!(output_format, OutputFormat::Ktx2 | OutputFormat::Both);
+                if emit_ibla {
+                    let asset = bake_input_to_asset(&input, target_options.clone())?;
+                    let output = output_dir.join("specular.ibla");
+                    write_asset(&output, &asset)?;
+                    outputs.push(output);
+                }
+                if emit_ktx2 {
+                    let ktx2_bytes = bake_input_to_ktx2(&input, target_options)?;
+                    let output = output_dir.join("specular.ktx2");
+                    fs::write(&output, ktx2_bytes).map_err(IblError::from)?;
+                    outputs.push(output);
+                }
             }
             BakeTarget::Irradiance => {
                 let mut target_options = options.clone();
                 target_options.asset_kind = AssetKind::IrradianceCubemap;
-                let asset = bake_input_to_asset(&input, target_options)?;
-                let output = output_dir.join("irradiance.ibla");
-                write_asset(&output, &asset)?;
-                outputs.push(output);
+                let emit_ibla = matches!(output_format, OutputFormat::Ibla | OutputFormat::Both);
+                let emit_ktx2 = matches!(output_format, OutputFormat::Ktx2 | OutputFormat::Both);
+                if emit_ibla {
+                    let asset = bake_input_to_asset(&input, target_options.clone())?;
+                    let output = output_dir.join("irradiance.ibla");
+                    write_asset(&output, &asset)?;
+                    outputs.push(output);
+                }
+                if emit_ktx2 {
+                    let ktx2_bytes = bake_input_to_ktx2(&input, target_options)?;
+                    let output = output_dir.join("irradiance.ktx2");
+                    fs::write(&output, ktx2_bytes).map_err(IblError::from)?;
+                    outputs.push(output);
+                }
             }
             BakeTarget::Lut => {
+                // BRDF LUT always outputs as PNG regardless of --output-format.
                 let mut target_options = options.clone();
                 target_options.asset_kind = AssetKind::BrdfLut;
                 let asset = bake_input_to_asset(&input, target_options)?;
@@ -292,6 +316,26 @@ fn bake_input_to_asset(input: &BakeInput, options: BakeOptions) -> Result<ibl_co
     match input {
         BakeInput::File { path } => bake_to_asset(path, options).map_err(CliError::from),
         BakeInput::Cubemap { faces, .. } => bake_cubemap_to_asset(faces, options).map_err(CliError::from),
+    }
+}
+
+fn bake_input_to_ktx2(input: &BakeInput, options: BakeOptions) -> Result<Vec<u8>, CliError> {
+    match input {
+        BakeInput::File { path } => bake_to_ktx2(path, options).map_err(CliError::from),
+        BakeInput::Cubemap { faces, .. } => {
+            bake_cubemap_to_ktx2(faces, options).map_err(CliError::from)
+        }
+    }
+}
+
+fn parse_output_format(value: &str) -> Result<OutputFormat, CliError> {
+    match value {
+        "ibla" => Ok(OutputFormat::Ibla),
+        "ktx2" => Ok(OutputFormat::Ktx2),
+        "both" => Ok(OutputFormat::Both),
+        other => Err(CliError::Usage(format!(
+            "unsupported output format: {other}; expected ibla, ktx2, or both"
+        ))),
     }
 }
 
@@ -680,6 +724,7 @@ fn help_text() -> String {
         "  --size <auto|n>",
         "  --irradiance-size <n>",
         "  --encoding <auto|rgbd-srgb|srgb|linear>",
+        "  --output-format <ibla|ktx2|both>",
         "  --faces <px,nx,py,ny,pz,nz>",
         "  --rotation <deg>",
         "  --samples <n>",
@@ -690,10 +735,12 @@ fn help_text() -> String {
         "  file input derives an equivalent cubemap face size from input dimensions before bucketing",
         "  directory input uses the cubemap face size before bucketing",
         "  --irradiance-size -> 32",
+        "  --output-format -> ibla (backward compatible)",
         "  directory auto-detect names -> px/nx/py/ny/pz/nz or posx/negx/posy/negy/posz/negz",
         "  --faces order -> px, nx, py, ny, pz, nz",
         "  --encoding auto -> rgbd-srgb for .hdr/.exr, srgb for .png/.jpg/.jpeg/unknown",
         "  output files -> specular.ibla, irradiance.ibla, brdf-lut.png",
+        "  output files (ktx2) -> specular.ktx2, irradiance.ktx2, brdf-lut.png",
         "",
         "validate output",
         "  version, face count, chunk count, width, height, mip count, encoding, validation status",
@@ -747,6 +794,13 @@ enum BakeTarget {
     Specular,
     Irradiance,
     Lut,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OutputFormat {
+    Ibla,
+    Ktx2,
+    Both,
 }
 
 #[derive(Debug, Clone, Copy, Default)]

@@ -129,8 +129,7 @@ pub(crate) fn build_specular_chunk_entries(
     options: &BakeOptions,
     mip_count: u32,
 ) -> Result<Vec<ChunkEntry>, IblError> {
-    let mut context = BakeContext::new(source, options.cube_size, options.rotation_degrees);
-    let mip_chain = build_specular_mip_chain(&mut context, options, mip_count);
+    let mip_chain = build_specular_raw(source, options, mip_count);
     encode_cubemap_mips(&mip_chain, options.output_encoding)
 }
 
@@ -138,16 +137,61 @@ pub(crate) fn build_irradiance_chunk_entries(
     source: &EnvironmentSource,
     options: &BakeOptions,
 ) -> Result<Vec<ChunkEntry>, IblError> {
+    let faces = build_irradiance_raw(source, options);
+    encode_cubemap_mips(&[faces], options.output_encoding)
+}
+
+pub(crate) fn build_specular_raw(
+    source: &EnvironmentSource,
+    options: &BakeOptions,
+    mip_count: u32,
+) -> Vec<CubemapFaces> {
+    let mut context = BakeContext::new(source, options.cube_size, options.rotation_degrees);
+    build_specular_mip_chain(&mut context, options, mip_count)
+}
+
+pub(crate) fn build_irradiance_raw(
+    source: &EnvironmentSource,
+    options: &BakeOptions,
+) -> CubemapFaces {
     let mut context = BakeContext::new(source, options.irradiance_size, options.rotation_degrees);
-    let faces = render_filtered_faces(
+    render_filtered_faces(
         &mut context,
         options.irradiance_size,
         Distribution::Lambertian,
         1.0,
         effective_irradiance_sample_count(options),
-    );
+    )
+}
 
-    encode_cubemap_mips(&[faces], options.output_encoding)
+pub(crate) fn encode_mip_chain_to_ktx2(
+    mip_chain: &[CubemapFaces],
+) -> Result<Vec<u8>, IblError> {
+    use ktx2_writer::{CubemapLevel, WriterMetadata, write_bc6h_cubemap_ktx2};
+
+    let levels: Vec<CubemapLevel> = mip_chain
+        .iter()
+        .map(|faces| {
+            let face_size = faces[0].width;
+            let face_pixels = std::array::from_fn(|i| {
+                faces[i]
+                    .pixels
+                    .iter()
+                    .flat_map(|v| [v.x, v.y, v.z])
+                    .collect()
+            });
+            CubemapLevel {
+                face_pixels,
+                face_size,
+            }
+        })
+        .collect();
+
+    let meta = WriterMetadata {
+        writer: concat!("ibl-baker v", env!("CARGO_PKG_VERSION")),
+    };
+
+    write_bc6h_cubemap_ktx2(&levels, &meta).map_err(|e| IblError::InvalidInput(e.to_string()))
 }
 
 pub(crate) fn build_brdf_lut_chunk_entries(

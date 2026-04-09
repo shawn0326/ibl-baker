@@ -1,0 +1,15 @@
+[package]
+name = "ktx2_writer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Write-only KTX2 container with BC6H compression and zstd supercompression for IBL assets."
+
+[lib]
+name = "ktx2_writer"
+path = "src/lib.rs"
+
+[dependencies]
+half = "2"
+intel_tex_2 = "0.5"
+zstd = "0.13"
