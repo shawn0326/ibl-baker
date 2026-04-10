@@ -103,5 +103,5 @@ jobs:
 
             Registry publishing remains manual:
 
-            - Cargo: `ibl_core`, `ibl_cli`
-            - npm: `@ibltools/loader`
+            - Cargo: `ktx2_writer`, `ibl_core`, `ibl_cli`
+            - npm: `@ibltools/ibla-loader`, `@ibltools/ktx2-loader`

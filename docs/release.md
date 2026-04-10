@@ -11,7 +11,7 @@ For a new public release:
 - update public package versions in `packages/ibla-loader/package.json` and `packages/ktx2-loader/package.json`
 - update private viewer package versions when keeping the full workspace on one release version
 
-The current KTX2 and `.ibla` loader release uses `v0.2.0`.
+The current Rust crate release uses `v0.2.1`; the current npm package release remains `v0.2.0`.
 The initial public release used `v0.1.0`.
 
 ## Preflight Checks
@@ -63,6 +63,7 @@ npm publish -w @ibltools/ktx2-loader --access public
 
 Wait until `ktx2_writer` is visible on crates.io before rerunning the `ibl_core` dry run and publishing `ibl_core`.
 Wait until `ibl_core` is visible on crates.io before rerunning the `ibl_cli` dry run and publishing `ibl_cli`.
+Skip the npm publish commands if the npm packages have no changes and the target npm version is already published.
 
 After `@ibltools/ibla-loader` is published successfully, manually deprecate the old package name:
 
@@ -77,8 +78,8 @@ GitHub Release binaries are built automatically from tags matching `v*`.
 Create and push the version tag after the registry publishes complete:
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.2.1
+git push origin v0.2.1
 ```
 
 The release workflow builds `ibl-baker` for:
@@ -89,9 +90,9 @@ The release workflow builds `ibl-baker` for:
 
 Expected asset names:
 
-- `ibl-baker-v0.2.0-windows-x64.zip`
-- `ibl-baker-v0.2.0-macos-arm64.tar.gz`
-- `ibl-baker-v0.2.0-linux-x64.tar.gz`
+- `ibl-baker-v0.2.1-windows-x64.zip`
+- `ibl-baker-v0.2.1-macos-arm64.tar.gz`
+- `ibl-baker-v0.2.1-linux-x64.tar.gz`
 
 The workflow creates or updates the GitHub Release for the tag and uploads those archives as release assets.
 

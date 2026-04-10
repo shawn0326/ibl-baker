@@ -40,7 +40,7 @@ pub struct CubemapLevel {
 }
 
 /// Caller-provided generator string written to `KTXwriter` metadata.
-/// Recommended format: `"ibl-baker ktx2_writer v0.2.0"`.
+/// Recommended format: `"ibl-baker ktx2_writer v0.2.1"`.
 pub struct WriterMetadata<'a> {
     pub writer: &'a str,
 }

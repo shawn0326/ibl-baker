@@ -1626,7 +1626,7 @@ mod tests {
     fn chunk_table_binary_round_trip_is_lossless() {
         let manifest = Manifest {
             generator: "ibl-baker".to_string(),
-            generator_version: "0.2.0".to_string(),
+            generator_version: "0.2.1".to_string(),
             encoding: "rgbd-srgb".to_string(),
             container: "png".to_string(),
             width: BRDF_LUT_SIZE,
@@ -1727,7 +1727,7 @@ mod tests {
             },
             manifest: Manifest {
                 generator: "ibl-baker".to_string(),
-                generator_version: "0.2.0".to_string(),
+                generator_version: "0.2.1".to_string(),
                 encoding: "rgbd-srgb".to_string(),
                 container: "png".to_string(),
                 width: 512,
@@ -1851,7 +1851,7 @@ mod tests {
                 },
                 manifest: Manifest {
                     generator: "ibl-baker".to_string(),
-                    generator_version: "0.2.0".to_string(),
+                    generator_version: "0.2.1".to_string(),
                     encoding: encoding.to_string(),
                     container: "png".to_string(),
                     width: 4,
