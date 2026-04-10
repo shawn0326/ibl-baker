@@ -7,9 +7,11 @@ This document covers the manual registry publish steps and the tag-driven GitHub
 For a new public release:
 
 - update `[workspace.package].version` in the workspace `Cargo.toml`
-- update `packages/ibla-loader/package.json`
+- update the workspace crate dependency versions in `crates/*/Cargo.toml`
+- update public package versions in `packages/ibla-loader/package.json` and `packages/ktx2-loader/package.json`
+- update private viewer package versions when keeping the full workspace on one release version
 
-The current `.ibla` loader rename release uses `v0.2.0`.
+The current KTX2 and `.ibla` loader release uses `v0.2.0`.
 The initial public release used `v0.1.0`.
 
 ## Preflight Checks
@@ -19,15 +21,11 @@ Run these commands from the repository root before publishing:
 ```bash
 cargo test --workspace
 cargo check --workspace
-cargo publish -p ibl_core --dry-run --allow-dirty
-cargo publish -p ibl_cli --dry-run --allow-dirty
 npm test --workspaces
 npm run check:ts
 npm pack --dry-run -w @ibltools/ibla-loader
+npm pack --dry-run -w @ibltools/ktx2-loader
 ```
-
-`cargo publish -p ibl_cli --dry-run --allow-dirty` depends on `ibl_core` already being available on crates.io for the target version.
-If that version of `ibl_core` has not propagated yet, publish `ibl_core` first, wait for the index to update, then rerun the `ibl_cli` dry run.
 
 Before the real publish, confirm:
 
@@ -35,13 +33,14 @@ Before the real publish, confirm:
 - the npm token is configured locally
 - the target package names are still available or already owned by the release account
 
-For the `.ibla` loader rename, verify the new npm package name before publishing:
+For the npm packages, verify the package names before publishing:
 
 ```bash
 npm view @ibltools/ibla-loader name
+npm view @ibltools/ktx2-loader name
 ```
 
-If the package does not exist yet, npm returns a not-found error. If it exists, confirm the release account owns or can publish to it.
+If a package does not exist yet, npm returns a not-found error. If it exists, confirm the release account owns or can publish to it.
 
 ## Publish Order
 
@@ -49,11 +48,20 @@ Registry publishing stays manual.
 Publish in this order:
 
 ```bash
+cargo publish -p ktx2_writer --dry-run --allow-dirty
+cargo publish -p ktx2_writer
+
+cargo publish -p ibl_core --dry-run --allow-dirty
 cargo publish -p ibl_core
+
+cargo publish -p ibl_cli --dry-run --allow-dirty
 cargo publish -p ibl_cli
+
 npm publish -w @ibltools/ibla-loader --access public
+npm publish -w @ibltools/ktx2-loader --access public
 ```
 
+Wait until `ktx2_writer` is visible on crates.io before rerunning the `ibl_core` dry run and publishing `ibl_core`.
 Wait until `ibl_core` is visible on crates.io before rerunning the `ibl_cli` dry run and publishing `ibl_cli`.
 
 After `@ibltools/ibla-loader` is published successfully, manually deprecate the old package name:
@@ -96,14 +104,15 @@ Recommended structure:
 Highlights
 - summarize the public CLI scope
 - summarize the `.ibla` loader scope
+- summarize the KTX2 loader scope
 
 Install
 - cargo install ibl_cli
 - download a prebuilt binary from the release assets
 
 Packages
-- crates.io: ibl_core, ibl_cli
-- npm: @ibltools/ibla-loader
+- crates.io: ktx2_writer, ibl_core, ibl_cli
+- npm: @ibltools/ibla-loader, @ibltools/ktx2-loader
 ```
 
 ## Post-Release Verification
@@ -117,3 +126,4 @@ After the tag workflow completes, verify:
 - the published crate and npm package versions match the tag version
 - `npm view @ibltools/loader deprecated` shows the rename message
 - `npm view @ibltools/ibla-loader version` shows the published version
+- `npm view @ibltools/ktx2-loader version` shows the published version

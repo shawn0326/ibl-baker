@@ -3,7 +3,7 @@ name = "ibl_cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Command-line interface for baking and validating .ibla assets."
+description = "Command-line interface for baking and validating IBL assets."
 repository = "https://github.com/shawn0326/ibl-baker"
 readme = "README.md"
 
@@ -12,7 +12,7 @@ name = "ibl-baker"
 path = "src/main.rs"
 
 [dependencies]
-ibl_core = { version = "0.1.0", path = "../ibl_core" }
+ibl_core = { version = "0.2.0", path = "../ibl_core" }
 
 [dev-dependencies]
 image = { version = "0.25.10", default-features = false, features = ["hdr", "png"] }

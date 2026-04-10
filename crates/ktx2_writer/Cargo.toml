@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Write-only KTX2 container with BC6H compression and zstd supercompression for IBL assets."
+repository = "https://github.com/shawn0326/ibl-baker"
+readme = "README.md"
 
 [lib]
 name = "ktx2_writer"

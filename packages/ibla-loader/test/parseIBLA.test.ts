@@ -16,7 +16,7 @@ test("parseIBLA parses a synthetic 2D asset with derived mip metadata", () => {
   const bytes = createIblaBytes({
     manifest: {
       generator: "ibl-baker",
-      generatorVersion: "0.1.0",
+      generatorVersion: "0.2.0",
       encoding: "srgb",
       container: "png",
       width: 4,
@@ -269,7 +269,7 @@ function loadCommittedFixture(
 function baseManifest() {
   return {
     generator: "ibl-baker",
-    generatorVersion: "0.1.0",
+    generatorVersion: "0.2.0",
     encoding: "srgb",
     container: "png",
     width: 4,
