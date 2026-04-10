@@ -5,7 +5,9 @@ use std::f32::consts::{PI, TAU};
 use glam::{Vec2, Vec3};
 use rayon::prelude::*;
 
-use crate::source_image::{encode_png_image, sample_environment, EnvironmentSource, Rotation, SourceImage};
+use crate::source_image::{
+    encode_png_image, sample_environment, EnvironmentSource, Rotation, SourceImage,
+};
 use crate::{
     BakeOptions, BakeQuality, ChunkData, ChunkEntry, ChunkRecord, EncodingKind, Face, IblError,
 };
@@ -13,9 +15,9 @@ use crate::{
 const DEFAULT_SPECULAR_SAMPLES_LOW: u32 = 256;
 const DEFAULT_SPECULAR_SAMPLES_MEDIUM: u32 = 512;
 const DEFAULT_SPECULAR_SAMPLES_HIGH: u32 = 1024;
-const DEFAULT_IRRADIANCE_SAMPLES_LOW: u32 = 128;
-const DEFAULT_IRRADIANCE_SAMPLES_MEDIUM: u32 = 256;
-const DEFAULT_IRRADIANCE_SAMPLES_HIGH: u32 = 512;
+const DEFAULT_IRRADIANCE_SAMPLES_LOW: u32 = 256;
+const DEFAULT_IRRADIANCE_SAMPLES_MEDIUM: u32 = 1024;
+const DEFAULT_IRRADIANCE_SAMPLES_HIGH: u32 = 2048;
 const DEFAULT_BRDF_SAMPLES_LOW: u32 = 32;
 const DEFAULT_BRDF_SAMPLES_MEDIUM: u32 = 64;
 const DEFAULT_BRDF_SAMPLES_HIGH: u32 = 128;
@@ -154,7 +156,8 @@ pub(crate) fn build_irradiance_raw(
     source: &EnvironmentSource,
     options: &BakeOptions,
 ) -> CubemapFaces {
-    let mut context = BakeContext::new(source, options.irradiance_size, options.rotation_degrees);
+    let source_cubemap_size = options.cube_size.max(options.irradiance_size);
+    let mut context = BakeContext::new(source, source_cubemap_size, options.rotation_degrees);
     render_filtered_faces(
         &mut context,
         options.irradiance_size,
@@ -164,10 +167,8 @@ pub(crate) fn build_irradiance_raw(
     )
 }
 
-pub(crate) fn encode_mip_chain_to_ktx2(
-    mip_chain: &[CubemapFaces],
-) -> Result<Vec<u8>, IblError> {
-    use ktx2_writer::{CubemapLevel, WriterMetadata, write_bc6h_cubemap_ktx2};
+pub(crate) fn encode_mip_chain_to_ktx2(mip_chain: &[CubemapFaces]) -> Result<Vec<u8>, IblError> {
+    use ktx2_writer::{write_bc6h_cubemap_ktx2, CubemapLevel, WriterMetadata};
 
     let levels: Vec<CubemapLevel> = mip_chain
         .iter()
@@ -768,6 +769,20 @@ mod tests {
             .into_rgba8()
     }
 
+    fn cubemap_difference(a: &CubemapFaces, b: &CubemapFaces) -> f32 {
+        a.iter()
+            .zip(b.iter())
+            .map(|(a_face, b_face)| {
+                a_face
+                    .pixels
+                    .iter()
+                    .zip(b_face.pixels.iter())
+                    .map(|(a_pixel, b_pixel)| (*a_pixel - *b_pixel).length())
+                    .sum::<f32>()
+            })
+            .sum()
+    }
+
     #[test]
     fn specular_prefilter_uses_more_samples_for_rougher_mips() {
         let options = BakeOptions {
@@ -809,12 +824,9 @@ mod tests {
             ..BakeOptions::default()
         };
 
-        let entries = build_specular_chunk_entries(
-            &EnvironmentSource::Latlong(source),
-            &options,
-            4,
-        )
-        .expect("specular should bake");
+        let entries =
+            build_specular_chunk_entries(&EnvironmentSource::Latlong(source), &options, 4)
+                .expect("specular should bake");
         let mip0 = entries
             .iter()
             .find(|entry| entry.record.mip_level == 0 && entry.record.face == Some(Face::PositiveZ))
@@ -853,6 +865,84 @@ mod tests {
         let center = image.get_pixel(4, 4).0;
         assert!(center[0] > 0);
         assert!(center[0] < 255);
+    }
+
+    #[test]
+    fn irradiance_prefilter_uses_cube_size_for_source_cubemap() {
+        let source = EnvironmentSource::Latlong(hotspot_latlong(128, 64));
+        let options = BakeOptions {
+            cube_size: 32,
+            irradiance_size: 8,
+            sample_count: 128,
+            quality: BakeQuality::Medium,
+            ..BakeOptions::default()
+        };
+
+        let baked = build_irradiance_raw(&source, &options);
+
+        let mut expected_context = BakeContext::new(
+            &source,
+            options.cube_size.max(options.irradiance_size),
+            options.rotation_degrees,
+        );
+        let expected = render_filtered_faces(
+            &mut expected_context,
+            options.irradiance_size,
+            Distribution::Lambertian,
+            1.0,
+            effective_irradiance_sample_count(&options),
+        );
+        let mut low_res_context =
+            BakeContext::new(&source, options.irradiance_size, options.rotation_degrees);
+        let low_res = render_filtered_faces(
+            &mut low_res_context,
+            options.irradiance_size,
+            Distribution::Lambertian,
+            1.0,
+            effective_irradiance_sample_count(&options),
+        );
+
+        assert_eq!(baked, expected);
+        assert!(cubemap_difference(&baked, &low_res) > 1.0e-3);
+    }
+
+    #[test]
+    fn irradiance_prefilter_changes_when_source_cube_size_changes() {
+        let source = EnvironmentSource::Latlong(hotspot_latlong(128, 64));
+        let low_source_options = BakeOptions {
+            cube_size: 8,
+            irradiance_size: 8,
+            sample_count: 128,
+            quality: BakeQuality::Medium,
+            ..BakeOptions::default()
+        };
+        let high_source_options = BakeOptions {
+            cube_size: 32,
+            ..low_source_options.clone()
+        };
+
+        let low_source = build_irradiance_raw(&source, &low_source_options);
+        let high_source = build_irradiance_raw(&source, &high_source_options);
+
+        assert_eq!(low_source[0].width, high_source[0].width);
+        assert_eq!(low_source[0].height, high_source[0].height);
+        assert!(cubemap_difference(&low_source, &high_source) > 1.0e-3);
+    }
+
+    #[test]
+    fn irradiance_sample_budget_matches_quality_caps() {
+        let sample_count_for = |quality, sample_count| {
+            effective_irradiance_sample_count(&BakeOptions {
+                quality,
+                sample_count,
+                ..BakeOptions::default()
+            })
+        };
+
+        assert_eq!(sample_count_for(BakeQuality::Low, 4096), 256);
+        assert_eq!(sample_count_for(BakeQuality::Medium, 4096), 1024);
+        assert_eq!(sample_count_for(BakeQuality::High, 4096), 2048);
+        assert_eq!(sample_count_for(BakeQuality::High, 64), 64);
     }
 
     #[test]

@@ -8,7 +8,7 @@ const rootDir = path.resolve(scriptDir, "..");
 const fixtureInputsDir = path.join(rootDir, "fixtures", "inputs");
 const fixtureOutputsDir = path.join(rootDir, "fixtures", "outputs");
 
-const fixtures = [
+const iblaFixtures = [
   {
     inputPath: "royal_esplanade_1k.hdr",
     outputDirName: "royal_esplanade_1k",
@@ -32,7 +32,18 @@ const fixtures = [
   },
 ];
 
-for (const fixture of fixtures) {
+const ktx2Fixtures = [
+  {
+    inputPath: "royal_esplanade_1k.hdr",
+    outputDirName: "royal_esplanade_1k_ktx2",
+  },
+  {
+    inputPath: "spruit_sunrise_2k.jpg",
+    outputDirName: "spruit_sunrise_2k_ktx2",
+  },
+];
+
+function bakeFixture(fixture, extraArgs = []) {
   const inputPath = path.join(fixtureInputsDir, fixture.inputPath);
   const outputDir = path.join(fixtureOutputsDir, fixture.outputDirName);
 
@@ -52,10 +63,26 @@ for (const fixture of fixtures) {
       "--out-dir",
       outputDir,
       ...(fixture.extraArgs ?? []),
+      ...extraArgs,
     ],
     {
       cwd: rootDir,
       stdio: "inherit",
     },
   );
+}
+
+for (const fixture of iblaFixtures) {
+  bakeFixture(fixture);
+}
+
+for (const fixture of ktx2Fixtures) {
+  bakeFixture(fixture, [
+    "--target",
+    "specular",
+    "--target",
+    "irradiance",
+    "--output-format",
+    "ktx2",
+  ]);
 }

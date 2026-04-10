@@ -61,12 +61,12 @@ ibl-baker validate ./out/specular.ibla
 | `--out-dir` | path | *(required)* | Output directory |
 | `--target` | `specular`, `irradiance`, `lut` | all | Repeatable; filters output set |
 | `--output-format` | `ibla`, `ktx2`, `both` | `ibla` | Output container format |
-| `--size` | `auto` or integer | `auto` | Specular cubemap face size |
-| `--irradiance-size` | integer | `32` | Irradiance cubemap face size |
+| `--size` | `auto` or integer | `auto` | Specular cubemap face size; also the source cubemap size for irradiance filtering |
+| `--irradiance-size` | integer | `32` | Final irradiance cubemap face size |
 | `--encoding` | `auto`, `rgbd-srgb`, `srgb`, `linear` | `auto` | `.ibla` payload encoding (ignored for KTX2) |
 | `--faces` | comma-separated filenames | *(auto-detect)* | Face order for directory inputs |
 | `--rotation` | float | `0` | Y-axis rotation in radians |
-| `--samples` | integer | varies | Sample count for convolution |
+| `--samples` | integer | `1024` | Requested sample count for convolution |
 | `--quality` | `low`, `medium`, `high` | `medium` | Bake quality preset |
 
 ### Output Files
@@ -95,7 +95,8 @@ BRDF LUT always outputs as `.png` regardless of `--output-format`.
 - `--encoding auto` resolves to `rgbd-srgb` for `.hdr`/`.exr` and `srgb` for `.png`/`.jpg`/`.jpeg`
 - `linear` is only selected via explicit `--encoding linear`
 - BRDF LUT output is always `256×256`
-- `--irradiance-size` is an explicit override independent of `--size auto`
+- `--irradiance-size` controls only the final irradiance cubemap face size; `--size` controls the internal source cubemap resolution used by irradiance filtering
+- Irradiance sampling is capped by quality: `low` = 256, `medium` = 1024, `high` = 2048; explicit lower `--samples` values are preserved
 
 ### `.ibla` Output
 
