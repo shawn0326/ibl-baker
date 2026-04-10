@@ -4,7 +4,7 @@ import {
   type FaceName,
   type ParsedChunk,
   type ParsedIBLA,
-} from "@ibltools/loader";
+} from "@ibltools/ibla-loader";
 
 type ViewerStatus = "idle" | "loading" | "ok" | "parse-error" | "preview-error";
 

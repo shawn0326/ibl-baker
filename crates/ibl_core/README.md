@@ -23,7 +23,7 @@ It stays independent from renderer-specific runtime upload paths.
 - `crates/ibl_cli` exposes the public command-line workflow on top of this crate.
   See [`crates/ibl_cli/README.md`](../ibl_cli/README.md) for CLI options and output format details.
 - `crates/ktx2_writer` is the write-only KTX2 serializer used internally for KTX2 output.
-- `packages/loader` is the parser-only TypeScript reader for `.ibla` files.
+- `packages/ibla-loader` is the parser-only TypeScript reader for `.ibla` files.
 - `packages/ktx2-loader` is the narrow TypeScript reader for `ibl-baker` KTX2 cubemap files.
 
 The `.ibla` binary format is defined in [`docs/format-spec.md`](../../docs/format-spec.md).

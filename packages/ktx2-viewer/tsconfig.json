@@ -7,6 +7,11 @@
     ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "paths": {
+      "@ibltools/ktx2-loader": [
+        "../ktx2-loader/src/index.ts"
+      ]
+    },
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,

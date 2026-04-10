@@ -7,6 +7,11 @@
     ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "paths": {
+      "@ibltools/ibla-loader": [
+        "../ibla-loader/src/index.ts"
+      ]
+    },
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,

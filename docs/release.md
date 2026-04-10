@@ -7,9 +7,10 @@ This document covers the manual registry publish steps and the tag-driven GitHub
 For a new public release:
 
 - update `[workspace.package].version` in the workspace `Cargo.toml`
-- update `packages/loader/package.json`
+- update `packages/ibla-loader/package.json`
 
-The initial public release uses `v0.1.0`.
+The current `.ibla` loader rename release uses `v0.2.0`.
+The initial public release used `v0.1.0`.
 
 ## Preflight Checks
 
@@ -22,7 +23,7 @@ cargo publish -p ibl_core --dry-run --allow-dirty
 cargo publish -p ibl_cli --dry-run --allow-dirty
 npm test --workspaces
 npm run check:ts
-npm pack --dry-run -w @ibltools/loader
+npm pack --dry-run -w @ibltools/ibla-loader
 ```
 
 `cargo publish -p ibl_cli --dry-run --allow-dirty` depends on `ibl_core` already being available on crates.io for the target version.
@@ -34,6 +35,14 @@ Before the real publish, confirm:
 - the npm token is configured locally
 - the target package names are still available or already owned by the release account
 
+For the `.ibla` loader rename, verify the new npm package name before publishing:
+
+```bash
+npm view @ibltools/ibla-loader name
+```
+
+If the package does not exist yet, npm returns a not-found error. If it exists, confirm the release account owns or can publish to it.
+
 ## Publish Order
 
 Registry publishing stays manual.
@@ -42,10 +51,16 @@ Publish in this order:
 ```bash
 cargo publish -p ibl_core
 cargo publish -p ibl_cli
-npm publish -w @ibltools/loader --access public
+npm publish -w @ibltools/ibla-loader --access public
 ```
 
 Wait until `ibl_core` is visible on crates.io before rerunning the `ibl_cli` dry run and publishing `ibl_cli`.
+
+After `@ibltools/ibla-loader` is published successfully, manually deprecate the old package name:
+
+```bash
+npm deprecate @ibltools/loader "Package renamed to @ibltools/ibla-loader. Please install @ibltools/ibla-loader instead."
+```
 
 ## Git Tag And Release
 
@@ -54,8 +69,8 @@ GitHub Release binaries are built automatically from tags matching `v*`.
 Create and push the version tag after the registry publishes complete:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 The release workflow builds `ibl-baker` for:
@@ -66,9 +81,9 @@ The release workflow builds `ibl-baker` for:
 
 Expected asset names:
 
-- `ibl-baker-v0.1.0-windows-x64.zip`
-- `ibl-baker-v0.1.0-macos-arm64.tar.gz`
-- `ibl-baker-v0.1.0-linux-x64.tar.gz`
+- `ibl-baker-v0.2.0-windows-x64.zip`
+- `ibl-baker-v0.2.0-macos-arm64.tar.gz`
+- `ibl-baker-v0.2.0-linux-x64.tar.gz`
 
 The workflow creates or updates the GitHub Release for the tag and uploads those archives as release assets.
 
@@ -88,7 +103,7 @@ Install
 
 Packages
 - crates.io: ibl_core, ibl_cli
-- npm: @ibltools/loader
+- npm: @ibltools/ibla-loader
 ```
 
 ## Post-Release Verification
@@ -100,3 +115,5 @@ After the tag workflow completes, verify:
 - archive names match the documented convention
 - the CLI README install instructions still match the released assets
 - the published crate and npm package versions match the tag version
+- `npm view @ibltools/loader deprecated` shows the rename message
+- `npm view @ibltools/ibla-loader version` shows the published version

@@ -1,18 +1,18 @@
 {
-  "name": "@ibltools/loader",
-  "version": "0.1.0",
+  "name": "@ibltools/ibla-loader",
+  "version": "0.2.0",
   "private": false,
   "description": "Parser-only TypeScript loader for .ibla assets.",
   "license": "MIT",
   "type": "module",
-  "homepage": "https://github.com/shawn0326/ibl-baker/tree/main/packages/loader#readme",
+  "homepage": "https://github.com/shawn0326/ibl-baker/tree/main/packages/ibla-loader#readme",
   "bugs": {
     "url": "https://github.com/shawn0326/ibl-baker/issues"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shawn0326/ibl-baker.git",
-    "directory": "packages/loader"
+    "directory": "packages/ibla-loader"
   },
   "keywords": [
     "ibl",

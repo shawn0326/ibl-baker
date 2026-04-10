@@ -5,7 +5,7 @@
 - Rust bake/validate 主链路、`.ibla` v1 容器、parser-only TypeScript loader 已落地。
 - KTX2 导出（BC6H + zstd）通过 `crates/ktx2_writer` 实现，CLI `--output-format <ibla|ktx2|both>` 可用。
 - `.ibla` 与 `.ktx2` 两种输出格式地位对等，CLI 默认输出 `.ibla`。
-- 当前对外契约以 `docs/format-spec.md`（纯 `.ibla`）、`crates/ibl_cli/README.md`（CLI + 双格式）、`packages/loader/README.md` 为准。
+- 当前对外契约以 `docs/format-spec.md`（纯 `.ibla`）、`crates/ibl_cli/README.md`（CLI + 双格式）、`packages/ibla-loader/README.md` 为准。
 - `fixtures/outputs` 已包含 `.ibla` 和 `.ktx2` 样例产物。
 
 ## 已完成：v0.2.0 KTX2 导出
@@ -26,6 +26,7 @@
 - [x] 新增 `packages/ibla-viewer`，作为私有浏览器验收工具，支持拖拽 `.ibla` 文件、cubemap cross 预览与错误展示。
 - [x] `packages/ibla-viewer` 显示路径与 `packages/ktx2-viewer` 对齐，统一使用 linear → Reinhard → gamma，便于对比 `.ibla` 与 `.ktx2` 输出。
 - [x] 将手动浏览器验收入口收敛到 `packages/ibla-viewer` / `packages/ktx2-viewer`。
+- [x] 将公开 `.ibla` JS 包迁移为 `@ibltools/ibla-loader`（`packages/ibla-loader`），旧 `@ibltools/loader` 由发布者后续在 npm 手动废弃。
 
 ## 需要单独立项再展开的方向
 

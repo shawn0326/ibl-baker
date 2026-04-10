@@ -1,6 +1,6 @@
-# @ibltools/loader
+# @ibltools/ibla-loader
 
-`@ibltools/loader` is the parser-only TypeScript loader for `.ibla` assets.
+`@ibltools/ibla-loader` is the parser-only TypeScript loader for `.ibla` assets.
 
 This package exposes the public v1 parsing contract for applications and renderer-specific integrations.
 The shared `.ibla` container contract is defined in the repository format specification:
@@ -9,13 +9,13 @@ The shared `.ibla` container contract is defined in the repository format specif
 ## Installation
 
 ```bash
-npm install @ibltools/loader
+npm install @ibltools/ibla-loader
 ```
 
 ## Usage
 
 ```ts
-import { parseIBLA } from "@ibltools/loader";
+import { parseIBLA } from "@ibltools/ibla-loader";
 
 const parsed = parseIBLA(buffer);
 console.log(parsed.manifest.faceCount, parsed.manifest.encoding);
