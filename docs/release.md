@@ -8,7 +8,6 @@ For a new public release:
 
 - update `[workspace.package].version` in the workspace `Cargo.toml`
 - update `packages/loader/package.json`
-- keep `packages/e2e-loader/package.json` aligned with the published loader version because it depends on `@ibltools/loader`
 
 The initial public release uses `v0.1.0`.
 

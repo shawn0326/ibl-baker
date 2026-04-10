@@ -1,5 +1,5 @@
 {
-  "name": "@ibltools/e2e-loader",
+  "name": "@ibltools/ibla-viewer",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "vite": "^7.1.3"
   },
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 4173",
+    "dev": "vite --host 127.0.0.1 --port 4175",
     "build": "vite build",
     "test": "vite build"
   }

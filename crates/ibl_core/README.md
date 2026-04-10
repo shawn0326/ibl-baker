@@ -25,6 +25,5 @@ It stays independent from renderer-specific runtime upload paths.
 - `crates/ktx2_writer` is the write-only KTX2 serializer used internally for KTX2 output.
 - `packages/loader` is the parser-only TypeScript reader for `.ibla` files.
 - `packages/ktx2-loader` is the narrow TypeScript reader for `ibl-baker` KTX2 cubemap files.
-- `packages/e2e-loader` is the private browser-side validation app for inspecting fixtures.
 
 The `.ibla` binary format is defined in [`docs/format-spec.md`](../../docs/format-spec.md).

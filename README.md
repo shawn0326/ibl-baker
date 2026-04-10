@@ -26,7 +26,7 @@ The repository implements the bake pipeline across three layers:
 - **Rust core** — baking, validation, `.ibla` read/write, and KTX2 export
 - **CLI** — `ibl-baker bake` with `--output-format <ibla|ktx2|both>`, plus `validate`
 - **TypeScript loaders** — parser-only `.ibla` reader (`@ibltools/loader`) and narrow KTX2 IBL reader (`@ibltools/ktx2-loader`)
-- **Browser validation** — private `packages/e2e-loader` fixture inspector and `packages/ktx2-viewer` drag-and-drop KTX2 viewer
+- **Browser validation** — private drag-and-drop `packages/ibla-viewer` and `packages/ktx2-viewer` apps
 
 ## Scope
 
@@ -48,21 +48,19 @@ Common npm entry points:
 npm install
 npm run fixtures:refresh
 npm run test:js
-npm run test:e2e-loader
+npm run test:ibla-viewer
 npm run test:ktx2-viewer
-npm run dev:e2e-loader
+npm run dev:ibla-viewer
 npm run dev:ktx2-viewer
 ```
-
-Manual browser validation runs through the local Vite service in `packages/e2e-loader`.
-After starting `npm run dev:e2e-loader`, open:
-
-- `http://127.0.0.1:4173/?fixture=cannon_exterior&asset=specular`
-- `http://127.0.0.1:4173/?fixture=footprint_court&asset=irradiance`
 
 Manual KTX2 validation runs through `packages/ktx2-viewer`.
 After starting `npm run dev:ktx2-viewer`, open `http://127.0.0.1:4174/` and drop a `.ktx2` file.
 The viewer does not load repository fixtures directly.
+
+Manual IBLA validation runs through `packages/ibla-viewer`.
+After starting `npm run dev:ibla-viewer`, open `http://127.0.0.1:4175/` and drop an `.ibla` file.
+The viewer uses the same linear to Reinhard to gamma display path as the KTX2 viewer.
 
 Out of scope for now:
 

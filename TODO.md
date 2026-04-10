@@ -23,11 +23,13 @@
 - [x] 新增 `packages/ktx2-loader`，提供浏览器侧 KTX2 加载能力，并在 README 中明确当前仅支持仓库现阶段产物画像（如 `KTX2 + BC6H_UFLOAT + zstd + cubemap`）。
 - [x] 新增 `packages/ktx2-viewer`，作为私有浏览器验收工具，支持拖拽 `.ktx2` 文件进行预览与错误展示。
 - [x] `packages/ktx2-viewer` 首版不接仓库内 fixture 目录，优先支持手动拖拽验收，避免目录结构耦合。
+- [x] 新增 `packages/ibla-viewer`，作为私有浏览器验收工具，支持拖拽 `.ibla` 文件、cubemap cross 预览与错误展示。
+- [x] `packages/ibla-viewer` 显示路径与 `packages/ktx2-viewer` 对齐，统一使用 linear → Reinhard → gamma，便于对比 `.ibla` 与 `.ktx2` 输出。
+- [x] 将手动浏览器验收入口收敛到 `packages/ibla-viewer` / `packages/ktx2-viewer`。
 
 ## 需要单独立项再展开的方向
 
 - [ ] 特定渲染引擎的运行时集成（放在独立包中设计）。
-- [ ] 评估后续是否将当前 `packages/loader` / `packages/e2e-loader` 重构收敛为 `ibla-loader` / `ibla-viewer`，作为独立阶段推进。
 - [ ] 评估是否为 LDR 输入提供比 `BC6H_UFLOAT` 更合适的 KTX2 编码路径；仅在收益、兼容性与复杂度权衡明确后再决定是否引入。
 - [ ] 参考实现对比升级为长期质量基线（单独定义基线产物、指标和回归策略）。
 - [ ] 仅在 CLI 分发与预编译二进制方案明确后，再评估是否创建 `packages/cli`。
