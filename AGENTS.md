@@ -16,8 +16,10 @@
 - `crates/ibl_core`：Rust 核心库，负责源图读取、bake 主流程、`.ibla` 读写与校验、KTX2 导出。
 - `crates/ibl_cli`：公开 CLI（`ibl-baker`），支持 `--output-format <ibla|ktx2|both>`，输出 `.ibla`、`.ktx2` 或两者并行。
 - `crates/ktx2_writer`：write-only KTX2 序列化器，BC6H（`intel_tex_2`）+ zstd 超级压缩，不依赖 CMake。
-- `packages/loader`：唯一公开 JS 包（`@ibltools/loader`），提供 parser-only 的 `parseIBLA(buffer)`；不处理 `.ktx2`。
+- `packages/loader`：公开 `.ibla` JS 包（`@ibltools/loader`），提供 parser-only 的 `parseIBLA(buffer)`；不处理 `.ktx2`。
+- `packages/ktx2-loader`：公开 KTX2 JS 包（`@ibltools/ktx2-loader`），提供 narrow parser-only 的 `parseKTX2IBL(buffer)`；不做 zstd、BC6H decode 或 GPU 上传。
 - `packages/e2e-loader`：私有浏览器验收工具，用于读取仓库内 fixtures、解析产物并做可视化。
+- `packages/ktx2-viewer`：私有浏览器验收工具，用于手动拖拽 `.ktx2` 文件、解析、zstd 解压，并在 WebGPU 支持 `texture-compression-bc` 时做 BC6H 预览；首版不接仓库 fixture 目录。
 - `fixtures/outputs`：已提交的产物样例（`.ibla` 与 `.ktx2`），供 loader 测试与浏览器验收复用。
 - `scripts/refresh-fixtures.mjs`：刷新仓库内 fixtures 的入口脚本。
 
@@ -37,6 +39,7 @@ BRDF LUT 始终输出为独立 `.png`，不受格式选项影响。
 - `docs/format-spec.md` — `.ibla` 二进制格式规范（纯 `.ibla`，不含 KTX2 内容）
 - `crates/ibl_cli/README.md` — CLI 用法、选项、两种输出格式的完整说明
 - `packages/loader/README.md` — TypeScript `.ibla` 解析器 API 契约
+- `packages/ktx2-loader/README.md` — TypeScript KTX2 解析器 API 契约
 
 以下文档适合快速理解仓库结构与职责分层：
 
@@ -56,7 +59,9 @@ BRDF LUT 始终输出为独立 `.png`，不受格式选项影响。
 - v1 的 `.ibla` 仍只承载单个纹理资产；specular 与 irradiance 分别输出独立文件，BRDF LUT 继续输出独立 `.png`。
 - KTX2 输出固定为 BC6H_UFLOAT + zstd，不引入其他压缩格式。
 - `packages/loader` 在 v1 中保持 parser-only，只处理 `.ibla`，不加入 KTX2 解析、PNG decode、RGBD decode、GPU 上传或运行时纹理封装。
+- `packages/ktx2-loader` 在 v1 中保持 parser-only，只处理当前 `ibl-baker` KTX2 产物画像，不加入 zstd、BC6H decode、GPU 上传或运行时纹理封装。
 - `packages/e2e-loader` 是仓库内部验收工具，不作为公开运行时集成层承诺。
+- `packages/ktx2-viewer` 是仓库内部验收工具，不作为公开运行时集成层承诺；首版保持手动拖拽入口，不耦合仓库 fixture 目录。
 - 如需引擎适配、分发包装或额外运行时能力，放在独立包中实现，不反向污染核心库与 loader。
 
 ## 演进原则

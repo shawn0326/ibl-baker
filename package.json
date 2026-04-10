@@ -5,13 +5,15 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "npm run test:rust && npm run test:js && npm run test:e2e-loader",
+    "test": "npm run test:rust && npm run test:js && npm run test:e2e-loader && npm run test:ktx2-viewer",
     "test:rust": "cargo test --workspace",
     "test:js": "npm run test -w @ibltools/loader && npm run test -w @ibltools/ktx2-loader",
     "test:e2e-loader": "npm run test -w @ibltools/e2e-loader",
+    "test:ktx2-viewer": "npm run test -w @ibltools/ktx2-viewer",
     "check:rs": "cargo check --workspace",
-    "check:ts": "tsc -b packages/loader packages/ktx2-loader packages/e2e-loader --noEmit",
+    "check:ts": "tsc -b packages/loader packages/ktx2-loader packages/e2e-loader packages/ktx2-viewer --noEmit",
     "dev:e2e-loader": "npm run dev -w @ibltools/e2e-loader",
+    "dev:ktx2-viewer": "npm run dev -w @ibltools/ktx2-viewer",
     "fixtures:refresh": "node scripts/refresh-fixtures.mjs"
   },
   "devDependencies": {

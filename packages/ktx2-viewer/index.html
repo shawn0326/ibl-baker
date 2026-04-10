@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>KTX2 Viewer</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7f8;
+        --surface: #ffffff;
+        --surface-strong: #eef2f4;
+        --text: #202326;
+        --muted: #5c6670;
+        --line: #d6dde5;
+        --accent: #0f766e;
+        --accent-strong: #115e59;
+        --danger: #b91c1c;
+        --warning: #b45309;
+        --shadow: rgba(29, 35, 42, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(1180px, calc(100vw - 28px));
+        margin: 0 auto;
+        padding: 14px 0 22px;
+      }
+
+      h1,
+      p,
+      pre {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 28px;
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+
+      .intro {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 12px;
+        align-items: end;
+      }
+
+      .intro p {
+        max-width: 700px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .drop-zone {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        min-height: 76px;
+        padding: 14px;
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: 0 8px 22px var(--shadow);
+      }
+
+      .drop-zone.dragging {
+        border-color: var(--accent);
+        background: #edfdfa;
+      }
+
+      .drop-zone strong {
+        font-size: 16px;
+        letter-spacing: 0;
+      }
+
+      .drop-zone span {
+        color: var(--muted);
+        margin-right: auto;
+      }
+
+      .file-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 36px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #ffffff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .file-button:hover {
+        background: var(--accent-strong);
+      }
+
+      #file-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .status {
+        margin-top: 10px;
+        padding: 9px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--muted);
+        line-height: 1.45;
+        white-space: pre-wrap;
+        font-size: 13px;
+      }
+
+      .status.ok {
+        border-color: #7dd3c7;
+        color: var(--accent-strong);
+      }
+
+      .status.warning {
+        border-color: #f2c078;
+        color: var(--warning);
+      }
+
+      .status.error {
+        border-color: #f1a3a3;
+        color: var(--danger);
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .summary-card,
+      .preview-panel,
+      .levels-panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .summary-card {
+        min-height: 78px;
+        padding: 10px;
+      }
+
+      .summary-card strong,
+      .panel-title {
+        display: block;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .summary-card span {
+        display: block;
+        margin-top: 6px;
+        font-size: 17px;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+      }
+
+      .summary-card small {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+
+      .preview-panel,
+      .levels-panel {
+        display: grid;
+        gap: 10px;
+        margin-top: 10px;
+        padding: 12px;
+      }
+
+      .preview-toolbar {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .field select {
+        min-width: 180px;
+        min-height: 34px;
+        padding: 6px 9px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+      }
+
+      .preview-frame {
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background:
+          linear-gradient(45deg, rgba(0, 0, 0, 0.07) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.07) 75%),
+          linear-gradient(45deg, rgba(0, 0, 0, 0.07) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.07) 75%);
+        background-color: #dfe5eb;
+        background-position: 0 0, 8px 8px;
+        background-size: 16px 16px;
+      }
+
+      #preview-canvas {
+        display: block;
+        width: min(100%, 1024px);
+        height: auto;
+        margin: 0 auto;
+        image-rendering: pixelated;
+      }
+
+      .face-labels {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-areas:
+          ". py . ."
+          "nx pz px nz"
+          ". ny . .";
+        gap: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+        width: min(100%, 1024px);
+        margin: 0 auto;
+      }
+
+      .face-labels span {
+        padding: 3px 0;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface-strong);
+      }
+
+      .face-labels .label-px {
+        grid-area: px;
+      }
+
+      .face-labels .label-nx {
+        grid-area: nx;
+      }
+
+      .face-labels .label-py {
+        grid-area: py;
+      }
+
+      .face-labels .label-ny {
+        grid-area: ny;
+      }
+
+      .face-labels .label-pz {
+        grid-area: pz;
+      }
+
+      .face-labels .label-nz {
+        grid-area: nz;
+      }
+
+      .level-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      .level-table th,
+      .level-table td {
+        padding: 7px 8px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+      }
+
+      .level-table th {
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .level-table tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .empty {
+        color: var(--muted);
+      }
+
+      @media (max-width: 900px) {
+        .intro,
+        .drop-zone {
+          display: grid;
+          align-items: start;
+        }
+
+        .summary-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .preview-toolbar {
+          align-items: stretch;
+        }
+
+        .field,
+        .field select {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="intro">
+        <h1>KTX2 Viewer</h1>
+        <p>
+          Drop an <code>ibl-baker</code> <code>.ktx2</code> cubemap to inspect its layout.
+          GPU preview uses WebGPU <code>texture-compression-bc</code> when available.
+        </p>
+      </section>
+
+      <section id="drop-zone" class="drop-zone">
+        <strong>Drop a .ktx2 file</strong>
+        <span>Manual validation only. Repository fixtures are not loaded by this viewer.</span>
+        <label class="file-button" for="file-input">Choose file</label>
+        <input id="file-input" type="file" accept=".ktx2,model/ktx2">
+      </section>
+
+      <pre id="status" class="status">Idle. Choose or drop a .ktx2 file.</pre>
+      <section id="summary" class="summary-grid" aria-live="polite"></section>
+
+      <section id="preview-panel" class="preview-panel" hidden>
+        <div class="preview-toolbar">
+          <strong class="panel-title">Preview</strong>
+          <div class="field">
+            <label for="mip-select">Mip level</label>
+            <select id="mip-select"></select>
+          </div>
+        </div>
+        <div class="preview-frame">
+          <canvas id="preview-canvas"></canvas>
+        </div>
+        <div class="face-labels">
+          <span class="label-py">PY</span>
+          <span class="label-nx">NX</span>
+          <span class="label-pz">PZ</span>
+          <span class="label-px">PX</span>
+          <span class="label-nz">NZ</span>
+          <span class="label-ny">NY</span>
+        </div>
+      </section>
+
+      <section id="levels-panel" class="levels-panel" hidden>
+        <strong class="panel-title">Mip Layout</strong>
+        <div id="levels"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
