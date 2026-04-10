@@ -1,6 +1,6 @@
 # ibl-baker
 
-A renderer-agnostic IBL asset compiler that bakes HDR environments into GPU-ready and portable texture assets, with a Rust core, CLI, and a parser-only TypeScript loader.
+A renderer-agnostic IBL asset compiler that bakes HDR environments into GPU-ready and portable texture assets, with a Rust core, CLI, and TypeScript loaders.
 
 The CLI produces two output formats:
 
@@ -17,6 +17,7 @@ BRDF LUT is always emitted as a standalone `.png`.
 | [`docs/format-spec.md`](docs/format-spec.md) | `.ibla` binary format specification |
 | [`crates/ibl_core/README.md`](crates/ibl_core/README.md) | Rust core library scope |
 | [`packages/loader/README.md`](packages/loader/README.md) | TypeScript `.ibla` parser API |
+| [`packages/ktx2-loader/README.md`](packages/ktx2-loader/README.md) | Narrow TypeScript parser API for `ibl-baker` KTX2 cubemaps |
 
 ## Status
 
@@ -24,7 +25,7 @@ The repository implements the bake pipeline across three layers:
 
 - **Rust core** — baking, validation, `.ibla` read/write, and KTX2 export
 - **CLI** — `ibl-baker bake` with `--output-format <ibla|ktx2|both>`, plus `validate`
-- **TypeScript loader** — parser-only `.ibla` reader (`@ibltools/loader`)
+- **TypeScript loaders** — parser-only `.ibla` reader (`@ibltools/loader`) and narrow KTX2 IBL reader (`@ibltools/ktx2-loader`)
 - **Browser validation** — private `packages/e2e-loader` app for fixture inspection
 
 ## Scope
@@ -34,7 +35,7 @@ Current priorities:
 - keep the `.ibla` container stable and well-specified
 - keep KTX2 output aligned with the BC6H + zstd pipeline
 - keep CLI behavior aligned with [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md)
-- keep the TypeScript loader parser-only
+- keep the TypeScript loaders parser-only and scoped to their format contracts
 - expand verification around bake outputs, loader parsing, and browser validation
 
 ## Workspace

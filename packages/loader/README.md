@@ -40,8 +40,8 @@ It does not:
 
 Those concerns are left to the application or renderer integration layer.
 
-For KTX2 assets produced by the CLI (`--output-format ktx2`), applications should use
-ecosystem KTX2 parsers (e.g., `ktx-parse`) directly — this package does not handle `.ktx2` files.
+For KTX2 assets produced by the CLI (`--output-format ktx2`), use the sibling
+`@ibltools/ktx2-loader` package. This package does not handle `.ktx2` files.
 
 ## Core Model
 

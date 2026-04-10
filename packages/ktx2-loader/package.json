@@ -1,0 +1,50 @@
+{
+  "name": "@ibltools/ktx2-loader",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Narrow TypeScript loader for ibl-baker KTX2 cubemap assets.",
+  "license": "MIT",
+  "type": "module",
+  "homepage": "https://github.com/shawn0326/ibl-baker/tree/main/packages/ktx2-loader#readme",
+  "bugs": {
+    "url": "https://github.com/shawn0326/ibl-baker/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shawn0326/ibl-baker.git",
+    "directory": "packages/ktx2-loader"
+  },
+  "keywords": [
+    "ibl",
+    "ktx2",
+    "bc6h",
+    "loader",
+    "typescript"
+  ],
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "test": "node --experimental-strip-types --test --test-concurrency=1"
+  }
+}
