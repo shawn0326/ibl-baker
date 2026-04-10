@@ -1,9 +1,11 @@
 import { parseIBLA, type ParsedChunk, type ParsedIBLA } from "@ibltools/loader";
 
-import royalSpecularUrl from "../../../fixtures/outputs/royal_esplanade_1k/specular.ibla?url";
-import royalIrradianceUrl from "../../../fixtures/outputs/royal_esplanade_1k/irradiance.ibla?url";
-import grandSpecularUrl from "../../../fixtures/outputs/grand_canyon_c/specular.ibla?url";
-import grandIrradianceUrl from "../../../fixtures/outputs/grand_canyon_c/irradiance.ibla?url";
+import cannonSpecularUrl from "../../../fixtures/outputs/cannon_exterior/specular.ibla?url";
+import cannonIrradianceUrl from "../../../fixtures/outputs/cannon_exterior/irradiance.ibla?url";
+import footprintSpecularUrl from "../../../fixtures/outputs/footprint_court/specular.ibla?url";
+import footprintIrradianceUrl from "../../../fixtures/outputs/footprint_court/irradiance.ibla?url";
+import helipadSpecularUrl from "../../../fixtures/outputs/helipad/specular.ibla?url";
+import helipadIrradianceUrl from "../../../fixtures/outputs/helipad/irradiance.ibla?url";
 import spruitSpecularUrl from "../../../fixtures/outputs/spruit_sunrise_2k/specular.ibla?url";
 import spruitIrradianceUrl from "../../../fixtures/outputs/spruit_sunrise_2k/irradiance.ibla?url";
 import pisaSpecularUrl from "../../../fixtures/outputs/pisa/specular.ibla?url";
@@ -12,8 +14,9 @@ import bridge2SpecularUrl from "../../../fixtures/outputs/bridge2/specular.ibla?
 import bridge2IrradianceUrl from "../../../fixtures/outputs/bridge2/irradiance.ibla?url";
 
 type FixtureName =
-  | "royal_esplanade_1k"
-  | "grand_canyon_c"
+  | "cannon_exterior"
+  | "footprint_court"
+  | "helipad"
   | "spruit_sunrise_2k"
   | "pisa"
   | "bridge2";
@@ -43,18 +46,25 @@ declare global {
 }
 
 const FIXTURES: Record<FixtureName, FixtureDescriptor> = {
-  royal_esplanade_1k: {
-    label: "Royal Esplanade 1K",
+  cannon_exterior: {
+    label: "Cannon Exterior",
     assets: {
-      specular: royalSpecularUrl,
-      irradiance: royalIrradianceUrl,
+      specular: cannonSpecularUrl,
+      irradiance: cannonIrradianceUrl,
     },
   },
-  grand_canyon_c: {
-    label: "Grand Canyon C",
+  footprint_court: {
+    label: "Footprint Court",
     assets: {
-      specular: grandSpecularUrl,
-      irradiance: grandIrradianceUrl,
+      specular: footprintSpecularUrl,
+      irradiance: footprintIrradianceUrl,
+    },
+  },
+  helipad: {
+    label: "Helipad",
+    assets: {
+      specular: helipadSpecularUrl,
+      irradiance: helipadIrradianceUrl,
     },
   },
   spruit_sunrise_2k: {
@@ -88,7 +98,7 @@ const ASSET_LABELS: Record<AssetName, string> = {
 const FIXTURE_NAMES = Object.keys(FIXTURES) as FixtureName[];
 const ASSET_NAMES = Object.keys(ASSET_LABELS) as AssetName[];
 const CANONICAL_FACE_ORDER = ["px", "nx", "py", "ny", "pz", "nz"] as const;
-const DEFAULT_FIXTURE: FixtureName = "royal_esplanade_1k";
+const DEFAULT_FIXTURE: FixtureName = "cannon_exterior";
 const DEFAULT_ASSET: AssetName = "specular";
 
 void main();

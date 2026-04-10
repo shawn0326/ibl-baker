@@ -55,8 +55,8 @@ npm run dev:e2e-loader
 Manual browser validation runs through the local Vite service in `packages/e2e-loader`.
 After starting `npm run dev:e2e-loader`, open:
 
-- `http://127.0.0.1:4173/?fixture=royal_esplanade_1k&asset=specular`
-- `http://127.0.0.1:4173/?fixture=grand_canyon_c&asset=irradiance`
+- `http://127.0.0.1:4173/?fixture=cannon_exterior&asset=specular`
+- `http://127.0.0.1:4173/?fixture=footprint_court&asset=irradiance`
 
 Out of scope for now:
 

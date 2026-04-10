@@ -125,29 +125,29 @@ test("parseKTX2IBL parses a synthetic BC6H zstd cubemap", () => {
 });
 
 test("parseKTX2IBL parses committed specular fixtures", () => {
-  const royal = parseKTX2IBL(loadCommittedFixture("royal_esplanade_1k_ktx2", "specular"));
-  assert.equal(royal.header.pixelWidth, 256);
-  assert.equal(royal.header.levelCount, 9);
-  assert.equal(royal.levels.at(-1)?.width, 1);
-  assert.ok(royal.levels.every((level) => level.faces.length === 6));
-  assert.ok(royal.levels.every((level) => level.byteLength > 0));
+  for (const fixtureName of KTX2_FIXTURE_NAMES) {
+    const parsed = parseKTX2IBL(loadCommittedFixture(fixtureName, "specular"));
 
-  const spruit = parseKTX2IBL(loadCommittedFixture("spruit_sunrise_2k_ktx2", "specular"));
-  assert.equal(spruit.header.pixelWidth, 512);
-  assert.equal(spruit.header.levelCount, 10);
-  assert.equal(spruit.levels.at(-1)?.width, 1);
+    assert.equal(parsed.header.faceCount, 6);
+    assert.ok(parsed.header.pixelWidth >= 128);
+    assert.equal(parsed.header.pixelWidth, parsed.header.pixelHeight);
+    assert.ok(parsed.header.levelCount >= 1);
+    assert.equal(parsed.levels.at(-1)?.width, 1);
+    assert.ok(parsed.levels.every((level) => level.faces.length === 6));
+    assert.ok(parsed.levels.every((level) => level.byteLength > 0));
+  }
 });
 
 test("parseKTX2IBL parses committed irradiance fixtures", () => {
-  const royal = parseKTX2IBL(loadCommittedFixture("royal_esplanade_1k_ktx2", "irradiance"));
-  assert.equal(royal.header.pixelWidth, 32);
-  assert.equal(royal.header.levelCount, 1);
-  assert.equal(royal.levels[0]?.uncompressedByteLength, 6144);
+  for (const fixtureName of KTX2_FIXTURE_NAMES) {
+    const parsed = parseKTX2IBL(loadCommittedFixture(fixtureName, "irradiance"));
 
-  const spruit = parseKTX2IBL(loadCommittedFixture("spruit_sunrise_2k_ktx2", "irradiance"));
-  assert.equal(spruit.header.pixelWidth, 32);
-  assert.equal(spruit.header.levelCount, 1);
-  assert.equal(spruit.levels[0]?.faces[0]?.uncompressedByteLength, 1024);
+    assert.equal(parsed.header.pixelWidth, 32);
+    assert.equal(parsed.header.pixelHeight, 32);
+    assert.equal(parsed.header.levelCount, 1);
+    assert.equal(parsed.levels[0]?.uncompressedByteLength, 6144);
+    assert.equal(parsed.levels[0]?.faces[0]?.uncompressedByteLength, 1024);
+  }
 });
 
 test("parseKTX2IBL throws INVALID_HEADER for bad magic", () => {
@@ -222,8 +222,16 @@ function assertParseError(action: () => unknown, code: string) {
   });
 }
 
+const KTX2_FIXTURE_NAMES = [
+  "cannon_exterior",
+  "footprint_court",
+  "helipad",
+  "pisa",
+  "spruit_sunrise_2k_ktx2",
+] as const;
+
 function loadCommittedFixture(
-  fixtureName: "royal_esplanade_1k_ktx2" | "spruit_sunrise_2k_ktx2",
+  fixtureName: (typeof KTX2_FIXTURE_NAMES)[number],
   target: "irradiance" | "specular",
 ): Uint8Array {
   const rootDir = path.resolve(import.meta.dirname, "..", "..", "..");

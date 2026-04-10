@@ -62,64 +62,40 @@ test("parseIBLA parses a synthetic 2D asset with derived mip metadata", () => {
   assert.deepEqual([...secondChunk.encodedBytes], [5, 6]);
 });
 
-test("parseIBLA parses a Rust-generated irradiance cubemap", () => {
-  const parsed = parseIBLA(loadCommittedFixture("royal_esplanade_1k", "irradiance"));
+test("parseIBLA parses committed HDR specular cubemap fixtures", () => {
+  for (const fixtureName of HDR_FIXTURE_NAMES) {
+    const parsed = parseIBLA(loadCommittedFixture(fixtureName, "specular"));
 
-  assert.equal(parsed.manifest.faceCount, 6);
-  assert.equal(parsed.manifest.mipCount, 1);
-  assert.equal(parsed.chunks.length, 6);
-  assert.deepEqual(parsed.chunks.map((chunk) => chunk.face), ["px", "nx", "py", "ny", "pz", "nz"]);
-  assert.ok(parsed.chunks.every((chunk) => chunk.width === 32 && chunk.height === 32));
-  assert.ok(parsed.chunks.every((chunk) => chunk.encodedBytes.byteLength > 0));
+    assert.equal(parsed.manifest.faceCount, 6);
+    assert.equal(parsed.manifest.build.sourceFormat, "hdr");
+    assert.equal(parsed.manifest.width, parsed.manifest.height);
+    assert.ok(parsed.manifest.mipCount >= 1);
+    assert.equal(parsed.chunks.length, parsed.manifest.mipCount * 6);
+    assert.deepEqual(parsed.chunks.slice(0, 6).map((chunk) => chunk.face), [
+      "px",
+      "nx",
+      "py",
+      "ny",
+      "pz",
+      "nz",
+    ]);
+    assert.equal(parsed.chunks.at(-1)?.width, 1);
+    assert.equal(parsed.chunks.at(-1)?.height, 1);
+  }
 });
 
-test("parseIBLA parses a Rust-generated specular cubemap with mip chain", () => {
-  const parsed = parseIBLA(loadCommittedFixture("royal_esplanade_1k", "specular"));
+test("parseIBLA parses committed HDR irradiance cubemap fixtures", () => {
+  for (const fixtureName of HDR_FIXTURE_NAMES) {
+    const parsed = parseIBLA(loadCommittedFixture(fixtureName, "irradiance"));
 
-  assert.equal(parsed.manifest.faceCount, 6);
-  assert.equal(parsed.manifest.mipCount, 9);
-  assert.equal(parsed.chunks.length, 54);
-  assert.deepEqual(parsed.chunks.slice(0, 6).map((chunk) => chunk.face), [
-    "px",
-    "nx",
-    "py",
-    "ny",
-    "pz",
-    "nz",
-  ]);
-  const firstChunk = expectDefined(parsed.chunks[0]);
-  assert.equal(firstChunk.width, 256);
-  assert.equal(firstChunk.height, 256);
-  assert.equal(parsed.chunks.at(-1)?.width, 1);
-  assert.equal(parsed.chunks.at(-1)?.height, 1);
-});
-
-test("parseIBLA parses the committed Grand Canyon specular cubemap fixture", () => {
-  const parsed = parseIBLA(loadCommittedFixture("grand_canyon_c", "specular"));
-
-  assert.equal(parsed.manifest.faceCount, 6);
-  assert.equal(parsed.manifest.mipCount, 8);
-  assert.equal(parsed.chunks.length, 48);
-  assert.equal(parsed.manifest.build.sourceFormat, "hdr");
-  assert.equal(parsed.manifest.width, 128);
-  assert.equal(parsed.manifest.height, 128);
-  assert.deepEqual(parsed.chunks.slice(0, 6).map((chunk) => chunk.face), [
-    "px",
-    "nx",
-    "py",
-    "ny",
-    "pz",
-    "nz",
-  ]);
-});
-
-test("parseIBLA parses the committed Grand Canyon irradiance cubemap fixture", () => {
-  const parsed = parseIBLA(loadCommittedFixture("grand_canyon_c", "irradiance"));
-
-  assert.equal(parsed.manifest.faceCount, 6);
-  assert.equal(parsed.manifest.mipCount, 1);
-  assert.equal(parsed.chunks.length, 6);
-  assert.ok(parsed.chunks.every((chunk) => chunk.width === 32 && chunk.height === 32));
+    assert.equal(parsed.manifest.faceCount, 6);
+    assert.equal(parsed.manifest.build.sourceFormat, "hdr");
+    assert.equal(parsed.manifest.mipCount, 1);
+    assert.equal(parsed.chunks.length, 6);
+    assert.deepEqual(parsed.chunks.map((chunk) => chunk.face), ["px", "nx", "py", "ny", "pz", "nz"]);
+    assert.ok(parsed.chunks.every((chunk) => chunk.width === 32 && chunk.height === 32));
+    assert.ok(parsed.chunks.every((chunk) => chunk.encodedBytes.byteLength > 0));
+  }
 });
 
 test("parseIBLA parses the committed Spruit Sunrise JPEG specular cubemap fixture", () => {
@@ -279,8 +255,10 @@ function assertParseError(action: () => unknown, code: string) {
   });
 }
 
+const HDR_FIXTURE_NAMES = ["cannon_exterior", "footprint_court", "helipad", "pisa"] as const;
+
 function loadCommittedFixture(
-  fixtureName: "royal_esplanade_1k" | "grand_canyon_c" | "spruit_sunrise_2k",
+  fixtureName: (typeof HDR_FIXTURE_NAMES)[number] | "spruit_sunrise_2k",
   target: "irradiance" | "specular",
 ): Uint8Array {
   const rootDir = path.resolve(import.meta.dirname, "..", "..", "..");

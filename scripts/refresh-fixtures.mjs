@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
@@ -8,22 +8,41 @@ const rootDir = path.resolve(scriptDir, "..");
 const fixtureInputsDir = path.join(rootDir, "fixtures", "inputs");
 const fixtureOutputsDir = path.join(rootDir, "fixtures", "outputs");
 
-const iblaFixtures = [
+const hdrFixtures = [
   {
-    inputPath: "royal_esplanade_1k.hdr",
-    outputDirName: "royal_esplanade_1k",
+    inputPath: "Cannon_Exterior.hdr",
+    outputDirName: "cannon_exterior",
   },
   {
-    inputPath: "Grand_Canyon_C.hdr",
-    outputDirName: "grand_canyon_c",
+    inputPath: "footprint_court.hdr",
+    outputDirName: "footprint_court",
   },
+  {
+    inputPath: "helipad.hdr",
+    outputDirName: "helipad",
+  },
+  {
+    inputPath: "pisa.hdr",
+    outputDirName: "pisa",
+  },
+];
+
+const nonHdrFixtures = [
   {
     inputPath: "spruit_sunrise_2k.jpg",
     outputDirName: "spruit_sunrise_2k",
   },
   {
-    inputPath: "pisa",
-    outputDirName: "pisa",
+    inputPath: "spruit_sunrise_2k.jpg",
+    outputDirName: "spruit_sunrise_2k_ktx2",
+    extraArgs: [
+      "--target",
+      "specular",
+      "--target",
+      "irradiance",
+      "--output-format",
+      "ktx2",
+    ],
   },
   {
     inputPath: "Bridge2",
@@ -32,18 +51,17 @@ const iblaFixtures = [
   },
 ];
 
-const ktx2Fixtures = [
-  {
-    inputPath: "royal_esplanade_1k.hdr",
-    outputDirName: "royal_esplanade_1k_ktx2",
-  },
-  {
-    inputPath: "spruit_sunrise_2k.jpg",
-    outputDirName: "spruit_sunrise_2k_ktx2",
-  },
-];
+function cleanObsoleteOutputs(fixtures) {
+  const expectedOutputDirs = new Set(fixtures.map((fixture) => fixture.outputDirName));
 
-function bakeFixture(fixture, extraArgs = []) {
+  for (const entry of readdirSync(fixtureOutputsDir, { withFileTypes: true })) {
+    if (!expectedOutputDirs.has(entry.name)) {
+      rmSync(path.join(fixtureOutputsDir, entry.name), { recursive: true, force: true });
+    }
+  }
+}
+
+function bakeFixture(fixture) {
   const inputPath = path.join(fixtureInputsDir, fixture.inputPath);
   const outputDir = path.join(fixtureOutputsDir, fixture.outputDirName);
 
@@ -63,7 +81,6 @@ function bakeFixture(fixture, extraArgs = []) {
       "--out-dir",
       outputDir,
       ...(fixture.extraArgs ?? []),
-      ...extraArgs,
     ],
     {
       cwd: rootDir,
@@ -72,17 +89,16 @@ function bakeFixture(fixture, extraArgs = []) {
   );
 }
 
-for (const fixture of iblaFixtures) {
-  bakeFixture(fixture);
-}
+const fixtures = [
+  ...hdrFixtures.map((fixture) => ({
+    ...fixture,
+    extraArgs: [...(fixture.extraArgs ?? []), "--output-format", "both"],
+  })),
+  ...nonHdrFixtures,
+];
 
-for (const fixture of ktx2Fixtures) {
-  bakeFixture(fixture, [
-    "--target",
-    "specular",
-    "--target",
-    "irradiance",
-    "--output-format",
-    "ktx2",
-  ]);
+cleanObsoleteOutputs(fixtures);
+
+for (const fixture of fixtures) {
+  bakeFixture(fixture);
 }

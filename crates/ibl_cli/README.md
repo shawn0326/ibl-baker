@@ -47,7 +47,7 @@ ibl-baker validate ./out/specular.ibla
 ```bash
 ibl-baker bake input-path --out-dir ./out
 ibl-baker bake input-path --out-dir ./out --target specular
-ibl-baker bake ./fixtures/inputs/pisa --out-dir ./out --target irradiance
+ibl-baker bake ./fixtures/inputs/pisa.hdr --out-dir ./out --target irradiance
 ibl-baker bake ./fixtures/inputs/Bridge2 --out-dir ./out --faces posx.jpg,negx.jpg,posy.jpg,negy.jpg,posz.jpg,negz.jpg
 ibl-baker validate ./out/specular.ibla
 ```

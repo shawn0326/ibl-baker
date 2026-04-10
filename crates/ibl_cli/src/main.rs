@@ -1263,11 +1263,7 @@ mod tests {
         let input_dir = unique_temp_path("cubemap-mixed");
         fs::create_dir_all(&input_dir).expect("cubemap dir should be created");
         let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-        fs::copy(
-            repo_root.join("fixtures/inputs/pisa/px.png"),
-            input_dir.join("px.png"),
-        )
-        .expect("px fixture should copy");
+        write_solid_png(&input_dir.join("px.png"), 8, [255, 0, 0]);
         fs::copy(
             repo_root.join("fixtures/inputs/Bridge2/negx.jpg"),
             input_dir.join("nx.jpg"),

@@ -13,7 +13,7 @@
 - [x] `crates/ktx2_writer` — write-only KTX2 序列化器，BC6H + zstd，无 CMake 依赖
 - [x] `ibl_core` bake pipeline 分离 f32 计算层与编码层，支持 `.ibla` 和 KTX2 双路径
 - [x] CLI `--output-format <ibla|ktx2|both>` 选项
-- [x] KTX2 fixture 产物（`royal_esplanade_1k_ktx2`、`spruit_sunrise_2k_ktx2`）
+- [x] KTX2 fixture 产物（当前 HDR fixture 使用 `--output-format both`，`spruit_sunrise_2k_ktx2` 保持独立 KTX2 输出）
 - [x] 文档统一：format-spec 仅含 `.ibla`，KTX2 规格写入 CLI README，各级文档统一口径
 
 ## 下一步
