@@ -132,7 +132,10 @@ they are not selected. Loader-only consumers use disposable CI fixtures.
 Rehearsals accept already-published versions and missing release notes, but label
 them **NOT publishable** in the summary. Missing notes use an explicitly marked
 rehearsal placeholder. This permits infrastructure acceptance without version
-bumps. It is not permission to replace a registry version.
+bumps. It is not permission to replace a registry version. For an occupied npm version,
+preflight uses packing and external consumers: npm 11.11 rejects that version even
+with publish --dry-run. New-version candidates still run native npm publish --dry-run;
+its failures are never ignored.
 
 Dry-runs never enter the release approval Environment, request publishing
 credentials, upload registry packages, or create Git tags/Releases.
@@ -215,3 +218,16 @@ CI and the all-group rehearsal must pass before marking infrastructure rollout
 complete. Record the PR/run links and remaining real-publication validation here.
 Do not treat rehearsals as proof of OIDC authorization, registry checksums after
 upload, provenance, or real partial-failure recovery.
+
+Rollout on 2026-09-17:
+
+- [Implementation PR #1](https://github.com/shawn0326/ibl-baker/pull/1) merged as e2bc2848e2ac9b1779947e37dcb7791812d8024e.
+- [Implementation PR CI](https://github.com/shawn0326/ibl-baker/actions/runs/35194599409): passed.
+- [Master CI and Pages deployment](https://github.com/shawn0326/ibl-baker/actions/runs/35195117843): passed.
+- Master protection was read back after configuration: required PR, checks / Quality from GitHub Actions, strict status checks, administrator enforcement, no force pushes/deletion, zero required approving reviews.
+- Local validation passed: 61 Rust tests, 22 loader tests, both viewer builds, TypeScript, 17 release/recovery tests, actionlint, Cargo dry-runs and archive consumers. Existing registry versions also passed exact-version consumer checks; no registry uploads were performed.
+
+The [first all-group rehearsal](https://github.com/shawn0326/ibl-baker/actions/runs/35195133128)
+passed all three platform builds and quality checks, then exposed npm 11.11 rejecting
+occupied versions during native publish dry-run. The rehearsal-only preflight rule
+above addresses that behavior; production availability checks remain unchanged.

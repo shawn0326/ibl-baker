@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { waitForVersion, publishNpmPackages, publishCargoPackages } from '../publication.mjs';
+import { waitForVersion, publishNpmPackages, publishCargoPackages, validateNpmCandidate } from '../publication.mjs';
 import { getJson } from '../core.mjs';
 
 const npmPkg = name => ({ name, registry: 'npm', version: '1.0.0-beta.2', integrity: 'sha512-approved' });
@@ -95,4 +95,16 @@ test('Cargo archive mismatch blocks upload and yanked receipts block resume', as
     await assert.rejects(publishCargoPackages([pkg], { ...callbacks, lookup: async () => null }), /archive differs/);
     await assert.rejects(publishCargoPackages([pkg], { ...callbacks, lookup: async () => ({ checksum: 'approved', yanked: true }) }), /yanked/);
     assert.equal(uploads, 0);
+});
+
+test("occupied npm rehearsals skip only the native publish check, never new-version errors", async () => {
+    const pkg = npmPkg('reader'), occupied = [pkg.name + '@' + pkg.version];
+    let checks = 0;
+    const validate = async () => { checks++; throw new Error('native preflight failed'); };
+    assert.equal(await validateNpmCandidate(pkg, { dryRun: true, occupied, validate }), 'occupied-rehearsal');
+    assert.equal(checks, 0);
+    await assert.rejects(validateNpmCandidate(pkg, { dryRun: true, occupied: [], validate }), /native preflight/);
+    await assert.rejects(validateNpmCandidate(pkg, { dryRun: false, occupied, validate }), /native preflight/);
+    assert.equal(checks, 2);
+    assert.equal(await validateNpmCandidate(pkg, { dryRun: false, occupied: [], validate: async () => {} }), 'checked');
 });

@@ -6,7 +6,7 @@ import { catalog, root, read, json, hash, repository, selectPackages, assertCont
     assertNotes, assertResume, assertChannelAdvance, getJson, platforms, assertExistingRelease } from './core.mjs';
 import { output, run, npm, writeJson, archivePath, checkFiles, clean, cargoArchive, listFiles, progress } from './io.mjs';
 import { consumer } from './consumer.mjs';
-import { waitForVersion, publishNpmPackages, publishCargoPackages } from './publication.mjs';
+import { waitForVersion, publishNpmPackages, publishCargoPackages, validateNpmCandidate } from './publication.mjs';
 
 const command = process.argv[2];
 const inputs = JSON.parse(process.env.RELEASE_INPUTS ?? '{}');
@@ -109,7 +109,8 @@ async function prepare() {
         pkg.sha256 = hash(bytes);
         pkg.integrity = 'sha512-' + createHash('sha512').update(bytes).digest('base64');
         pkg.bytes = bytes.length;
-        npm(['publish', archivePath(pkg.archive), '--dry-run', '--ignore-scripts', '--access', 'public', '--tag', pkg.channel]);
+        pkg.publishPreflight = await validateNpmCandidate(pkg, { dryRun, occupied,
+            validate: p => npm(['publish', archivePath(p.archive), '--dry-run', '--ignore-scripts', '--access', 'public', '--tag', p.channel]) });
     }
     const crates = items.filter(p => p.registry === 'cargo');
     if (crates.length) {

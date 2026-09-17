@@ -34,8 +34,8 @@
 - [x] 实现共用 CI、三个发布组选项、候选归档、OIDC 发布与恢复机制。
 - [x] 原地维护 docs/release.md，新增发布说明目录和 README 入口。
 - [x] 完成本地 Rust、TypeScript、loader/viewer、发布规则及工作区外消费者检查。
-- [ ] 提交实施 PR 并通过 GitHub CI。
-- [ ] 配置 master 必经 PR、必过 CI、禁止强推和删除，合并实施 PR。
+- [x] 提交实施 PR #1 并通过 GitHub CI。
+- [x] 配置 master 必经 PR、必过 CI、禁止强推和删除，已合并实施 PR #1。
 - [ ] 从 master 完成三个发布组的无上传预演，记录运行与验证结果。
 - [ ] 下一次实际版本发布时验证五个包的 OIDC、provenance、上传后消费者及 Release 收尾。
 
