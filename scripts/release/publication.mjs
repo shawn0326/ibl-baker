@@ -74,3 +74,11 @@ export async function publishCargoPackages(packages, {
     await checkArchives(pending);
     for (const pkg of pending) await waitForVersion(pkg, { lookup, now, sleep, emit });
 }
+
+// npm itself rejects occupied versions even with --dry-run. Rehearsals still pack
+// and consume those archives; never hide errors from checks of a new version.
+export async function validateNpmCandidate(pkg, { dryRun, occupied, validate }) {
+    if (dryRun && occupied.includes(pkg.name + '@' + pkg.version)) return 'occupied-rehearsal';
+    await validate(pkg);
+    return 'checked';
+}
