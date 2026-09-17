@@ -6,7 +6,7 @@
 - KTX2 导出（BC6H + zstd）通过 `crates/ktx2_writer` 实现，CLI `--output-format <ibla|ktx2|both>` 可用。
 - `.ibla` 与 `.ktx2` 两种输出格式地位对等，CLI 默认输出 `.ibla`。
 - 当前对外契约以 `docs/format-spec.md`（纯 `.ibla`）、`crates/ibl_cli/README.md`（CLI + 双格式）、`packages/ibla-loader/README.md` 为准。
-- `fixtures/outputs` 已包含 `.ibla` 和 `.ktx2` 样例产物。
+- `fixtures/outputs` 是本地生成且被 Git 忽略的样例目录；CI 使用临时样例。
 
 ## 已完成：v0.2.0 KTX2 导出
 
@@ -28,6 +28,16 @@
 - [x] 将手动浏览器验收入口收敛到 `packages/ibla-viewer` / `packages/ktx2-viewer`。
 - [x] 将 `packages/ibla-viewer` / `packages/ktx2-viewer` 通过 GitHub Pages workflow 部署到仓库 Pages 子路径，继续保持手动拖拽验收入口。
 - [x] 将公开 `.ibla` JS 包迁移为 `@ibltools/ibla-loader`（`packages/ibla-loader`），旧 `@ibltools/loader` 由发布者后续在 npm 手动废弃。
+
+## 自动发包流程
+
+- [x] 实现共用 CI、三个发布组选项、候选归档、OIDC 发布与恢复机制。
+- [x] 原地维护 docs/release.md，新增发布说明目录和 README 入口。
+- [x] 完成本地 Rust、TypeScript、loader/viewer、发布规则及工作区外消费者检查。
+- [ ] 提交实施 PR 并通过 GitHub CI。
+- [ ] 配置 master 必经 PR、必过 CI、禁止强推和删除，合并实施 PR。
+- [ ] 从 master 完成三个发布组的无上传预演，记录运行与验证结果。
+- [ ] 下一次实际版本发布时验证五个包的 OIDC、provenance、上传后消费者及 Release 收尾。
 
 ## 需要单独立项再展开的方向
 

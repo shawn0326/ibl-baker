@@ -124,9 +124,9 @@ test("parseKTX2IBL parses a synthetic BC6H zstd cubemap", () => {
   assert.deepEqual([...level1.compressedBytes], [4, 5]);
 });
 
-test("parseKTX2IBL parses committed specular fixtures", () => {
+test("parseKTX2IBL parses specular fixtures", () => {
   for (const fixtureName of KTX2_FIXTURE_NAMES) {
-    const parsed = parseKTX2IBL(loadCommittedFixture(fixtureName, "specular"));
+    const parsed = parseKTX2IBL(loadFixture(fixtureName, "specular"));
 
     assert.equal(parsed.header.faceCount, 6);
     assert.ok(parsed.header.pixelWidth >= 128);
@@ -138,9 +138,9 @@ test("parseKTX2IBL parses committed specular fixtures", () => {
   }
 });
 
-test("parseKTX2IBL parses committed irradiance fixtures", () => {
+test("parseKTX2IBL parses irradiance fixtures", () => {
   for (const fixtureName of KTX2_FIXTURE_NAMES) {
-    const parsed = parseKTX2IBL(loadCommittedFixture(fixtureName, "irradiance"));
+    const parsed = parseKTX2IBL(loadFixture(fixtureName, "irradiance"));
 
     assert.equal(parsed.header.pixelWidth, 32);
     assert.equal(parsed.header.pixelHeight, 32);
@@ -230,12 +230,12 @@ const KTX2_FIXTURE_NAMES = [
   "spruit_sunrise_2k_ktx2",
 ] as const;
 
-function loadCommittedFixture(
+function loadFixture(
   fixtureName: (typeof KTX2_FIXTURE_NAMES)[number],
   target: "irradiance" | "specular",
 ): Uint8Array {
   const rootDir = path.resolve(import.meta.dirname, "..", "..", "..");
-  const fixturePath = path.join(rootDir, "fixtures", "outputs", fixtureName, `${target}.ktx2`);
+  const fixturePath = path.join(process.env.IBL_FIXTURE_DIR ?? path.join(rootDir, "fixtures", "outputs"), fixtureName, `${target}.ktx2`);
   return fs.readFileSync(fixturePath);
 }
 

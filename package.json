@@ -14,10 +14,18 @@
     "check:ts": "tsc -b packages/ibla-loader packages/ktx2-loader packages/ibla-viewer packages/ktx2-viewer --noEmit",
     "dev:ibla-viewer": "npm run dev -w @ibltools/ibla-viewer",
     "dev:ktx2-viewer": "npm run dev -w @ibltools/ktx2-viewer",
-    "fixtures:refresh": "node scripts/refresh-fixtures.mjs"
+    "fixtures:refresh": "node scripts/refresh-fixtures.mjs",
+    "release": "node scripts/release/run.mjs",
+    "release:check": "node scripts/release/run.mjs static",
+    "release:test": "node --test scripts/release/tests/*.test.mjs",
+    "release:smoke": "node scripts/release/smoke.mjs",
+    "ci:fixtures": "node scripts/ci-fixtures.mjs",
+    "release:binary": "node scripts/release/binary.mjs"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",
+    "smol-toml": "1.8.0",
     "typescript": "^6.0.2"
-  }
+  },
+  "packageManager": "npm@11.11.0"
 }
