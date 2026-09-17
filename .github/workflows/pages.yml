@@ -1,55 +1,14 @@
-name: pages
-
+name: Pages
 on:
-  push:
-    branches: [master]
-    paths:
-      - ".github/workflows/pages.yml"
-      - "package.json"
-      - "package-lock.json"
-      - "packages/ibla-loader/**"
-      - "packages/ktx2-loader/**"
-      - "packages/ibla-viewer/**"
-      - "packages/ktx2-viewer/**"
-  workflow_dispatch:
-
+  workflow_call:
 permissions:
   contents: read
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: npm
-
-      - run: npm ci
-
-      - run: npm run build -w @ibltools/ibla-viewer
-
-      - run: npm run build -w @ibltools/ktx2-viewer
-
-      - run: |
-          mkdir -p _site/ibla-viewer _site/ktx2-viewer
-          cp -R packages/ibla-viewer/dist/. _site/ibla-viewer/
-          cp -R packages/ktx2-viewer/dist/. _site/ktx2-viewer/
-          touch _site/.nojekyll
-
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: _site
-
   deploy:
-    runs-on: ubuntu-latest
-    needs: build
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write
@@ -57,5 +16,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

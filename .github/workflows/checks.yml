@@ -1,0 +1,72 @@
+name: Checks
+on:
+  workflow_call:
+    inputs:
+      release_build:
+        type: boolean
+        default: false
+      pages_artifact:
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      RUSTUP_TOOLCHAIN: 1.98.0
+      IBL_FIXTURE_DIR: ${{ github.workspace }}/target/ci-fixtures
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          package-manager-cache: false
+      - run: npm install --global npm@11.11.0
+      - run: npm ci
+      - run: rustup toolchain install 1.98.0 --profile minimal
+      - run: cargo check --locked --workspace
+      - run: cargo test --locked --workspace
+      - run: npm run check:ts
+      - run: npm run release:check
+      - run: npm run release:test
+      - run: cargo build --release --locked -p ibl_cli
+      - run: npm run ci:fixtures
+      - run: npm run test:js
+      - run: npm run test:ibla-viewer
+      - run: npm run test:ktx2-viewer
+      - run: npm run release:smoke
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: inputs.release_build
+        with:
+          name: ci-fixtures
+          overwrite: true
+          path: target/ci-fixtures/
+          archive: true
+          retention-days: 90
+          if-no-files-found: error
+      - name: Stage Pages
+        if: inputs.pages_artifact
+        run: |
+          mkdir -p _site/ibla-viewer _site/ktx2-viewer
+          cp -R packages/ibla-viewer/dist/. _site/ibla-viewer/
+          cp -R packages/ktx2-viewer/dist/. _site/ktx2-viewer/
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: inputs.pages_artifact
+        with:
+          path: _site
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: quality-failure-${{ github.run_attempt }}
+          path: |
+            target/release/*.json
+            target/release/*.log
+          archive: true
+          retention-days: 90
+          if-no-files-found: ignore

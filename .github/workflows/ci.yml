@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+    with:
+      pages_artifact: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
+  deploy-pages:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs: checks
+    uses: ./.github/workflows/pages.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

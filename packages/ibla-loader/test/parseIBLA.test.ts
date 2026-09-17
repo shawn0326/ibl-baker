@@ -62,9 +62,9 @@ test("parseIBLA parses a synthetic 2D asset with derived mip metadata", () => {
   assert.deepEqual([...secondChunk.encodedBytes], [5, 6]);
 });
 
-test("parseIBLA parses committed HDR specular cubemap fixtures", () => {
+test("parseIBLA parses HDR specular cubemap fixtures", () => {
   for (const fixtureName of HDR_FIXTURE_NAMES) {
-    const parsed = parseIBLA(loadCommittedFixture(fixtureName, "specular"));
+    const parsed = parseIBLA(loadFixture(fixtureName, "specular"));
 
     assert.equal(parsed.manifest.faceCount, 6);
     assert.equal(parsed.manifest.build.sourceFormat, "hdr");
@@ -84,9 +84,9 @@ test("parseIBLA parses committed HDR specular cubemap fixtures", () => {
   }
 });
 
-test("parseIBLA parses committed HDR irradiance cubemap fixtures", () => {
+test("parseIBLA parses HDR irradiance cubemap fixtures", () => {
   for (const fixtureName of HDR_FIXTURE_NAMES) {
-    const parsed = parseIBLA(loadCommittedFixture(fixtureName, "irradiance"));
+    const parsed = parseIBLA(loadFixture(fixtureName, "irradiance"));
 
     assert.equal(parsed.manifest.faceCount, 6);
     assert.equal(parsed.manifest.build.sourceFormat, "hdr");
@@ -98,8 +98,8 @@ test("parseIBLA parses committed HDR irradiance cubemap fixtures", () => {
   }
 });
 
-test("parseIBLA parses the committed Spruit Sunrise JPEG specular cubemap fixture", () => {
-  const parsed = parseIBLA(loadCommittedFixture("spruit_sunrise_2k", "specular"));
+test("parseIBLA parses the Spruit Sunrise JPEG specular cubemap fixture", () => {
+  const parsed = parseIBLA(loadFixture("spruit_sunrise_2k", "specular"));
 
   assert.equal(parsed.manifest.faceCount, 6);
   assert.equal(parsed.manifest.build.sourceFormat, "jpg");
@@ -116,8 +116,8 @@ test("parseIBLA parses the committed Spruit Sunrise JPEG specular cubemap fixtur
   ]);
 });
 
-test("parseIBLA parses the committed Spruit Sunrise JPEG irradiance cubemap fixture", () => {
-  const parsed = parseIBLA(loadCommittedFixture("spruit_sunrise_2k", "irradiance"));
+test("parseIBLA parses the Spruit Sunrise JPEG irradiance cubemap fixture", () => {
+  const parsed = parseIBLA(loadFixture("spruit_sunrise_2k", "irradiance"));
 
   assert.equal(parsed.manifest.faceCount, 6);
   assert.equal(parsed.manifest.build.sourceFormat, "jpg");
@@ -257,12 +257,12 @@ function assertParseError(action: () => unknown, code: string) {
 
 const HDR_FIXTURE_NAMES = ["cannon_exterior", "footprint_court", "helipad", "pisa"] as const;
 
-function loadCommittedFixture(
+function loadFixture(
   fixtureName: (typeof HDR_FIXTURE_NAMES)[number] | "spruit_sunrise_2k",
   target: "irradiance" | "specular",
 ): Uint8Array {
   const rootDir = path.resolve(import.meta.dirname, "..", "..", "..");
-  const fixturePath = path.join(rootDir, "fixtures", "outputs", fixtureName, `${target}.ibla`);
+  const fixturePath = path.join(process.env.IBL_FIXTURE_DIR ?? path.join(rootDir, "fixtures", "outputs"), fixtureName, `${target}.ibla`);
   return fs.readFileSync(fixturePath);
 }
 

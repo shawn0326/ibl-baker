@@ -20,7 +20,7 @@
 - `packages/ktx2-loader`：公开 KTX2 JS 包（`@ibltools/ktx2-loader`），提供 narrow parser-only 的 `parseKTX2IBL(buffer)`；不做 zstd、BC6H decode 或 GPU 上传。
 - `packages/ibla-viewer`：私有浏览器验收工具，用于手动拖拽 `.ibla` 文件、解析 PNG payload，并使用与 KTX2 viewer 一致的 linear → Reinhard → gamma 显示路径；不接仓库 fixture 目录。
 - `packages/ktx2-viewer`：私有浏览器验收工具，用于手动拖拽 `.ktx2` 文件、解析、zstd 解压，并在 WebGPU 支持 `texture-compression-bc` 时做 BC6H 预览；首版不接仓库 fixture 目录。
-- `fixtures/outputs`：已提交的产物样例（`.ibla` 与 `.ktx2`），供 loader 测试与浏览器验收复用。
+- `fixtures/outputs`：本地生成且被 Git 忽略的产物样例；CI 使用 `target/ci-fixtures` 临时样例。
 - `scripts/refresh-fixtures.mjs`：刷新仓库内 fixtures 的入口脚本。
 
 ## 输出格式
@@ -73,6 +73,7 @@ BRDF LUT 始终输出为独立 `.png`，不受格式选项影响。
 
 ## 计划与维护约定
 
+- `docs/release.md` 是发版操作入口；修改发布工作流、工具链、输入或恢复规则时，同轮维护该文档。
 - `TODO.md` 是当前唯一的执行清单，记录下一步工作和仍可能继续推进的事项。
 - 每次完成 `TODO.md` 中的事项后，必须在同一轮改动里同步更新状态。
 

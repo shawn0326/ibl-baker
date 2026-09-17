@@ -13,6 +13,7 @@ BRDF LUT is always emitted as a standalone `.png`.
 
 | Document | Description |
 | --- | --- |
+| [docs/release.md](docs/release.md) | CI, release preparation, OIDC publishing and recovery |
 | [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md) | CLI usage, options, and output format details |
 | [`docs/format-spec.md`](docs/format-spec.md) | `.ibla` binary format specification |
 | [`crates/ibl_core/README.md`](crates/ibl_core/README.md) | Rust core library scope |
