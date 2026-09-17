@@ -231,3 +231,12 @@ The [first all-group rehearsal](https://github.com/shawn0326/ibl-baker/actions/r
 passed all three platform builds and quality checks, then exposed npm 11.11 rejecting
 occupied versions during native publish dry-run. The rehearsal-only preflight rule
 above addresses that behavior; production availability checks remain unchanged.
+
+- [Rehearsal compatibility fix PR #2](https://github.com/shawn0326/ibl-baker/pull/2) merged as 559ed79d5a4e026e002ce4ed6a4c0abcab2b33d4.
+- [Fix PR CI](https://github.com/shawn0326/ibl-baker/actions/runs/35195891602): passed, including 18 release/recovery tests.
+- [Updated master CI and Pages](https://github.com/shawn0326/ibl-baker/actions/runs/35196398791): passed.
+- Each loader also passed an independent archive-consumer check against temporary fixtures without selecting Rust.
+- [Successful all-group rehearsal](https://github.com/shawn0326/ibl-baker/actions/runs/35196405209): passed on 559ed79d5a4e026e002ce4ed6a4c0abcab2b33d4. All five package archives, Windows x64/macOS arm64/Linux x64 binaries and external candidate consumers passed.
+- Downloaded release-candidate artifact 10486711223 and independently verified every package/binary SHA-256 and release-note checksum. Toolchain evidence matches Node 24.19.0, npm 11.11.0 and Cargo 1.98.0.
+- The three crates remain 0.2.1 and both loaders remain 0.2.0. All five occupied versions and missing new release notes are explicitly marked NOT publishable. The publish, verify and finalize jobs were skipped; no registry upload, tag or Release was created.
+- Infrastructure acceptance is complete. Actual five-package OIDC publication, npm provenance after upload, production verification/Release finalization and real partial-failure recovery remain for the next explicitly selected release. Recovery behavior is currently covered by simulated tests.

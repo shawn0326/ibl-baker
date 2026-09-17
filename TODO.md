@@ -36,7 +36,7 @@
 - [x] 完成本地 Rust、TypeScript、loader/viewer、发布规则及工作区外消费者检查。
 - [x] 提交实施 PR #1 并通过 GitHub CI。
 - [x] 配置 master 必经 PR、必过 CI、禁止强推和删除，已合并实施 PR #1。
-- [ ] 从 master 完成三个发布组的无上传预演，记录运行与验证结果。
+- [x] 从 master 完成三个发布组的无上传预演（运行 35196405209），下载核对五包与三平台归档，结果见 docs/release.md。
 - [ ] 下一次实际版本发布时验证五个包的 OIDC、provenance、上传后消费者及 Release 收尾。
 
 ## 需要单独立项再展开的方向
