@@ -1,5 +1,5 @@
 {
-  "name": "@ibltools/cli", "version": "0.1.0", "private": true,
+  "name": "@ibltools/cli", "version": "0.1.1", "private": true,
   "description": "Prebuilt ibl-baker command-line tools for Node.js workflows.",
   "type": "module", "license": "MIT", "engines": { "node": ">=24.0.0" },
   "repository": { "type": "git", "url": "git+https://github.com/shawn0326/ibl-baker.git", "directory": "packages/cli" },
