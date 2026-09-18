@@ -44,7 +44,9 @@ disallows administrator bypass, and only accepts the master branch. Keep it
 separate from github-pages. No long-lived npm/Cargo token or PAT is needed in
 repository secrets. Cargo obtains a temporary token immediately before upload.
 
-Trusted Publisher configurations have been reported complete by the maintainer.
+Trusted Publisher configurations for the original three crates and two loaders
+have been reported complete by the maintainer. The four new CLI packages still
+require the bootstrap steps below.
 The release Environment has been checked through the API. A dry-run cannot prove
 registry authorization or provenance: mark those verified only after a real release.
 For a new package, establish its ownership/initial publication before depending
@@ -279,7 +281,15 @@ check to accept bootstrap uploads. Keep initial-publication receipts separate.
 Local validation passed: 62 Rust tests, 23 release/recovery tests, 22 loader tests,\nTypeScript, both viewer builds, Cargo/npm archive consumers, Windows CLI tarball\ninstallation and real console Ctrl+C cancellation. Actionlint passed.\n- [Implementation PR #4](https://github.com/shawn0326/ibl-baker/pull/4) merged as 20df67d83c5bd095dd070d1224fd4cb119d86efc.
 - [Implementation CI](https://github.com/shawn0326/ibl-baker/actions/runs/35302032490) passed, including Linux CLI tarball consumers and Unix signals.
 - [Initial npm CLI rehearsal](https://github.com/shawn0326/ibl-baker/actions/runs/35302372934) exposed a macOS test expectation using /var instead of its canonical /private/var path. The test now compares canonical paths; argument and cwd forwarding are unchanged.
-Successful rehearsal evidence will be recorded after acceptance.
+- [macOS test correction PR #5](https://github.com/shawn0326/ibl-baker/pull/5) merged as afeec88476693e61bb931681179e70f35ef15939; [its CI](https://github.com/shawn0326/ibl-baker/actions/runs/35302573895) passed.
+- [Master CI and Pages](https://github.com/shawn0326/ibl-baker/actions/runs/35302828106) passed.
+- [npm CLI-only rehearsal](https://github.com/shawn0326/ibl-baker/actions/runs/35302832171) passed: four npm packages, three native builds and three independent archive consumers. Candidate artifact: 10530404545.
+- [All-four-group rehearsal](https://github.com/shawn0326/ibl-baker/actions/runs/35302835316) passed: nine packages, three native builds, Cargo dry-runs, original loader/Cargo consumers and three CLI consumers. Candidate artifact: 10531081507.
+- Both rehearsals used afeec88476693e61bb931681179e70f35ef15939. Downloaded both candidates and all six CLI reports; independently verified every package/native archive SHA-256, release-note hashes, CLI manifests, exact platform dependency versions and report identity. Each platform's npm executable was byte-identical to its corresponding native archive in that same run.
+- The npm distribution is 0.1.0 and its embedded Rust CLI is 0.2.2. Linux symbol inspection found GLIBC_2.34 references and dynamic libstdc++; the supported and tested baseline remains Ubuntu 24.04.
+- The CLI-only candidate had no occupied versions or missing notes. The combined rehearsal correctly marked both existing loader 0.2.0 versions and their missing release notes as NOT publishable; it did not bypass production availability checks.
+- In both runs, publish, verify, cli-registry and finalize were skipped. No registry package, Git tag or GitHub Release was published.
+- Implementation acceptance is complete. Initial ownership/publication of the four new npm packages, their Trusted Publishers, actual OIDC/provenance and registry consumers remain separate release work. Real partial-publication recovery remains unverified; its ordering and checksum safeguards have simulated coverage.
 No npm CLI package upload, tag or Release is part of this implementation rehearsal.
 
 ## Rollout evidence
