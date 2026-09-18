@@ -55,7 +55,7 @@ ibl-baker validate ./out/specular.ibla
 
 ## Version
 
-`ibl-baker --version` and `ibl-baker -V` print `ibl-baker <Rust package version>` and exit successfully. This native version is independent of the npm distribution version.
+`ibl-baker --version` and `ibl-baker -V` print `ibl-baker <Rust package version>` and exit successfully. This native version is independent of the npm distribution version. Starting with npm distribution 0.1.1, the npm launcher adds the npm package name and version on the preceding line; direct native execution is unchanged.
 
 ## Commands
 

@@ -51,10 +51,13 @@ export async function cliConsumer(value, mode) {
     }
     const launcher = join(installed, 'cli/bin/ibl-baker.mjs');
     const invoke = args => run(process.execPath, [launcher, ...args], { cwd: dir });
-    assert.equal(invoke(['--version']), 'ibl-baker ' + entry.binaryVersion);
+    const versionOutput = '@ibltools/cli ' + entry.version + '\nibl-baker ' + entry.binaryVersion;
+    assert.equal(run(native, ['--version'], { cwd: dir }), 'ibl-baker ' + entry.binaryVersion);
+    assert.equal(invoke(['--version']), versionOutput);
+    assert.equal(invoke(['--version', 'extra']), versionOutput);
     assert.equal(invoke(['-V']), invoke(['--version']));
     assert.equal(invoke(['--help']), run(native, ['--help'], { cwd: dir }));
-    for (const args of [['unknown-command'], ['validate', 'missing file 中文.ibla']]) {
+    for (const args of [['unknown-command'], ['validate', 'missing file 中文.ibla'], ['validate', '--version']]) {
         const options = { cwd: dir, encoding: 'utf8' };
         const wrapped = spawnSync(process.execPath, [launcher, ...args], options);
         const direct = spawnSync(native, args, options);
@@ -62,21 +65,21 @@ export async function cliConsumer(value, mode) {
         assert.equal(wrapped.stdout, direct.stdout);
         assert.equal(wrapped.stderr, direct.stderr);
     }
-    assert.equal(npm(['exec', '--offline', '--cache', cache, '--', 'ibl-baker', '--version'], { cwd: dir }), 'ibl-baker ' + entry.binaryVersion);
-    assert.equal(npm(['exec', '--offline', '--cache', cache, '--', '@ibltools/cli', '--version'], { cwd: dir }), 'ibl-baker ' + entry.binaryVersion);
+    assert.equal(npm(['exec', '--offline', '--cache', cache, '--', 'ibl-baker', '--version'], { cwd: dir }), versionOutput);
+    assert.equal(npm(['exec', '--offline', '--cache', cache, '--', '@ibltools/cli', '--version'], { cwd: dir }), versionOutput);
     if (mode === 'registry') {
         const fresh = join(dir, 'fresh-npx');
         mkdirSync(fresh);
         assert.equal(npm(['exec', '--yes', '--ignore-scripts', '--cache', join(fresh, 'cache'),
-            '--', entry.name + '@' + entry.version, '--version'], { cwd: fresh }), 'ibl-baker ' + entry.binaryVersion);
+            '--', entry.name + '@' + entry.version, '--version'], { cwd: fresh }), versionOutput);
     }
     const globalPrefix = join(dir, 'global');
     npm(['install', '--global', '--prefix', globalPrefix, ...installFlags, ...specs], { cwd: dir });
     const globalShim = join(globalPrefix, ...(process.platform === 'win32' ? ['ibl-baker.cmd'] : ['bin', 'ibl-baker']));
     if (process.platform === 'win32') {
-        run('pwsh', ['-NoProfile', '-Command', '& $env:IBL_CLI_SHIM --version; exit $LASTEXITCODE'],
-            { cwd: dir, env: { ...process.env, IBL_CLI_SHIM: globalShim } });
-    } else assert.equal(run(globalShim, ['--version'], { cwd: dir }), 'ibl-baker ' + entry.binaryVersion);
+        assert.equal(run('pwsh', ['-NoProfile', '-Command', '& $env:IBL_CLI_SHIM --version; exit $LASTEXITCODE'],
+            { cwd: dir, env: { ...process.env, IBL_CLI_SHIM: globalShim } }), versionOutput);
+    } else assert.equal(run(globalShim, ['--version'], { cwd: dir }), versionOutput);
     const baked = join(dir, 'baked 中文');
     invoke(['bake', resolve(root, 'fixtures/inputs/pisa.hdr'), '--out-dir', baked, '--size', '16', '--irradiance-size', '8',
         '--samples', '16', '--quality', 'low', '--output-format', 'both']);

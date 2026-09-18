@@ -10,7 +10,14 @@ npm install --global @ibltools/cli
 ibl-baker --help
 ```
 
-The command is `ibl-baker`. Arguments, working directory, environment, standard streams and normal exit codes are forwarded to the native executable. `--version` reports the **Rust CLI version**, independently of the npm distribution version (inspect it with `npm ls @ibltools/cli`). No JavaScript runtime API is exported.
+The command is `ibl-baker`. Arguments, working directory, environment, standard streams and normal exit codes are forwarded to the native executable. Starting with npm version 0.1.1, --version and -V print the npm distribution version followed by the actual Rust CLI version. These versions evolve independently; all three platform packages use the same version as the npm entry package. No JavaScript runtime API is exported.
+
+For example, npm distribution 0.1.1 with Rust CLI 0.2.2 reports:
+
+    @ibltools/cli 0.1.1
+    ibl-baker 0.2.2
+
+Running the native executable directly still prints only ibl-baker 0.2.2. The initial npm 0.1.0 release prints only the native version.
 
 ## Platforms
 
