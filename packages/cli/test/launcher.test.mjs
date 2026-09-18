@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync, spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, copyFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -27,7 +27,7 @@ test('forwards arguments, working directory, environment, stdin and streams with
     const result = node(launchCode(args), { cwd, env: { ...process.env, IBL_TEST: 'inherited' }, input: 'stdin' });
     assert.equal(result.status, 0);
     assert.equal(result.stderr, 'stderr');
-    assert.equal(result.stdout, JSON.stringify({ args: args.slice(3), cwd, env: 'inherited' }) + 'stdin');
+    assert.equal(result.stdout, JSON.stringify({ args: args.slice(3), cwd: realpathSync(cwd), env: 'inherited' }) + 'stdin');
 });
 test('preserves child exit codes and reports startup failure', () => {
     assert.equal(node(launchCode(['-e', 'process.exit(37)'])).status, 37);

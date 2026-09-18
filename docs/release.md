@@ -276,7 +276,10 @@ check to accept bootstrap uploads. Keep initial-publication receipts separate.
 
 ### npm CLI rollout evidence
 
-Local validation passed: 62 Rust tests, 23 release/recovery tests, 22 loader tests,\nTypeScript, both viewer builds, Cargo/npm archive consumers, Windows CLI tarball\ninstallation and real console Ctrl+C cancellation. Actionlint passed.\nCI and dry-run evidence will be recorded here after acceptance.
+Local validation passed: 62 Rust tests, 23 release/recovery tests, 22 loader tests,\nTypeScript, both viewer builds, Cargo/npm archive consumers, Windows CLI tarball\ninstallation and real console Ctrl+C cancellation. Actionlint passed.\n- [Implementation PR #4](https://github.com/shawn0326/ibl-baker/pull/4) merged as 20df67d83c5bd095dd070d1224fd4cb119d86efc.
+- [Implementation CI](https://github.com/shawn0326/ibl-baker/actions/runs/35302032490) passed, including Linux CLI tarball consumers and Unix signals.
+- [Initial npm CLI rehearsal](https://github.com/shawn0326/ibl-baker/actions/runs/35302372934) exposed a macOS test expectation using /var instead of its canonical /private/var path. The test now compares canonical paths; argument and cwd forwarding are unchanged.
+Successful rehearsal evidence will be recorded after acceptance.
 No npm CLI package upload, tag or Release is part of this implementation rehearsal.
 
 ## Rollout evidence
