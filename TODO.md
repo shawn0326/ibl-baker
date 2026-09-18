@@ -37,7 +37,7 @@
 - [x] 提交实施 PR #1 并通过 GitHub CI。
 - [x] 配置 master 必经 PR、必过 CI、禁止强推和删除，已合并实施 PR #1。
 - [x] 从 master 完成三个发布组的无上传预演（运行 35196405209），下载核对五包与三平台归档，结果见 docs/release.md。
-- [ ] 下一次实际版本发布时验证五个包的 OIDC、provenance、上传后消费者及 Release 收尾。
+- [ ] 下一次实际版本发布时验证所选包的 OIDC、provenance、上传后消费者及 Release 收尾。
 
 ## npm CLI 分发
 
@@ -45,8 +45,8 @@
 - [x] 接入 npm_cli 发布组、三平台消费者和候选恢复校验。
 - [x] 完成本地真实归档消费、Windows 控制台 Ctrl+C、62 项 Rust 测试及 23 项发布回归验证；Unix 信号测试由 Linux/macOS CI 执行。
 - [x] 实施 PR #4 已通过 CI 并合并；Linux 归档消费者及 Unix 信号测试通过。
-- [ ] 完成 master 的 npm CLI 单组及四组联合无上传预演（首轮发现并修正 macOS 临时目录规范化测试断言）。
-- [ ] 下载核对候选和三平台证据，记录验收链接。
+- [x] PR #5 修正 macOS 临时目录断言；master 的 npm CLI 单组预演 35302832171 与四组联合预演 35302835316 均通过。
+- [x] 下载并独立核对两个候选的包、原生归档、版本及三平台报告，确认 npm/原生二进制一致；验收链接见 docs/release.md。
 - [ ] 后续单独完成四个 npm 包首次发布、Trusted Publisher 配置和真实 OIDC 验证。
 
 ## 需要单独立项再展开的方向
