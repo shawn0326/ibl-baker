@@ -16,6 +16,7 @@
 - `crates/ibl_core`：Rust 核心库，负责源图读取、bake 主流程、`.ibla` 读写与校验、KTX2 导出。
 - `crates/ibl_cli`：公开 CLI（`ibl-baker`），支持 `--output-format <ibla|ktx2|both>`，输出 `.ibla`、`.ktx2` 或两者并行。
 - `crates/ktx2_writer`：write-only KTX2 序列化器，BC6H（`intel_tex_2`）+ zstd 超级压缩，不依赖 CMake。
+- `packages/cli`：私有源码 workspace，生成公开 `@ibltools/cli` 入口及三个预编译平台包；不提供运行时 JS API，不通过 postinstall 下载。
 - `packages/ibla-loader`：公开 `.ibla` JS 包（`@ibltools/ibla-loader`），提供 parser-only 的 `parseIBLA(buffer)`；不处理 `.ktx2`。
 - `packages/ktx2-loader`：公开 KTX2 JS 包（`@ibltools/ktx2-loader`），提供 narrow parser-only 的 `parseKTX2IBL(buffer)`；不做 zstd、BC6H decode 或 GPU 上传。
 - `packages/ibla-viewer`：私有浏览器验收工具，用于手动拖拽 `.ibla` 文件、解析 PNG payload，并使用与 KTX2 viewer 一致的 linear → Reinhard → gamma 显示路径；不接仓库 fixture 目录。

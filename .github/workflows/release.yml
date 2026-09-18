@@ -1,6 +1,10 @@
 name: CLI binaries
 on:
   workflow_call:
+    inputs:
+      npm_cli:
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -10,6 +14,7 @@ jobs:
     timeout-minutes: 45
     env:
       RUSTUP_TOOLCHAIN: 1.98.0
+      RELEASE_INPUTS: ${{ toJSON(inputs) }}
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +40,7 @@ jobs:
       - run: npm install --global npm@11.11.0
       - run: npm ci
       - run: rustup toolchain install 1.98.0 --profile minimal --target ${{ matrix.target }}
+      - run: npm run test:cli
       - run: cargo test --locked --workspace
       - run: npm run release:binary -- ${{ matrix.platform }} ${{ matrix.target }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

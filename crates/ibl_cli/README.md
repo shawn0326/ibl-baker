@@ -13,6 +13,17 @@ BRDF LUT always outputs as standalone `.png` regardless of format choice.
 
 ## Installation
 
+The npm distribution is prepared as `@ibltools/cli` (initial publication pending). After publication:
+
+```bash
+npx @ibltools/cli --version
+npm install --save-dev @ibltools/cli
+npx ibl-baker --help
+```
+
+See the [npm CLI README](../../packages/cli/README.md) for Node and platform requirements.
+
+
 Install the crate from crates.io:
 
 ```bash
@@ -41,6 +52,10 @@ ibl-baker bake ./environment.hdr --out-dir ./out --output-format both
 # Validate an .ibla asset
 ibl-baker validate ./out/specular.ibla
 ```
+
+## Version
+
+`ibl-baker --version` and `ibl-baker -V` print `ibl-baker <Rust package version>` and exit successfully. This native version is independent of the npm distribution version.
 
 ## Commands
 

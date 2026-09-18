@@ -11,6 +11,7 @@ change versions or refresh local fixtures.
 | rust_cli | ktx2_writer, ibl_core, ibl_cli and three CLI binaries | Cargo workspace version | vVERSION |
 | npm_ibla_loader | @ibltools/ibla-loader | Its package.json | npm/ibla-loader/vVERSION |
 | npm_ktx2_loader | @ibltools/ktx2-loader | Its package.json | npm/ktx2-loader/vVERSION |
+| npm_cli | @ibltools/cli and three platform packages | CLI workspace package.json | npm/cli/vVERSION |
 
 Rust crates remain one coordinated group, ordered as ktx2_writer, ibl_core,
 ibl_cli. Their internal dependency versions must match the workspace version.
@@ -25,7 +26,7 @@ chooses a version or bumps it for you.
 
 ## One-time configuration
 
-Configure a GitHub Trusted Publisher separately on each of the five packages:
+Configure a GitHub Trusted Publisher separately on each published package:
 
 | Field | Value |
 | --- | --- |
@@ -82,13 +83,15 @@ npm run test:js
 npm run test:ibla-viewer
 npm run test:ktx2-viewer
 npm run release:smoke
+npm run test:cli
+npm run release:cli-smoke
 ~~~
 
 Use RUSTUP_TOOLCHAIN=1.98.0 when running release scripts. In PowerShell, set
 environment variables using $env:RUSTUP_TOOLCHAIN = '1.98.0' and
 $env:IBL_FIXTURE_DIR = (Resolve-Path target/ci-fixtures).Path.
 
-Smoke tests package all five packages, perform Cargo's native multi-package
+The existing smoke tests package the Rust crates and two loaders, perform Cargo's native multi-package
 dry-run, and install archives outside the workspace. Local smoke checks allow
 uncommitted changes; production candidate preparation requires a clean checkout.
 Candidate-only Cargo consumer patches point exclusively at extracted, checked
@@ -116,12 +119,12 @@ recovery rules change. README links here; TODO.md remains the execution checklis
 
 1. Merge the implementation or release PR after CI passes.
 2. Open Actions → Publish → Run workflow; select master.
-3. Select one or more of the three release units and leave dry_run enabled.
+3. Select one or more of the four release units and leave dry_run enabled.
 4. Inspect the run summary and release-candidate artifact.
 
 The dispatch fixes the commit SHA and package selection. The workflow repeats
 quality checks, prepares npm and Cargo archives, and builds Windows x64, macOS
-arm64 and Linux x64 binaries when Rust/CLI is selected. Every binary runs a small
+arm64 and Linux x64 binaries when Rust/CLI or npm CLI is selected. Every binary runs a small
 both bake and output checks on its own platform.
 
 The candidate includes versions, channels, dependency information, notes,
@@ -153,8 +156,8 @@ GitHub Release job separately receives repository write permission.
 
 Cargo publishes in dependency order using a native multi-package command. Its
 final dry-run archive hashes must match the approved candidate; archives are
-checked again after upload. npm uploads the approved .tgz files with lifecycle
-scripts disabled, in IBLA then KTX2 order.
+checked again after upload. npm uploads approved .tgz files with lifecycle
+scripts disabled: selected loaders first, then CLI platforms, then the CLI entry.
 
 Verification downloads registry archives and checks SHA-256, npm channels and
 provenance metadata. Clean consumers install exact versions, execute the CLI
@@ -175,7 +178,7 @@ push-tag release trigger is replaced by an internal reusable binary workflow.
 
 ## Failures and recovery
 
-Registries cannot publish five packages atomically. Some versions may become
+Registries cannot publish selected packages atomically. Some versions may become
 visible before the full run completes.
 
 - Use **Re-run failed jobs** on the original run after a partial failure.
@@ -211,6 +214,70 @@ npm deprecate @ibltools/loader "Package renamed to @ibltools/ibla-loader. Please
 ~~~
 
 No workflow performs that deprecation automatically.
+
+
+## npm CLI distribution
+
+The npm_cli selection releases four packages as one group: @ibltools/cli and
+@ibltools/cli-win32-x64, @ibltools/cli-darwin-arm64, @ibltools/cli-linux-x64-gnu.
+They share one npm version and exact optional dependency references. Their version
+is independent of the Rust group; --version reports the embedded Rust version.
+The candidate records both versions, the source SHA, archive hashes and native
+binary hashes. Native changes still require the appropriate Rust version update.
+
+The source CLI workspace is private and has no platform dependencies. Public
+manifests and payload packages are generated in target/npm-cli-stage. Do not
+publish from packages/cli or add generated platform directories to npm workspaces.
+Every package contains its license and README; the Linux package declares glibc.
+Linux uses the existing Ubuntu 24.04 build and runtime baseline, including
+libstdc++6. The candidate includes linux-runtime.json with ldd and symbol evidence.
+
+Selecting rust_cli or npm_cli builds the same three native binaries once.
+When both are selected, their binary hashes must agree. The CLI's npm packages
+are assembled into the immutable candidate before the three consumer jobs run.
+Each job installs that exact entry and its native platform tarball outside the
+workspace, with scripts disabled, checks local/global command shims and executes
+a small both bake plus parser validation. Platform tarballs are explicitly supplied
+before publication; registry consumers install only the exact entry version and
+let npm resolve optional dependencies. A fresh npm exec then tests npx-style use.
+
+The publishing job depends on all selected candidate consumers. CLI platforms
+are uploaded and confirmed before the entry package. Evidence files bind their
+mode, platform, source SHA, run ID and all four archive hashes. Publication and
+finalization reject missing or mismatched evidence. Reruns consume the original
+candidate, including when binary jobs rebuild. A partial CLI upload follows the
+same checksum-based recovery rules as the other npm packages.
+
+After publication, three registry consumers run alongside registry integrity,
+channel and provenance checks. Release finalization requires both sets of checks.
+The npm CLI Release uses npm/cli/vVERSION and docs/releases/npm-cli-VERSION.md
+with heading "# @ibltools/cli VERSION". It attaches four npm archives and evidence,
+and is never the repository-wide latest Release.
+
+Daily Quality runs npm run test:cli and npm run release:cli-smoke after building
+the native CLI. Full candidate and registry consumers run on the three release
+platforms. Local CLI smoke needs a release binary but not a clean checkout.
+Signal tests use real Unix signals and Windows console Ctrl+C.
+
+### First publication
+
+The new four package identities still need an initial ownership/publication step.
+Do not treat a dry-run as proof that these names can be published or that OIDC is
+configured. At the separately approved first release, use the reviewed candidate
+archives with interactive npm authentication, publish the platform packages first,
+verify their registry integrity, and publish the entry last. Never publish empty
+placeholder packages or rebuild approved archives during bootstrap.
+
+Configure each new package's Trusted Publisher for shawn0326/ibl-baker,
+publish.yml, Environment release, with Allow npm publish enabled. Thereafter use
+a new version and the normal OIDC workflow. An interactive initial upload does
+not substitute for this workflow's provenance verification; do not weaken that
+check to accept bootstrap uploads. Keep initial-publication receipts separate.
+
+### npm CLI rollout evidence
+
+Local validation passed: 62 Rust tests, 23 release/recovery tests, 22 loader tests,\nTypeScript, both viewer builds, Cargo/npm archive consumers, Windows CLI tarball\ninstallation and real console Ctrl+C cancellation. Actionlint passed.\nCI and dry-run evidence will be recorded here after acceptance.
+No npm CLI package upload, tag or Release is part of this implementation rehearsal.
 
 ## Rollout evidence
 
