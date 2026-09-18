@@ -4,7 +4,7 @@ import { catalog, root } from './core.mjs';
 import { output, npm, run, cargoArchive, archivePath } from './io.mjs';
 import { consumer } from './consumer.mjs';
 
-const packages = catalog();
+const packages = catalog().filter(p => p.group !== 'npm_cli');
 mkdirSync(output, { recursive: true });
 for (const pkg of packages.filter(p => p.registry === 'npm')) {
     const result = JSON.parse(npm(['pack', '--json', '--pack-destination', output], { cwd: resolve(root, pkg.directory) }))[0];

@@ -6,6 +6,8 @@ import { catalog, root, read, json, hash, repository, selectPackages, assertCont
     assertNotes, assertResume, assertChannelAdvance, getJson, platforms, assertExistingRelease } from './core.mjs';
 import { output, run, npm, writeJson, archivePath, checkFiles, clean, cargoArchive, listFiles, progress } from './io.mjs';
 import { consumer } from './consumer.mjs';
+import { packCli } from './cli-package.mjs';
+import { cliConsumer, assertCliEvidence } from './cli-consumer.mjs';
 import { waitForVersion, publishNpmPackages, publishCargoPackages, validateNpmCandidate } from './publication.mjs';
 
 const command = process.argv[2];
@@ -23,8 +25,8 @@ function staticCheck() {
     for (const pkg of packages) {
         if (pkg.registry === 'npm') {
             const manifest = json(pkg.directory + '/package.json');
-            if (manifest.private || manifest.publishConfig?.access !== 'public'
-                || (manifest.publishConfig.registry && manifest.publishConfig.registry !== 'https://registry.npmjs.org/')
+            if ((pkg.group === 'npm_cli' ? manifest.private !== true || Boolean(manifest.optionalDependencies) : manifest.private || manifest.publishConfig?.access !== 'public')
+                || (manifest.publishConfig?.registry && manifest.publishConfig.registry !== 'https://registry.npmjs.org/')
                 || manifest.repository?.url !== 'git+https://github.com/' + repository + '.git') throw new Error('Invalid publication metadata: ' + pkg.name);
             if (lock.packages[pkg.directory]?.version !== pkg.version
                 || JSON.stringify(lock.packages[pkg.directory]?.dependencies ?? {}) !== JSON.stringify(manifest.dependencies ?? {})) {
@@ -51,7 +53,7 @@ function manifest() {
         if (hash(readFileSync(archivePath(pkg.notesFile))) !== pkg.notesSha256) throw new Error('Release notes checksum mismatch.');
     }
     for (const binary of value.binaries) checkFiles(binary);
-    if (selected().some(p => p.registry === 'cargo') && (value.binaries.length !== 3 || !platforms.every(p => value.binaries.some(b => b.platform === p)))) throw new Error('Missing binary platforms.');
+    if (selected().some(p => p.registry === 'cargo' || p.group === 'npm_cli') && (value.binaries.length !== 3 || !platforms.every(p => value.binaries.some(b => b.platform === p)))) throw new Error('Missing binary platforms.');
     return value;
 }
 function summary(value) {
@@ -102,7 +104,18 @@ async function prepare() {
         toolchains: { node: process.version, npm: npm(['--version']), cargo: run('cargo', ['--version']) } };
     mkdirSync(output, { recursive: true });
     for (const pkg of items.filter(p => p.registry === 'npm')) {
-        const packed = JSON.parse(npm(['pack', '--json', '--pack-destination', output], { cwd: resolve(root, pkg.directory) }))[0];
+        let packed;
+        if (pkg.kind === 'cli') {
+            packCli(pkg, output);
+            packed = { filename: pkg.archive, files: pkg.files.map(path => ({ path })) };
+        } else if (pkg.kind === 'cli-platform') {
+            const built = JSON.parse(readFileSync(resolve(root, 'target/binaries/npm-' + pkg.platform + '.json'), 'utf8'));
+            for (const key of Object.keys(pkg)) if (JSON.stringify(pkg[key]) !== JSON.stringify(built[key])) throw new Error('Platform package metadata mismatch: ' + key);
+            copyFileSync(resolve(root, 'target/binaries', built.archive), archivePath(built.archive));
+            checkFiles(built);
+            Object.assign(pkg, built);
+            packed = { filename: pkg.archive, files: pkg.files.map(path => ({ path })) };
+        } else packed = JSON.parse(npm(['pack', '--json', '--pack-destination', output], { cwd: resolve(root, pkg.directory) }))[0];
         pkg.archive = packed.filename;
         pkg.files = packed.files.map(f => f.path);
         const bytes = readFileSync(archivePath(pkg.archive));
@@ -134,14 +147,17 @@ async function prepare() {
         else writeFileSync(archivePath(pkg.notesFile), '# Rehearsal only\n\nNo release notes were supplied. This candidate cannot be published.\n');
         pkg.notesSha256 = hash(readFileSync(archivePath(pkg.notesFile)));
     }
-    if (crates.length) {
+    if (crates.length || items.some(p => p.group === 'npm_cli')) {
         for (const platform of platforms) {
             const directory = resolve(root, 'target/binaries');
             const binary = JSON.parse(readFileSync(join(directory, platform + '.json'), 'utf8'));
-            if (binary.sha !== value.sha || binary.runId !== value.runId || binary.version !== crates[0].version || binary.platform !== platform || binary.status !== 'passed') throw new Error('Binary evidence mismatch: ' + platform);
+            if (binary.sha !== value.sha || binary.runId !== value.runId || binary.version !== packages.find(p => p.registry === 'cargo').version || binary.platform !== platform || binary.status !== 'passed') throw new Error('Binary evidence mismatch: ' + platform);
             copyFileSync(join(directory, binary.archive), archivePath(binary.archive));
             checkFiles(binary);
+            const platformPkg = items.find(p => p.kind === 'cli-platform' && p.platform === platform);
+            if (platformPkg && platformPkg.binarySha256 !== binary.binarySha256) throw new Error('Native and npm binaries differ.');
             value.binaries.push(binary);
+            if (platform === 'linux-x64') copyFileSync(join(directory, 'linux-runtime.json'), join(output, 'linux-runtime.json'));
         }
     }
     await consumer(items, 'candidate');
@@ -156,6 +172,7 @@ async function checkChannel(pkg) {
 async function publishNpm(ids) {
     const value = manifest();
     clean();
+    assertCliEvidence(value, 'candidate');
     await publishNpmPackages(value.packages.filter(p => ids.includes(p.id)), {
         checkChannel, emit: progress,
         upload: pkg => npm(["publish", archivePath(pkg.archive), "--ignore-scripts", "--access", "public", "--tag", pkg.channel, "--registry=https://registry.npmjs.org/"]),
@@ -163,6 +180,7 @@ async function publishNpm(ids) {
 }
 async function publishCargo() {
     const value = manifest();
+    assertCliEvidence(value, 'candidate');
     clean();
     const checkArchives = items => {
         for (const pkg of items) if (hash(readFileSync(cargoArchive(pkg, cargoTarget))) !== pkg.sha256) {
@@ -197,10 +215,16 @@ async function verify() {
 }
 async function finalize() {
     const value = manifest();
+    const cliCandidate = assertCliEvidence(value, 'candidate');
+    const cliRegistry = assertCliEvidence(value, 'registry');
     const verified = JSON.parse(readFileSync(join(output, 'verified.json'), 'utf8'));
     if (verified.status !== 'passed' || verified.sha !== value.sha || verified.runId !== value.runId
         || JSON.stringify(verified.receipts) !== JSON.stringify(value.packages.map(p => ({ name: p.name, version: p.version, sha256: p.sha256 })))) {
         throw new Error('Missing matching registry verification.');
+    }
+    if (cliCandidate) {
+        verified.cli = { candidate: cliCandidate, registry: cliRegistry };
+        writeJson(join(output, 'verified.json'), verified);
     }
     const releases = JSON.parse(run('gh', ['api', 'repos/' + repository + '/releases?per_page=100', '--paginate', '--slurp'])).flat();
     const releaseGroups = [...new Set(value.packages.map(p => p.group))].map(id => {
@@ -238,7 +262,8 @@ try {
     else if (command === 'prepare') await prepare();
     else if (command === 'validate') manifest();
     else if (command === 'publish-cargo') await publishCargo();
-    else if (command === 'publish-npm') await publishNpm(['npm_ibla-loader', 'npm_ktx2-loader']);
+    else if (command === 'publish-npm') await publishNpm(packages.filter(p => p.registry === 'npm').map(p => p.id));
+    else if (command === 'cli-candidate' || command === 'cli-registry') await cliConsumer(manifest(), command === 'cli-candidate' ? 'candidate' : 'registry');
     else if (command === 'verify') await verify();
     else if (command === 'finalize') await finalize();
     else throw new Error('Unknown release command: ' + command);

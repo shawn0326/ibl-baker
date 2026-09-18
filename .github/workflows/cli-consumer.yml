@@ -1,0 +1,61 @@
+name: npm CLI consumers
+on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        required: true
+      release_inputs:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  consume:
+    name: CLI consumer (${{ inputs.mode }}, ${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      RELEASE_INPUTS: ${{ inputs.release_inputs }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            runner: windows-latest
+          - platform: macos-arm64
+            runner: macos-14
+          - platform: linux-x64
+            runner: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          package-manager-cache: false
+      - run: npm install --global npm@11.11.0
+      - run: npm ci --ignore-scripts
+      - run: npm run test:cli
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-candidate
+          digest-mismatch: error
+          path: target/release/
+      - run: npm run release -- cli-${{ inputs.mode }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cli-${{ inputs.mode }}-${{ matrix.platform }}
+          overwrite: true
+          path: target/release/cli-${{ inputs.mode }}-${{ matrix.platform }}.json
+          archive: true
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: consumer-failure-${{ inputs.mode }}-${{ matrix.platform }}-${{ github.run_attempt }}
+          path: target/release/commands.log
+          retention-days: 90

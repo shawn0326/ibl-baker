@@ -59,7 +59,7 @@ export async function consumer(packages, mode) {
         bakeSmoke(binary, baked);
     }
     // Rust-only releases still verify their output with the currently published readers.
-    const readers = rust.length ? catalog().filter(p => p.registry === 'npm') : packages.filter(p => p.registry === 'npm');
+    const readers = rust.length ? catalog().filter(p => p.kind === 'loader') : packages.filter(p => p.kind === 'loader');
     if (readers.length) {
         writeJson(join(dir, 'package.json'), { private: true, type: 'module' });
         const tsVersion = json('package-lock.json').packages['node_modules/typescript'].version;

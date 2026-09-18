@@ -36,6 +36,7 @@ fn run(args: Vec<String>) -> Result<String, CliError> {
 
     match args[1].as_str() {
         "help" | "--help" | "-h" => Ok(help_text()),
+        "--version" | "-V" => Ok(format!("ibl-baker {}", env!("CARGO_PKG_VERSION"))),
         "bake" => handle_bake(&args[2..]),
         "validate" => handle_validate(&args[2..]),
         other => Err(CliError::Usage(format!("unknown command: {other}"))),
@@ -711,6 +712,8 @@ fn parse_exr_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
 fn help_text() -> String {
     [
         "ibl-baker",
+        "",
+        "Version: ibl-baker --version (or -V)",
         "",
         "Commands",
         "  ibl-baker bake input-path --out-dir ./out",
@@ -1470,5 +1473,18 @@ mod tests {
         assert_eq!(choose_auto_specular_size(4096, 2048), 1024);
         assert_eq!(choose_auto_specular_size(8192, 4096), 2048);
         assert_eq!(choose_auto_specular_size(2048, 1536), 512);
+    }
+}
+
+#[cfg(test)]
+mod version_tests {
+    #[test]
+    fn version_flags_report_package_version() {
+        for flag in ["--version", "-V"] {
+            assert_eq!(
+                super::run(vec!["ibl-baker".into(), flag.into()]).unwrap(),
+                format!("ibl-baker {}", env!("CARGO_PKG_VERSION"))
+            );
+        }
     }
 }

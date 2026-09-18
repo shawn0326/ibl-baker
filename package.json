@@ -5,7 +5,7 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "npm run test:rust && npm run test:js && npm run test:ibla-viewer && npm run test:ktx2-viewer",
+    "test": "npm run test:rust && npm run test:js && npm run test:ibla-viewer && npm run test:ktx2-viewer && npm run test:cli",
     "test:rust": "cargo test --workspace",
     "test:js": "npm run test -w @ibltools/ibla-loader && npm run test -w @ibltools/ktx2-loader",
     "test:ibla-viewer": "npm run test -w @ibltools/ibla-viewer",
@@ -20,7 +20,9 @@
     "release:test": "node --test scripts/release/tests/*.test.mjs",
     "release:smoke": "node scripts/release/smoke.mjs",
     "ci:fixtures": "node scripts/ci-fixtures.mjs",
-    "release:binary": "node scripts/release/binary.mjs"
+    "release:binary": "node scripts/release/binary.mjs",
+    "test:cli": "npm run test -w @ibltools/cli",
+    "release:cli-smoke": "node scripts/release/cli-smoke.mjs"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",

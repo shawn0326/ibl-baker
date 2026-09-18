@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { parse } from 'smol-toml';
+import { targets } from '../../packages/cli/launcher.mjs';
 
 export const root = resolve(import.meta.dirname, '../..');
 export const repository = 'shawn0326/ibl-baker';
-export const groups = ['rust_cli', 'npm_ibla_loader', 'npm_ktx2_loader'];
+export const groups = ['rust_cli', 'npm_ibla_loader', 'npm_ktx2_loader', 'npm_cli'];
 export const platforms = ['windows-x64', 'macos-arm64', 'linux-x64'];
 export const read = path => readFileSync(resolve(root, path), 'utf8').replaceAll('\r\n', '\n');
 export const json = path => JSON.parse(read(path));
@@ -18,7 +19,7 @@ export function channel(version) {
 }
 export function catalog(readAt = read) {
     const workspaceVersion = parse(readAt('Cargo.toml')).workspace.package.version;
-    return [
+    const existing = [
         ['rust_cli', 'cargo', 'ktx2_writer'], ['rust_cli', 'cargo', 'ibl_core'], ['rust_cli', 'cargo', 'ibl_cli'],
         ['npm_ibla_loader', 'npm', 'ibla-loader'], ['npm_ktx2_loader', 'npm', 'ktx2-loader'],
     ].map(([group, registry, slug]) => {
@@ -30,11 +31,20 @@ export function catalog(readAt = read) {
         const dependencies = Object.entries(m.dependencies ?? {}).filter(([name]) => ['ktx2_writer', 'ibl_core'].includes(name))
             .map(([name, spec]) => ({ name, version: spec.version?.replace(/^=/u, '') }));
         for (const d of dependencies) if (d.version !== workspaceVersion) throw new Error('Internal Rust dependency must match workspace version: ' + d.name);
-        return { id: registry + '_' + slug, group, registry, slug, directory, name: p.name, version, dependencies,
+        return { kind: registry === 'cargo' ? 'cargo' : 'loader', id: registry + '_' + slug, group, registry, slug, directory, name: p.name, version, dependencies,
             tag: registry === 'cargo' ? 'v' + version : 'npm/' + slug + '/v' + version,
             channel: channel(version), notesTitle: registry === 'cargo' ? 'Rust/CLI' : p.name,
             notes: 'docs/releases/' + (registry === 'cargo' ? 'rust-cli' : 'npm-' + slug) + '-' + version + '.md' };
     });
+    const source = JSON.parse(readAt('packages/cli/package.json'));
+    const version = source.version;
+    const common = { group: 'npm_cli', registry: 'npm', version, binaryVersion: workspaceVersion,
+        directory: 'packages/cli', tag: 'npm/cli/v' + version, channel: channel(version),
+        notesTitle: '@ibltools/cli', notes: 'docs/releases/npm-cli-' + version + '.md' };
+    const binaries = targets.map(t => ({ ...common, kind: 'cli-platform', id: 'npm_cli-' + t.suffix,
+        slug: 'cli-' + t.suffix, name: '@ibltools/cli-' + t.suffix, platform: t.platform, dependencies: [] }));
+    return [...existing, ...binaries, { ...common, kind: 'cli', id: 'npm_cli', slug: 'cli', name: '@ibltools/cli',
+        dependencies: binaries.map(p => ({ name: p.name, version })) }];
 }
 export function selectPackages(packages, inputs) {
     for (const [key, value] of Object.entries(inputs)) {
