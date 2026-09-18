@@ -44,7 +44,8 @@
 - [x] 实现原生版本命令、薄 launcher 和四包暂存打包。
 - [x] 接入 npm_cli 发布组、三平台消费者和候选恢复校验。
 - [x] 完成本地真实归档消费、Windows 控制台 Ctrl+C、62 项 Rust 测试及 23 项发布回归验证；Unix 信号测试由 Linux/macOS CI 执行。
-- [ ] 完成 PR、CI 和 master 的 npm CLI 单组及四组联合无上传预演。
+- [x] 实施 PR #4 已通过 CI 并合并；Linux 归档消费者及 Unix 信号测试通过。
+- [ ] 完成 master 的 npm CLI 单组及四组联合无上传预演（首轮发现并修正 macOS 临时目录规范化测试断言）。
 - [ ] 下载核对候选和三平台证据，记录验收链接。
 - [ ] 后续单独完成四个 npm 包首次发布、Trusted Publisher 配置和真实 OIDC 验证。
 
