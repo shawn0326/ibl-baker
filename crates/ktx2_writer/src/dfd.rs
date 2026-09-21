@@ -1,4 +1,4 @@
-/// Data Format Descriptor for `VK_FORMAT_BC6H_UFLOAT_BLOCK` (VkFormat 131).
+/// Data Format Descriptor for `VK_FORMAT_BC6H_UFLOAT_BLOCK` (VkFormat 143).
 ///
 /// Fields (Khronos Data Format Specification 1.3, §5.6.7):
 ///   dfdTotalSize          = 44   (4 B header + 40 B descriptor block)

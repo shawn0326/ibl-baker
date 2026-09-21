@@ -129,7 +129,7 @@ The full binary format specification is defined in [`docs/format-spec.md`](../..
 
 KTX2 outputs are GPU-ready cubemaps using BC6H block compression with zstd supercompression.
 
-- Vulkan format: `VK_FORMAT_BC6H_UFLOAT_BLOCK` (format 131)
+- Vulkan format: `VK_FORMAT_BC6H_UFLOAT_BLOCK` (`vkFormat = 143`)
 - Compression: BC6H unsigned half-float, 4×4 blocks
 - Supercompression: zstd per-level (scheme 2)
 - Input: linear f32 pixels converted to f16 → BC6H (the `--encoding` option has no effect)

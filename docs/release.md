@@ -261,6 +261,10 @@ and is never the repository-wide latest Release.
 Daily Quality runs npm run test:cli and npm run release:cli-smoke after building
 the native CLI. Full candidate and registry consumers run on the three release
 platforms. Local CLI smoke needs a release binary but not a clean checkout.
+It packs the current workspace loaders so unpublished coordinated loader changes
+are tested from local archives instead of being resolved from the registry.
+When the native CLI or Rust group changes the KTX2 contract, the publish selection
+must include `npm_ktx2_loader` so the writer and parser are released together.
 Signal tests use real Unix signals and Windows console Ctrl+C.
 
 ### First publication

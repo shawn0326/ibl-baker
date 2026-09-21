@@ -28,6 +28,7 @@
 - [x] 将手动浏览器验收入口收敛到 `packages/ibla-viewer` / `packages/ktx2-viewer`。
 - [x] 将 `packages/ibla-viewer` / `packages/ktx2-viewer` 通过 GitHub Pages workflow 部署到仓库 Pages 子路径，继续保持手动拖拽验收入口。
 - [x] 将公开 `.ibla` JS 包迁移为 `@ibltools/ibla-loader`（`packages/ibla-loader`），旧 `@ibltools/loader` 由发布者后续在 npm 手动废弃。
+- [x] 修正 KTX2 BC6H UFLOAT header 的 Vulkan format 值为 `143`；新 writer 仅写标准值，新 loader 对既有 `131` 产物保留受限兼容。
 
 ## 自动发包流程
 

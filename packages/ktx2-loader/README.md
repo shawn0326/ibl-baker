@@ -6,7 +6,7 @@ It is intentionally not a general-purpose KTX2 parser.
 The supported profile is the current CLI output shape:
 
 - KTX2 container
-- `VK_FORMAT_BC6H_UFLOAT_BLOCK` (`vkFormat = 131`)
+- `VK_FORMAT_BC6H_UFLOAT_BLOCK` (`vkFormat = 143`)
 - zstd supercompression (`supercompressionScheme = 2`)
 - non-array cubemap (`faceCount = 6`, `pixelDepth = 0`, `layerCount = 0`)
 - one or more mip levels
@@ -55,6 +55,12 @@ It does not:
 Consumers that need upload-ready BC6H data should zstd-decompress each level's `compressedBytes`.
 After decompression, use the level's `faces` entries to split the raw BC6H bytes into the six cubemap faces.
 
+`ibl-baker` versions through Rust/CLI 0.2.2 incorrectly wrote `vkFormat = 131`, which is
+`VK_FORMAT_BC1_RGB_UNORM_BLOCK`, while their DFD and payload were BC6H UFLOAT. The loader accepts
+those historical files only for the known writer versions `v0.1.0` through `v0.2.2`, and only when
+the BC6H DFD, `ibl-baker` writer metadata, topology, zstd scheme, and level layout all match this
+package's supported profile. New output uses the standard value `143`.
+
 ## Public API
 
 ```ts
@@ -68,6 +74,7 @@ It throws `KTX2IBLParseError` when the file is invalid or outside the supported 
 
 ```ts
 export type KTX2IBLFaceName = 'px' | 'nx' | 'py' | 'ny' | 'pz' | 'nz'
+export type KTX2IBLVkFormat = 143 | 131
 
 export type KTX2IBLParseErrorCode =
   | 'INVALID_HEADER'
@@ -84,7 +91,7 @@ export class KTX2IBLParseError extends Error {
 
 export interface ParsedKTX2IBL {
   header: {
-    vkFormat: 131
+    vkFormat: KTX2IBLVkFormat
     typeSize: 1
     pixelWidth: number
     pixelHeight: number

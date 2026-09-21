@@ -6,7 +6,7 @@ import { catalog, read, selectPackages, validateSelection, channel, assertChanne
 
 test('three groups expand in Cargo dependency order and retain independent npm versions', () => {
     const all = catalog();
-    assert.deepEqual(selectPackages(all, { rust_cli: true }).map(p => p.name), ['ktx2_writer', 'ibl_core', 'ibl_cli']);
+    assert.deepEqual(selectPackages(all, { rust_cli: true, npm_ktx2_loader: true }).filter(p => p.group === 'rust_cli').map(p => p.name), ['ktx2_writer', 'ibl_core', 'ibl_cli']);
     assert.equal(selectPackages(all, { npm_ibla_loader: true }).length, 1);
     assert.equal(selectPackages(all, { rust_cli: true, npm_ibla_loader: true, npm_ktx2_loader: true }).length, 5);
     assert.throws(() => selectPackages(all, {}), /Select/);
@@ -68,15 +68,20 @@ test('release notes use the group heading and require a dated entry', () => {
 });
 
 test('npm CLI forms an independent complete release group with exact platform dependencies', () => {
-    const all = catalog(), cli = selectPackages(all, { npm_cli: true });
+    const all = catalog(), cli = selectPackages(all, { npm_cli: true, npm_ktx2_loader: true }).filter(p => p.group === 'npm_cli');
     assert.equal(cli.length, 4);
     assert.deepEqual(cli.map(p => p.kind), ['cli-platform', 'cli-platform', 'cli-platform', 'cli']);
     assert.equal(new Set(cli.map(p => p.version)).size, 1);
     assert.equal(new Set(cli.map(p => p.tag)).size, 1);
     assert.equal(cli[3].binaryVersion, all[0].version);
     assert.deepEqual(cli[3].dependencies, cli.slice(0, 3).map(p => ({ name: p.name, version: p.version })));
-    assert.equal(selectPackages(all, { rust_cli: true, npm_cli: true }).length, 7);
+    assert.equal(selectPackages(all, { rust_cli: true, npm_cli: true, npm_ktx2_loader: true }).length, 8);
     assert.equal(selectPackages(all, { rust_cli: true, npm_cli: true, npm_ibla_loader: true, npm_ktx2_loader: true }).length, 9);
+});
+test('native KTX2 producers require the matching KTX2 loader release', () => {
+    const all = catalog();
+    assert.throws(() => selectPackages(all, { rust_cli: true }), /npm_ktx2_loader/);
+    assert.throws(() => selectPackages(all, { npm_cli: true }), /npm_ktx2_loader/);
 });
 test('an incomplete CLI group cannot pass dependency validation', async () => {
     const entry = catalog().find(p => p.kind === 'cli');

@@ -1,4 +1,5 @@
 export type KTX2IBLFaceName = "px" | "nx" | "py" | "ny" | "pz" | "nz";
+export type KTX2IBLVkFormat = 143 | 131;
 
 export type KTX2IBLParseErrorCode =
   | "INVALID_HEADER"
@@ -21,7 +22,7 @@ export class KTX2IBLParseError extends Error {
 
 export interface ParsedKTX2IBL {
   header: {
-    vkFormat: 131;
+    vkFormat: KTX2IBLVkFormat;
     typeSize: 1;
     pixelWidth: number;
     pixelHeight: number;
@@ -79,7 +80,14 @@ const HEADER_BYTE_LENGTH = 48;
 const INDEX_BYTE_LENGTH = 32;
 const LEVEL_INDEX_ENTRY_BYTE_LENGTH = 24;
 const LEVEL_INDEX_START = HEADER_BYTE_LENGTH + INDEX_BYTE_LENGTH;
-const VK_FORMAT_BC6H_UFLOAT_BLOCK = 131;
+const VK_FORMAT_BC6H_UFLOAT_BLOCK = 143;
+const LEGACY_IBL_BAKER_VK_FORMAT = 131;
+const LEGACY_IBL_BAKER_WRITERS = new Set([
+  "ibl-baker v0.1.0",
+  "ibl-baker v0.2.0",
+  "ibl-baker v0.2.1",
+  "ibl-baker v0.2.2",
+]);
 const SUPERCOMPRESSION_ZSTD = 2;
 const CUBEMAP_FACE_COUNT = 6;
 const BLOCK_WIDTH = 4;
@@ -162,7 +170,7 @@ export function parseKTX2IBL(buffer: ArrayBuffer | Uint8Array): ParsedKTX2IBL {
     supercompressionScheme: readU32(view, 44),
   };
 
-  validateHeaderProfile(header);
+  const vkFormat = validateHeaderProfile(header);
 
   const dfdByteOffset = readU32(view, 48);
   const dfdByteLength = readU32(view, 52);
@@ -218,12 +226,18 @@ export function parseKTX2IBL(buffer: ArrayBuffer | Uint8Array): ParsedKTX2IBL {
       'Expected KTXwriter metadata to start with "ibl-baker ".',
     );
   }
+  if (header.vkFormat === LEGACY_IBL_BAKER_VK_FORMAT && !LEGACY_IBL_BAKER_WRITERS.has(writer)) {
+    throw new KTX2IBLParseError(
+      "INVALID_KEY_VALUE_DATA",
+      "Legacy vkFormat 131 is only accepted for ibl-baker v0.1.0 through v0.2.2 files.",
+    );
+  }
 
   const levels = parseLevels(bytes, view, header.pixelWidth, header.levelCount, kvdEnd);
 
   return {
     header: {
-      vkFormat: VK_FORMAT_BC6H_UFLOAT_BLOCK,
+      vkFormat,
       typeSize: 1,
       pixelWidth: header.pixelWidth,
       pixelHeight: header.pixelHeight,
@@ -255,8 +269,11 @@ function validateHeaderProfile(header: {
   faceCount: number;
   levelCount: number;
   supercompressionScheme: number;
-}): void {
-  if (header.vkFormat !== VK_FORMAT_BC6H_UFLOAT_BLOCK) {
+}): KTX2IBLVkFormat {
+  if (
+    header.vkFormat !== VK_FORMAT_BC6H_UFLOAT_BLOCK &&
+    header.vkFormat !== LEGACY_IBL_BAKER_VK_FORMAT
+  ) {
     throw new KTX2IBLParseError(
       "UNSUPPORTED_FORMAT",
       `Unsupported vkFormat ${header.vkFormat}; expected ${VK_FORMAT_BC6H_UFLOAT_BLOCK}.`,
@@ -289,6 +306,8 @@ function validateHeaderProfile(header: {
   if (header.levelCount <= 0) {
     throw new KTX2IBLParseError("UNSUPPORTED_TOPOLOGY", "KTX2 IBL assets must contain at least one mip level.");
   }
+
+  return header.vkFormat;
 }
 
 function parseLevels(
