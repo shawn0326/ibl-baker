@@ -52,6 +52,9 @@ export function selectPackages(packages, inputs) {
     }
     const selected = packages.filter(p => inputs[p.group] === true);
     if (!selected.length) throw new Error('Select at least one release group.');
+    if ((inputs.rust_cli === true || inputs.npm_cli === true) && inputs.npm_ktx2_loader !== true) {
+        throw new Error('Rust/CLI releases require npm_ktx2_loader for the KTX2 format contract.');
+    }
     return selected;
 }
 export function assertContext(env, sha) {

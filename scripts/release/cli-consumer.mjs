@@ -92,11 +92,16 @@ export async function cliConsumer(value, mode) {
     })], { cwd: dir });
     const checks = [];
     for (const [slug, fn, ext] of [['ibla-loader', 'parseIBLA', 'ibla'], ['ktx2-loader', 'parseKTX2IBL', 'ktx2']]) {
-        for (const kind of ['specular', 'irradiance']) checks.push(
-            'const b' + checks.length + ' = fs.readFileSync(' + JSON.stringify(join(baked, kind + '.' + ext)) + ');'
-            + fn + '(b' + checks.length + '.buffer.slice(b' + checks.length + '.byteOffset, b' + checks.length + '.byteOffset + b' + checks.length + '.byteLength));');
+        for (const kind of ['specular', 'irradiance']) {
+            const index = checks.length;
+            const parsed = 'p' + index;
+            checks.push(
+                'const b' + index + ' = fs.readFileSync(' + JSON.stringify(join(baked, kind + '.' + ext)) + ');'
+                + 'const ' + parsed + ' = ' + fn + '(b' + index + '.buffer.slice(b' + index + '.byteOffset, b' + index + '.byteOffset + b' + index + '.byteLength));'
+                + (ext === 'ktx2' ? 'assert.equal(' + parsed + '.header.vkFormat, 143);' : ''));
+        }
     }
-    run(process.execPath, ['--input-type=module', '-e', 'import fs from "node:fs"; import {parseIBLA} from "@ibltools/ibla-loader"; import {parseKTX2IBL} from "@ibltools/ktx2-loader";' + checks.join('\n')], { cwd: dir });
+    run(process.execPath, ['--input-type=module', '-e', 'import fs from "node:fs"; import assert from "node:assert/strict"; import {parseIBLA} from "@ibltools/ibla-loader"; import {parseKTX2IBL} from "@ibltools/ktx2-loader";' + checks.join('\n')], { cwd: dir });
     const evidence = { status: 'passed', mode, platform: target.platform, sha: value.sha, runId: value.runId,
         archives: value.packages.filter(p => p.group === 'npm_cli').map(p => ({ name: p.name, sha256: p.sha256 })), directory: dir };
     writeJson(join(output, 'cli-' + mode + '-' + target.platform + '.json'), evidence);

@@ -7,7 +7,7 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@ibltools/ktx2-loader": "0.2.0",
+    "@ibltools/ktx2-loader": "0.3.0",
     "zstddec": "^0.2.0"
   },
   "devDependencies": {

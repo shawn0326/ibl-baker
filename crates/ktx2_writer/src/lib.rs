@@ -40,7 +40,7 @@ pub struct CubemapLevel {
 }
 
 /// Caller-provided generator string written to `KTXwriter` metadata.
-/// Recommended format: `"ibl-baker ktx2_writer v0.2.1"`.
+/// Recommended format: `"ibl-baker ktx2_writer v0.2.3"`.
 pub struct WriterMetadata<'a> {
     pub writer: &'a str,
 }
@@ -148,7 +148,7 @@ pub fn write_bc6h_cubemap_ktx2(
 const KTX2_IDENTIFIER: [u8; 12] = [
     0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A,
 ];
-const VK_FORMAT_BC6H_UFLOAT_BLOCK: u32 = 131;
+const VK_FORMAT_BC6H_UFLOAT_BLOCK: u32 = 143;
 const SUPERCOMPRESSION_ZSTD: u32 = 2;
 
 fn validate_levels(levels: &[CubemapLevel]) -> Result<(), Ktx2Error> {
@@ -236,9 +236,9 @@ mod tests {
         // KTX2 identifier
         assert_eq!(&bytes[..12], &KTX2_IDENTIFIER);
 
-        // vkFormat = 131 (BC6H_UFLOAT_BLOCK)
+        // vkFormat = 143 (BC6H_UFLOAT_BLOCK)
         let vk_format = u32::from_le_bytes(bytes[12..16].try_into().unwrap());
-        assert_eq!(vk_format, 131);
+        assert_eq!(vk_format, 143);
 
         // typeSize = 1
         let type_size = u32::from_le_bytes(bytes[16..20].try_into().unwrap());
@@ -255,6 +255,12 @@ mod tests {
         // supercompressionScheme = 2 (zstd)
         let scheme = u32::from_le_bytes(bytes[44..48].try_into().unwrap());
         assert_eq!(scheme, 2);
+
+        let reader = ktx2::Reader::new(bytes.as_slice()).expect("KTX2 should parse");
+        assert_eq!(
+            reader.header().format,
+            Some(ktx2::Format::BC6H_UFLOAT_BLOCK)
+        );
     }
 
     #[test]

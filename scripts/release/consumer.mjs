@@ -79,11 +79,13 @@ export async function consumer(packages, mode) {
             smoke.push('import { ' + fn + ' } from ' + JSON.stringify(p.name) + ';');
             types.push('import { ' + fn + ' } from ' + JSON.stringify(p.name) + ';', fn + '(new ArrayBuffer(0));');
             const folders = baked ? [baked] : readdirSync(fixturesRoot(), { withFileTypes: true }).filter(e => e.isDirectory()).map(e => join(fixturesRoot(), e.name));
+            const requireStandardKtx2 = Boolean(baked || process.env.IBL_FIXTURE_DIR);
             let count = 0;
             for (const folder of folders) for (const file of readdirSync(folder).filter(f => f.endsWith(ibla ? '.ibla' : '.ktx2'))) {
                 const filePath = join(folder, file);
                 smoke.push('{ const b = readFileSync(' + JSON.stringify(filePath) + '); const p = ' + fn + '(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); assert.equal('
-                    + (ibla ? 'p.manifest.faceCount' : 'p.header.faceCount') + ', 6); }');
+                    + (ibla ? 'p.manifest.faceCount' : 'p.header.faceCount') + ', 6);'
+                    + (ibla || !requireStandardKtx2 ? '' : ' assert.equal(p.header.vkFormat, 143);') + ' }');
                 count++;
             }
             if (!count) throw new Error('No consumer samples for ' + p.name);

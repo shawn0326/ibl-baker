@@ -4,7 +4,7 @@
 
 It writes cubemap assets with:
 
-- `VK_FORMAT_BC6H_UFLOAT_BLOCK`
+- `VK_FORMAT_BC6H_UFLOAT_BLOCK` (`vkFormat = 143`)
 - zstd supercompression
 - 6 cubemap faces in `+X, -X, +Y, -Y, +Z, -Z` order
 - mip levels ordered largest first in the input API

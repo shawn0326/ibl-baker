@@ -80,7 +80,7 @@ test("parseKTX2IBL parses a synthetic BC6H zstd cubemap", () => {
   const parsed = parseKTX2IBL(bytes);
 
   assert.deepEqual(parsed.header, {
-    vkFormat: 131,
+    vkFormat: 143,
     typeSize: 1,
     pixelWidth: 8,
     pixelHeight: 8,
@@ -124,10 +124,28 @@ test("parseKTX2IBL parses a synthetic BC6H zstd cubemap", () => {
   assert.deepEqual([...level1.compressedBytes], [4, 5]);
 });
 
+test("parseKTX2IBL parses legacy ibl-baker files with vkFormat 131", () => {
+  const bytes = createKtx2Bytes({
+    vkFormat: 131,
+    pixelWidth: 4,
+    levelPayloads: [Uint8Array.of(1)],
+    keyValues: {
+      KTXorientation: "rd",
+      KTXwriter: "ibl-baker v0.2.2",
+    },
+  });
+
+  const parsed = parseKTX2IBL(bytes);
+
+  assert.equal(parsed.header.vkFormat, 131);
+  assert.equal(parsed.format.vkFormatName, "VK_FORMAT_BC6H_UFLOAT_BLOCK");
+});
+
 test("parseKTX2IBL parses specular fixtures", () => {
   for (const fixtureName of KTX2_FIXTURE_NAMES) {
     const parsed = parseKTX2IBL(loadFixture(fixtureName, "specular"));
 
+    assertGeneratedFixtureUsesStandardFormat(parsed);
     assert.equal(parsed.header.faceCount, 6);
     assert.ok(parsed.header.pixelWidth >= 128);
     assert.equal(parsed.header.pixelWidth, parsed.header.pixelHeight);
@@ -142,6 +160,7 @@ test("parseKTX2IBL parses irradiance fixtures", () => {
   for (const fixtureName of KTX2_FIXTURE_NAMES) {
     const parsed = parseKTX2IBL(loadFixture(fixtureName, "irradiance"));
 
+    assertGeneratedFixtureUsesStandardFormat(parsed);
     assert.equal(parsed.header.pixelWidth, 32);
     assert.equal(parsed.header.pixelHeight, 32);
     assert.equal(parsed.header.levelCount, 1);
@@ -177,6 +196,46 @@ test("parseKTX2IBL throws INVALID_DATA_FORMAT_DESCRIPTOR for descriptor mismatch
   bytes[dfdByteOffset + 12] = 0;
 
   assertParseError(() => parseKTX2IBL(bytes), "INVALID_DATA_FORMAT_DESCRIPTOR");
+});
+
+test("parseKTX2IBL rejects vkFormat 131 without the BC6H descriptor", () => {
+  const bytes = createKtx2Bytes({
+    vkFormat: 131,
+    pixelWidth: 4,
+    levelPayloads: [Uint8Array.of(1)],
+  });
+  const dfdByteOffset = LEVEL_INDEX_START + LEVEL_INDEX_ENTRY_BYTE_LENGTH;
+  bytes[dfdByteOffset + 12] = 128;
+
+  assertParseError(() => parseKTX2IBL(bytes), "INVALID_DATA_FORMAT_DESCRIPTOR");
+});
+
+test("parseKTX2IBL rejects vkFormat 131 without ibl-baker metadata", () => {
+  const bytes = createKtx2Bytes({
+    vkFormat: 131,
+    pixelWidth: 4,
+    levelPayloads: [Uint8Array.of(1)],
+    keyValues: {
+      KTXorientation: "rd",
+      KTXwriter: "other-writer",
+    },
+  });
+
+  assertParseError(() => parseKTX2IBL(bytes), "INVALID_KEY_VALUE_DATA");
+});
+
+test("parseKTX2IBL rejects vkFormat 131 from a non-legacy ibl-baker version", () => {
+  const bytes = createKtx2Bytes({
+    vkFormat: 131,
+    pixelWidth: 4,
+    levelPayloads: [Uint8Array.of(1)],
+    keyValues: {
+      KTXorientation: "rd",
+      KTXwriter: "ibl-baker v0.2.3",
+    },
+  });
+
+  assertParseError(() => parseKTX2IBL(bytes), "INVALID_KEY_VALUE_DATA");
 });
 
 test("parseKTX2IBL throws INVALID_KEY_VALUE_DATA for non-IBL writer metadata", () => {
@@ -222,6 +281,12 @@ function assertParseError(action: () => unknown, code: string) {
   });
 }
 
+function assertGeneratedFixtureUsesStandardFormat(parsed: ReturnType<typeof parseKTX2IBL>) {
+  if (process.env.IBL_FIXTURE_DIR !== undefined) {
+    assert.equal(parsed.header.vkFormat, 143);
+  }
+}
+
 const KTX2_FIXTURE_NAMES = [
   "cannon_exterior",
   "footprint_court",
@@ -240,6 +305,7 @@ function loadFixture(
 }
 
 function createKtx2Bytes(options: {
+  vkFormat?: number;
   pixelWidth: number;
   levelPayloads: Uint8Array[];
   keyValues?: Record<string, string>;
@@ -267,7 +333,7 @@ function createKtx2Bytes(options: {
   const out = new Uint8Array(cursor);
   const view = new DataView(out.buffer);
   out.set(KTX2_IDENTIFIER, 0);
-  view.setUint32(12, 131, true);
+  view.setUint32(12, options.vkFormat ?? 143, true);
   view.setUint32(16, 1, true);
   view.setUint32(20, options.pixelWidth, true);
   view.setUint32(24, options.pixelWidth, true);
