@@ -2,7 +2,7 @@ import { chmodSync, copyFileSync, mkdirSync, readFileSync, mkdtempSync } from 'n
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { root, hash, json } from './core.mjs';
-import { npm, writeJson } from './io.mjs';
+import { npmCli, writeJson } from './io.mjs';
 import { targets } from '../../packages/cli/launcher.mjs';
 
 export { targets };
@@ -37,7 +37,7 @@ export function packCli(pkg, destination, binary) {
         pkg.binarySha256 = hash(readFileSync(binary));
     }
     writeJson(join(stage, 'package.json'), manifest);
-    const packed = JSON.parse(npm(['pack', '--json', '--ignore-scripts', '--pack-destination', destination], { cwd: stage }))[0];
+    const packed = JSON.parse(npmCli(['pack', '--json', '--ignore-scripts', '--pack-destination', destination], { cwd: stage }))[0];
     const expected = [...manifest.files, 'package.json'].sort();
     if (JSON.stringify(packed.files.map(f => f.path).sort()) !== JSON.stringify(expected)) throw new Error('Unexpected CLI package contents: ' + pkg.name);
     const bytes = readFileSync(join(destination, packed.filename));

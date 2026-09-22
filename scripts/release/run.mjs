@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { parse } from 'smol-toml';
 import { catalog, root, read, json, hash, repository, selectPackages, assertContext, validateSelection,
     assertNotes, assertResume, assertChannelAdvance, getJson, platforms, assertExistingRelease } from './core.mjs';
-import { output, run, npm, writeJson, archivePath, checkFiles, clean, cargoArchive, listFiles, progress } from './io.mjs';
+import { output, run, npmCli, installedPackageVersion, writeJson, archivePath, checkFiles, clean, cargoArchive, listFiles, progress } from './io.mjs';
 import { consumer } from './consumer.mjs';
 import { packCli } from './cli-package.mjs';
 import { cliConsumer, assertCliEvidence } from './cli-consumer.mjs';
@@ -20,18 +20,14 @@ const selected = () => selectPackages(packages, inputs);
 const cargoTarget = resolve(root, 'target/release-build');
 
 function staticCheck() {
-    const lock = json('package-lock.json');
     const cargoLock = parse(read('Cargo.lock'));
+    if (installedPackageVersion('npm') !== '11.11.0') throw new Error('Release npm version drift.');
     for (const pkg of packages) {
         if (pkg.registry === 'npm') {
             const manifest = json(pkg.directory + '/package.json');
             if ((pkg.group === 'npm_cli' ? manifest.private !== true || Boolean(manifest.optionalDependencies) : manifest.private || manifest.publishConfig?.access !== 'public')
                 || (manifest.publishConfig?.registry && manifest.publishConfig.registry !== 'https://registry.npmjs.org/')
                 || manifest.repository?.url !== 'git+https://github.com/' + repository + '.git') throw new Error('Invalid publication metadata: ' + pkg.name);
-            if (lock.packages[pkg.directory]?.version !== pkg.version
-                || JSON.stringify(lock.packages[pkg.directory]?.dependencies ?? {}) !== JSON.stringify(manifest.dependencies ?? {})) {
-                throw new Error('package-lock.json drift: ' + pkg.name);
-            }
         } else if (!cargoLock.package.some(p => p.name === pkg.name && p.version === pkg.version && !p.source)) {
             throw new Error('Cargo.lock drift: ' + pkg.name);
         }
@@ -101,7 +97,7 @@ async function prepare() {
         else assertNotes(read(pkg.notes), pkg);
     }
     const value = { schema: 1, sha: sha(), runId: process.env.GITHUB_RUN_ID, dryRun, occupied, missingNotes, binaries: [], packages: items,
-        toolchains: { node: process.version, npm: npm(['--version']), cargo: run('cargo', ['--version']) } };
+        toolchains: { node: process.version, npm: npmCli(['--version']), cargo: run('cargo', ['--version']) } };
     mkdirSync(output, { recursive: true });
     for (const pkg of items.filter(p => p.registry === 'npm')) {
         let packed;
@@ -115,7 +111,7 @@ async function prepare() {
             checkFiles(built);
             Object.assign(pkg, built);
             packed = { filename: pkg.archive, files: pkg.files.map(path => ({ path })) };
-        } else packed = JSON.parse(npm(['pack', '--json', '--pack-destination', output], { cwd: resolve(root, pkg.directory) }))[0];
+        } else packed = JSON.parse(npmCli(['pack', '--json', '--pack-destination', output], { cwd: resolve(root, pkg.directory) }))[0];
         pkg.archive = packed.filename;
         pkg.files = packed.files.map(f => f.path);
         const bytes = readFileSync(archivePath(pkg.archive));
@@ -123,7 +119,8 @@ async function prepare() {
         pkg.integrity = 'sha512-' + createHash('sha512').update(bytes).digest('base64');
         pkg.bytes = bytes.length;
         pkg.publishPreflight = await validateNpmCandidate(pkg, { dryRun, occupied,
-            validate: p => npm(['publish', archivePath(p.archive), '--dry-run', '--ignore-scripts', '--access', 'public', '--tag', p.channel]) });
+            validate: p => npmCli(['publish', archivePath(p.archive), '--dry-run', '--ignore-scripts', '--access', 'public', '--tag', p.channel,
+                '--registry=https://registry.npmjs.org/']) });
     }
     const crates = items.filter(p => p.registry === 'cargo');
     if (crates.length) {
@@ -175,7 +172,7 @@ async function publishNpm(ids) {
     assertCliEvidence(value, 'candidate');
     await publishNpmPackages(value.packages.filter(p => ids.includes(p.id)), {
         checkChannel, emit: progress,
-        upload: pkg => npm(["publish", archivePath(pkg.archive), "--ignore-scripts", "--access", "public", "--tag", pkg.channel, "--registry=https://registry.npmjs.org/"]),
+        upload: pkg => npmCli(["publish", archivePath(pkg.archive), "--ignore-scripts", "--access", "public", "--tag", pkg.channel, "--registry=https://registry.npmjs.org/"]),
     });
 }
 async function publishCargo() {

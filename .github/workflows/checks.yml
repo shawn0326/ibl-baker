@@ -32,16 +32,16 @@ jobs:
       - run: cargo check --locked --workspace
       - run: cargo test --locked --workspace
       - run: npm run check:ts
-      - run: npm run release:check
-      - run: npm run release:test
+      - run: node scripts/release/run.mjs static
+      - run: node --test scripts/release/tests/*.test.mjs
       - run: npm run test:cli
       - run: cargo build --release --locked -p ibl_cli
       - run: npm run ci:fixtures
       - run: npm run test:js
       - run: npm run test:ibla-viewer
       - run: npm run test:ktx2-viewer
-      - run: npm run release:smoke
-      - run: npm run release:cli-smoke
+      - run: node scripts/release/smoke.mjs
+      - run: node scripts/release/cli-smoke.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: inputs.release_build
         with:

@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, accessSync, constants } from 'nod
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { catalog, root, hash, platforms } from './core.mjs';
-import { output, npm, run, writeJson, archivePath, checkFiles } from './io.mjs';
+import { output, npmCli, run, writeJson, archivePath, checkFiles } from './io.mjs';
 import { selectTarget } from '../../packages/cli/launcher.mjs';
 
 export function assertCliEvidence(value, mode, readEvidence = name => JSON.parse(readFileSync(join(output, name), 'utf8'))) {
@@ -34,7 +34,7 @@ export async function cliConsumer(value, mode) {
     const cache = join(dir, 'cache');
     const installFlags = ['--ignore-scripts', '--no-audit', '--no-fund', '--include=optional', '--cache', cache, '--registry=https://registry.npmjs.org'];
     const specs = mode === 'registry' ? [entry.name + '@' + entry.version] : [archivePath(platform.archive), archivePath(entry.archive)];
-    npm(['install', ...installFlags, ...specs], { cwd: dir });
+    npmCli(['install', ...installFlags, ...specs], { cwd: dir });
     const installed = join(dir, 'node_modules/@ibltools');
     const manifest = JSON.parse(readFileSync(join(installed, 'cli/package.json'), 'utf8'));
     assert.equal(manifest.version, entry.version);
@@ -65,16 +65,16 @@ export async function cliConsumer(value, mode) {
         assert.equal(wrapped.stdout, direct.stdout);
         assert.equal(wrapped.stderr, direct.stderr);
     }
-    assert.equal(npm(['exec', '--offline', '--cache', cache, '--', 'ibl-baker', '--version'], { cwd: dir }), versionOutput);
-    assert.equal(npm(['exec', '--offline', '--cache', cache, '--', '@ibltools/cli', '--version'], { cwd: dir }), versionOutput);
+    assert.equal(npmCli(['exec', '--offline', '--cache', cache, '--', 'ibl-baker', '--version'], { cwd: dir }), versionOutput);
+    assert.equal(npmCli(['exec', '--offline', '--cache', cache, '--', '@ibltools/cli', '--version'], { cwd: dir }), versionOutput);
     if (mode === 'registry') {
         const fresh = join(dir, 'fresh-npx');
         mkdirSync(fresh);
-        assert.equal(npm(['exec', '--yes', '--ignore-scripts', '--cache', join(fresh, 'cache'),
+        assert.equal(npmCli(['exec', '--yes', '--ignore-scripts', '--cache', join(fresh, 'cache'),
             '--', entry.name + '@' + entry.version, '--version'], { cwd: fresh }), versionOutput);
     }
     const globalPrefix = join(dir, 'global');
-    npm(['install', '--global', '--prefix', globalPrefix, ...installFlags, ...specs], { cwd: dir });
+    npmCli(['install', '--global', '--prefix', globalPrefix, ...installFlags, ...specs], { cwd: dir });
     const globalShim = join(globalPrefix, ...(process.platform === 'win32' ? ['ibl-baker.cmd'] : ['bin', 'ibl-baker']));
     if (process.platform === 'win32') {
         assert.equal(run('pwsh', ['-NoProfile', '-Command', '& $env:IBL_CLI_SHIM --version; exit $LASTEXITCODE'],
@@ -86,7 +86,7 @@ export async function cliConsumer(value, mode) {
     for (const kind of ['specular', 'irradiance']) invoke(['validate', join(baked, kind + '.ibla')]);
     assert.ok(readFileSync(join(baked, 'brdf-lut.png')).subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])));
     const readers = catalog().filter(p => p.kind === 'loader');
-    npm(['install', ...installFlags, ...readers.map(p => {
+    npmCli(['install', ...installFlags, ...readers.map(p => {
         const selected = value.packages.find(q => q.id === p.id);
         return mode === 'candidate' && selected ? archivePath(selected.archive) : p.name + '@' + p.version;
     })], { cwd: dir });

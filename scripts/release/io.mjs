@@ -1,8 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { basename, dirname, join, resolve } from 'node:path';
 import { root, hash } from './core.mjs';
 
+const require = createRequire(import.meta.url);
 export const output = resolve(root, 'target/release');
 export function writeJson(path, value) { writeFileSync(path, JSON.stringify(value, null, 2) + '\n'); }
 export function run(command, args, options = {}) {
@@ -15,9 +17,23 @@ export function run(command, args, options = {}) {
     if (result.status !== 0) throw new Error(command + ' failed (' + result.status + '): ' + (result.stdout ?? '').slice(-4000));
     return (result.stdout ?? '').trim();
 }
-export function npm(args, options) {
-    if (!process.env.npm_execpath) throw new Error('Use npm run release:... to provide npm_execpath.');
-    return run(process.execPath, [process.env.npm_execpath, ...args], options);
+export function packageManifest(name) {
+    const path = require.resolve(name + '/package.json');
+    return JSON.parse(readFileSync(path, 'utf8'));
+}
+export function installedPackageVersion(name) {
+    return packageManifest(name).version;
+}
+export function npmCli(args, options) {
+    const manifestPath = require.resolve('npm/package.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    const entry = typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.npm;
+    if (!entry) throw new Error('npm package does not expose an npm CLI entry.');
+    const cliPath = resolve(dirname(manifestPath), entry);
+    return run(process.execPath, [cliPath, ...args], { ...options, env: { ...process.env, ...(options?.env ?? {}), npm_execpath: cliPath } });
+}
+export function npmWorkspace(args, options) {
+    return npmCli(['run', ...args], options);
 }
 export function archivePath(file) {
     if (!file || basename(file) !== file) throw new Error('Invalid candidate artifact filename.');
