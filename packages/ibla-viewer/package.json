@@ -7,9 +7,10 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@ibltools/ibla-loader": "0.2.0"
+    "@ibltools/ibla-loader": "workspace:0.2.0"
   },
   "devDependencies": {
+    "@types/node": "^25.5.2",
     "vite": "^7.1.3"
   },
   "scripts": {

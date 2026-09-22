@@ -12,7 +12,7 @@
 
 ## 仓库速览
 
-- 根目录同时使用 Cargo workspace 与 npm workspace。
+- 根目录同时使用 Cargo workspace 与 pnpm workspace；npm 仅用于 npm registry 发布与消费者验收。
 - `crates/ibl_core`：Rust 核心库，负责源图读取、bake 主流程、`.ibla` 读写与校验、KTX2 导出。
 - `crates/ibl_cli`：公开 CLI（`ibl-baker`），支持 `--output-format <ibla|ktx2|both>`，输出 `.ibla`、`.ktx2` 或两者并行。
 - `crates/ktx2_writer`：write-only KTX2 序列化器，BC6H（`intel_tex_2`）+ zstd 超级压缩，不依赖 CMake。

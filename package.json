@@ -1,19 +1,16 @@
 {
   "name": "ibl-baker-workspace",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
-    "test": "npm run test:rust && npm run test:js && npm run test:ibla-viewer && npm run test:ktx2-viewer && npm run test:cli",
+    "test": "pnpm run test:rust && pnpm run test:js && pnpm run test:ibla-viewer && pnpm run test:ktx2-viewer && pnpm run test:cli",
     "test:rust": "cargo test --workspace",
-    "test:js": "npm run test -w @ibltools/ibla-loader && npm run test -w @ibltools/ktx2-loader",
-    "test:ibla-viewer": "npm run test -w @ibltools/ibla-viewer",
-    "test:ktx2-viewer": "npm run test -w @ibltools/ktx2-viewer",
+    "test:js": "pnpm --filter @ibltools/ibla-loader run test && pnpm --filter @ibltools/ktx2-loader run test",
+    "test:ibla-viewer": "pnpm --filter @ibltools/ibla-viewer run test",
+    "test:ktx2-viewer": "pnpm --filter @ibltools/ktx2-viewer run test",
     "check:rs": "cargo check --workspace",
     "check:ts": "tsc -b packages/ibla-loader packages/ktx2-loader packages/ibla-viewer packages/ktx2-viewer --noEmit",
-    "dev:ibla-viewer": "npm run dev -w @ibltools/ibla-viewer",
-    "dev:ktx2-viewer": "npm run dev -w @ibltools/ktx2-viewer",
+    "dev:ibla-viewer": "pnpm --filter @ibltools/ibla-viewer run dev",
+    "dev:ktx2-viewer": "pnpm --filter @ibltools/ktx2-viewer run dev",
     "fixtures:refresh": "node scripts/refresh-fixtures.mjs",
     "release": "node scripts/release/run.mjs",
     "release:check": "node scripts/release/run.mjs static",
@@ -21,7 +18,7 @@
     "release:smoke": "node scripts/release/smoke.mjs",
     "ci:fixtures": "node scripts/ci-fixtures.mjs",
     "release:binary": "node scripts/release/binary.mjs",
-    "test:cli": "npm run test -w @ibltools/cli",
+    "test:cli": "pnpm --filter @ibltools/cli run test",
     "release:cli-smoke": "node scripts/release/cli-smoke.mjs"
   },
   "devDependencies": {
@@ -30,5 +27,5 @@
     "smol-toml": "1.8.0",
     "typescript": "^6.0.2"
   },
-  "packageManager": "npm@11.11.0"
+  "packageManager": "pnpm@12.5.1"
 }

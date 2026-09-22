@@ -19,7 +19,7 @@
 ## 下一步
 
 - [x] PR1：解除 release tooling 对外层 npm 执行上下文和 JavaScript lockfile 格式的依赖，固定使用 npm 11.11.0。
-- [ ] PR2：将 JavaScript workspace 切换到 pnpm，保留 npm 作为 npm registry 发布与消费者验证客户端。
+- [x] PR2：将 JavaScript workspace 切换到 pnpm，保留 npm 作为 npm registry 发布与消费者验证客户端。
 - [ ] PR3：启用 pnpm Cargo 依赖安装与缓存，单独验证实验性 Cargo 集成。
 - [ ] PR4：优化 pnpm CI 缓存和 workspace 任务编排。
 - [ ] PR5：将发布器的手工依赖顺序抽象为通用依赖图。

@@ -32,9 +32,6 @@ export function npmCli(args, options) {
     const cliPath = resolve(dirname(manifestPath), entry);
     return run(process.execPath, [cliPath, ...args], { ...options, env: { ...process.env, ...(options?.env ?? {}), npm_execpath: cliPath } });
 }
-export function npmWorkspace(args, options) {
-    return npmCli(['run', ...args], options);
-}
 export function archivePath(file) {
     if (!file || basename(file) !== file) throw new Error('Invalid candidate artifact filename.');
     return join(output, file);

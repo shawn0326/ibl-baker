@@ -43,27 +43,27 @@ Current priorities:
 
 ## Workspace
 
-The repository uses a Cargo workspace and an npm workspace at the repo root.
+The repository uses a Cargo workspace and a pnpm workspace at the repo root.
 
-Common npm entry points:
+Common pnpm entry points:
 
 ```bash
-npm install
-npm run fixtures:refresh
-npm run test:js
-npm run test:ibla-viewer
-npm run test:ktx2-viewer
-npm run dev:ibla-viewer
-npm run dev:ktx2-viewer
+pnpm install
+pnpm run fixtures:refresh
+pnpm run test:js
+pnpm run test:ibla-viewer
+pnpm run test:ktx2-viewer
+pnpm run dev:ibla-viewer
+pnpm run dev:ktx2-viewer
 ```
 
 Manual KTX2 validation runs through `packages/ktx2-viewer`.
-After starting `npm run dev:ktx2-viewer`, open `http://127.0.0.1:4174/` and drop a `.ktx2` file.
+After starting `pnpm run dev:ktx2-viewer`, open `http://127.0.0.1:4174/` and drop a `.ktx2` file.
 The hosted GitHub Pages entry is `https://shawn0326.github.io/ibl-baker/ktx2-viewer/`.
 The viewer does not load repository fixtures directly.
 
 Manual IBLA validation runs through `packages/ibla-viewer`.
-After starting `npm run dev:ibla-viewer`, open `http://127.0.0.1:4175/` and drop an `.ibla` file.
+After starting `pnpm run dev:ibla-viewer`, open `http://127.0.0.1:4175/` and drop an `.ibla` file.
 The hosted GitHub Pages entry is `https://shawn0326.github.io/ibl-baker/ibla-viewer/`.
 The viewer uses the same linear to Reinhard to gamma display path as the KTX2 viewer.
 
