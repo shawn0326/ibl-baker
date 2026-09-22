@@ -18,6 +18,12 @@
 
 ## 下一步
 
+- [x] PR1：解除 release tooling 对外层 npm 执行上下文和 JavaScript lockfile 格式的依赖，固定使用 npm 11.11.0。
+- [ ] PR2：将 JavaScript workspace 切换到 pnpm，保留 npm 作为 npm registry 发布与消费者验证客户端。
+- [ ] PR3：启用 pnpm Cargo 依赖安装与缓存，单独验证实验性 Cargo 集成。
+- [ ] PR4：优化 pnpm CI 缓存和 workspace 任务编排。
+- [ ] PR5：将发布器的手工依赖顺序抽象为通用依赖图。
+
 - [x] 优先排查并修正 irradiance bake 过早绑定 `irradiance_size` 的问题，避免在卷积前先将源环境重采样到过低分辨率后再做 diffuse 过滤。
 - [x] 优先排查并修正 irradiance 的 sample cap 偏低问题，重新对齐与参考实现的采样预算与 LOD 行为，避免 HDR 小范围高亮贡献被过度抹平。
 - [x] 新增 `packages/ktx2-loader`，提供浏览器侧 KTX2 加载能力，并在 README 中明确当前仅支持仓库现阶段产物画像（如 `KTX2 + BC6H_UFLOAT + zstd + cubemap`）。

@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parse } from 'smol-toml';
-import { root, json, catalog } from './core.mjs';
-import { archivePath, listFiles, npm, run, writeJson, output } from './io.mjs';
+import { root, catalog } from './core.mjs';
+import { archivePath, installedPackageVersion, listFiles, npmCli, run, writeJson, output } from './io.mjs';
 
 export const fixturesRoot = () => resolve(root, process.env.IBL_FIXTURE_DIR || 'fixtures/outputs');
 export function bakeSmoke(binary, destination, size = 16) {
@@ -62,8 +62,8 @@ export async function consumer(packages, mode) {
     const readers = rust.length ? catalog().filter(p => p.kind === 'loader') : packages.filter(p => p.kind === 'loader');
     if (readers.length) {
         writeJson(join(dir, 'package.json'), { private: true, type: 'module' });
-        const tsVersion = json('package-lock.json').packages['node_modules/typescript'].version;
-        npm(['install', '--ignore-scripts', '--no-audit', '--no-fund', '--registry=https://registry.npmjs.org',
+        const tsVersion = installedPackageVersion('typescript');
+        npmCli(['install', '--ignore-scripts', '--no-audit', '--no-fund', '--registry=https://registry.npmjs.org',
             'typescript@' + tsVersion, ...readers.map(p => {
                 const selected = packages.find(q => q.id === p.id);
                 return mode !== 'registry' && selected ? archivePath(selected.archive) : p.name + '@' + p.version;
