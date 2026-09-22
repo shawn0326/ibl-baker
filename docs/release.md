@@ -61,20 +61,20 @@ master requires a PR and the checks / Quality status check, including for
 administrators. Another person's PR approval is not required. Force pushes and
 branch deletion are forbidden.
 
-Toolchains are Node 24.19.0, npm 11.11.0 and Rust/Cargo 1.98.0. The release
-scripts resolve the pinned npm 11.11.0 package directly, so they do not depend on
-the outer package manager's `npm_execpath`. Actions are pinned to reviewed commit
-SHAs. Release builds do not restore PR caches.
+Toolchains are Node 24.19.0, pnpm 12.5.1, npm 11.11.0 and Rust/Cargo 1.98.0.
+pnpm manages the JavaScript workspace and npm 11.11.0 is resolved directly by the
+release scripts for npm packing, publishing and consumer checks. Actions are pinned
+to reviewed commit SHAs. Release builds do not restore PR caches.
 
 ~~~sh
-npm ci
+pnpm install --frozen-lockfile
 cargo +1.98.0 check --locked --workspace
 cargo +1.98.0 test --locked --workspace
-npm run check:ts
+pnpm run check:ts
 node scripts/release/run.mjs static
 node --test scripts/release/tests/*.test.mjs
 cargo +1.98.0 build --release --locked -p ibl_cli
-npm run ci:fixtures
+pnpm run ci:fixtures
 ~~~
 
 The frozen install is the lockfile consistency check; `node scripts/release/run.mjs static` validates
@@ -85,11 +85,11 @@ IBL_FIXTURE_DIR to the absolute target/ci-fixtures path for loader tests and
 release consumers. With that environment set, run:
 
 ~~~sh
-npm run test:js
-npm run test:ibla-viewer
-npm run test:ktx2-viewer
+pnpm run test:js
+pnpm run test:ibla-viewer
+pnpm run test:ktx2-viewer
 node scripts/release/smoke.mjs
-npm run test:cli
+pnpm run test:cli
 node scripts/release/cli-smoke.mjs
 ~~~
 
@@ -235,7 +235,7 @@ binary hashes. Native changes still require the appropriate Rust version update.
 
 The source CLI workspace is private and has no platform dependencies. Public
 manifests and payload packages are generated in target/npm-cli-stage. Do not
-publish from packages/cli or add generated platform directories to npm workspaces.
+publish from packages/cli or add generated platform directories to the pnpm workspace.
 Every package contains its license and README; the Linux package declares glibc.
 Linux uses the existing Ubuntu 24.04 build and runtime baseline, including
 libstdc++6. The candidate includes linux-runtime.json with ldd and symbol evidence.
@@ -262,7 +262,7 @@ The npm CLI Release uses npm/cli/vVERSION and docs/releases/npm-cli-VERSION.md
 with heading "# @ibltools/cli VERSION". It attaches four npm archives and evidence,
 and is never the repository-wide latest Release.
 
-Daily Quality runs npm run test:cli and `node scripts/release/cli-smoke.mjs` after building
+Daily Quality runs `pnpm run test:cli` and `node scripts/release/cli-smoke.mjs` after building
 the native CLI. Full candidate and registry consumers run on the three release
 platforms. Local CLI smoke needs a release binary but not a clean checkout.
 It packs the current workspace loaders so unpublished coordinated loader changes

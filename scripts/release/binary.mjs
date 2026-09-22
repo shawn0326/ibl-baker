@@ -1,11 +1,14 @@
 import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { catalog, root, hash, platforms } from './core.mjs';
-import { run, npmWorkspace, writeJson } from './io.mjs';
+import { run, writeJson } from './io.mjs';
 import { bakeSmoke } from './consumer.mjs';
 import { packCli, targets } from './cli-package.mjs';
 
+const require = createRequire(import.meta.url);
+const tsc = require.resolve('typescript/bin/tsc');
 const [platform, target] = process.argv.slice(2);
 if (!platforms.includes(platform) || target !== targets.find(t => t.platform === platform)?.target) throw new Error('Expected platform and target.');
 const directory = resolve(root, 'target/binaries');
@@ -19,7 +22,7 @@ const binary = resolve(root, 'target', target, 'release', name);
 const samples = resolve(root, 'target/binary-smoke', platform);
 bakeSmoke(binary, samples);
 for (const [slug, fn, ext] of [['ibla-loader', 'parseIBLA', 'ibla'], ['ktx2-loader', 'parseKTX2IBL', 'ktx2']]) {
-    npmWorkspace(['build', '-w', '@ibltools/' + slug]);
+    run(process.execPath, [tsc, '-p', resolve(root, 'packages', slug, 'tsconfig.build.json')]);
     const parser = (await import(pathToFileURL(resolve(root, 'packages', slug, 'dist/index.js')).href))[fn];
     for (const kind of ['specular', 'irradiance']) parser(readFileSync(join(samples, kind + '.' + ext)));
 }

@@ -44,7 +44,11 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "npm run build",
+    "prepack": "tsc -p tsconfig.build.json",
     "test": "node --experimental-strip-types --test --test-concurrency=1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "typescript": "^6.0.2"
   }
 }
