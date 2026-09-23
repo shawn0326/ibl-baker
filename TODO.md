@@ -38,6 +38,7 @@
 
 ## 自动发包流程
 
+- [x] PR5：从 Cargo metadata、npm workspace manifests 和动态 CLI manifests 构建统一 release dependency graph，使用稳定拓扑顺序发布，并在每个 registry receipt 确认后继续处理 dependent。
 - [x] 实现共用 CI、三个发布组选项、候选归档、OIDC 发布与恢复机制。
 - [x] 原地维护 docs/release.md，新增发布说明目录和 README 入口。
 - [x] 完成本地 Rust、TypeScript、loader/viewer、发布规则及工作区外消费者检查。

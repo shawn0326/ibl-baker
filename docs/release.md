@@ -62,6 +62,10 @@ administrators. Another person's PR approval is not required. Force pushes and
 branch deletion are forbidden.
 
 Toolchains are Node 24.19.0, pnpm 12.5.1, npm 11.11.0 and Rust/Cargo 1.98.0.
+The repository pins Rust/Cargo through `rust-toolchain.toml`; commands run from
+the checkout therefore use the release toolchain automatically. Commands run
+outside the checkout, such as registry consumers, should set `RUSTUP_TOOLCHAIN`
+explicitly when they must use the same toolchain.
 pnpm manages the JavaScript workspace and npm 11.11.0 is resolved directly by the
 release scripts for npm packing, publishing and consumer checks. Actions are pinned
 to reviewed commit SHAs. Release builds do not restore PR caches.
@@ -121,12 +125,16 @@ dependency-aware task scheduler. Loader tests can run concurrently, while each v
 waits for its workspace loader test. The individual commands remain useful when a single
 package needs to be inspected.
 
-Use RUSTUP_TOOLCHAIN=1.98.0 when running release scripts. In PowerShell, set
-environment variables using $env:RUSTUP_TOOLCHAIN = '1.98.0' and
-$env:IBL_FIXTURE_DIR = (Resolve-Path target/ci-fixtures).Path.
+The repository toolchain pin is propagated to release-script Cargo subprocesses,
+including commands whose working directory is outside the checkout. No manual
+`RUSTUP_TOOLCHAIN` setting is needed for release scripts. Set it explicitly only
+for standalone commands run outside the checkout. In PowerShell, set other
+environment variables using `$env:IBL_FIXTURE_DIR = (Resolve-Path target/ci-fixtures).Path`.
 
 The existing smoke tests package the Rust crates and two loaders, perform Cargo's native multi-package
-dry-run, and install archives outside the workspace. Local smoke checks allow
+dry-run, and install archives outside the workspace. The release dependency graph is derived from
+Cargo metadata and workspace manifests; the candidate records the resulting stable topological order.
+Local smoke checks allow
 uncommitted changes; production candidate preparation requires a clean checkout.
 Candidate-only Cargo consumer patches point exclusively at extracted, checked
 archives. They supplement the native Cargo dry-run and are never used for registry
@@ -188,10 +196,14 @@ package versions, channels, notes, checksums and consumer results before approvi
 the release Environment. Only the publishing job has OIDC permission. The final
 GitHub Release job separately receives repository write permission.
 
-Cargo publishes in dependency order using a native multi-package command. Its
-final dry-run archive hashes must match the approved candidate; archives are
-checked again after upload. npm uploads approved .tgz files with lifecycle
-scripts disabled: selected loaders first, then CLI platforms, then the CLI entry.
+Cargo candidate preparation uses a native multi-package dry-run, and its final
+archive hashes must match the approved candidate. Production Cargo uploads use
+the release dependency graph one crate at a time. Each crate is checked against
+its candidate archive, uploaded, and polled until its crates.io checksum receipt
+is confirmed before the next dependent crate is started. npm uploads approved
+.tgz files with lifecycle scripts disabled using the same graph. Independent
+nodes use a stable package identity order; the CLI entry always follows all of
+its platform packages.
 
 Verification downloads registry archives and checks SHA-256, npm channels and
 provenance metadata. Clean consumers install exact versions, execute the CLI
@@ -220,6 +232,8 @@ visible before the full run completes.
   archives. Rebuilt binary jobs are not substituted into that candidate.
 - A version is skipped only when its registry checksum matches the candidate.
   Conflicts and yanked crates stop recovery.
+- Dependency publication is registry-gated: a dependent package is not prepared
+  or uploaded until every selected dependency has a matching immutable receipt.
 - After an upload timeout/error, query registry acceptance before retrying.
   Missing versions are polled for up to ten minutes; authentication, network,
   rate-limit, server and checksum errors fail instead of meaning "available".
