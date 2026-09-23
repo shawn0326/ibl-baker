@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, dirname, join, resolve } from 'node:path';
-import { root, hash } from './core.mjs';
+import { root, hash, rustToolchain } from './core.mjs';
 
 const require = createRequire(import.meta.url);
 export const output = resolve(root, 'target/release');
@@ -10,7 +10,9 @@ export function writeJson(path, value) { writeFileSync(path, JSON.stringify(valu
 export function run(command, args, options = {}) {
     mkdirSync(output, { recursive: true });
     console.log('> ' + command + ' ' + args.join(' '));
-    const result = spawnSync(command, args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...options });
+    const childOptions = { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...options };
+    if (command === 'cargo') childOptions.env = { ...process.env, ...(options.env ?? {}), RUSTUP_TOOLCHAIN: rustToolchain };
+    const result = spawnSync(command, args, childOptions);
     appendFileSync(join(output, 'commands.log'), '> ' + command + ' ' + args.join(' ') + '\n' + (result.stdout ?? '') + (result.stderr ?? '') + '\n');
     if (result.stderr) process.stderr.write(result.stderr);
     if (result.error) throw result.error;
