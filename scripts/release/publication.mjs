@@ -1,4 +1,5 @@
 import { publicationState, registryVersion } from './core.mjs';
+import { orderPackages } from './graph.mjs';
 
 const realSleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const quiet = () => {};
@@ -34,7 +35,7 @@ export async function waitForVersion(pkg, {
 export async function publishNpmPackages(packages, {
     lookup = registryVersion, upload, checkChannel, now = Date.now, sleep = realSleep, emit = quiet,
 }) {
-    for (const pkg of packages) {
+    for (const pkg of orderPackages(packages)) {
         if (publicationState(pkg, await lookup(pkg)) === 'pending') {
             await checkChannel(pkg);
             const start = now();
@@ -56,23 +57,23 @@ export async function publishNpmPackages(packages, {
 export async function publishCargoPackages(packages, {
     lookup = registryVersion, prepare, upload, checkArchives, now = Date.now, sleep = realSleep, emit = quiet,
 }) {
-    const pending = [];
-    for (const pkg of packages) {
-        if (publicationState(pkg, await lookup(pkg)) === 'pending') pending.push(pkg);
-        else emit({ ...identity(pkg), phase: 'already-published', elapsedMs: 0 });
+    for (const pkg of orderPackages(packages)) {
+        if (publicationState(pkg, await lookup(pkg)) === 'published') {
+            emit({ ...identity(pkg), phase: 'already-published', elapsedMs: 0 });
+            continue;
+        }
+        const preparedAt = now();
+        await prepare(pkg);
+        emit({ ...identity(pkg), phase: 'cargo-prepared', elapsedMs: now() - preparedAt });
+        const startedAt = now();
+        emit({ ...identity(pkg), phase: 'upload-started', elapsedMs: 0 });
+        let outcome = 'success', message;
+        try { await upload(pkg); }
+        catch (error) { outcome = 'uncertain'; message = error.message; }
+        emit({ ...identity(pkg), phase: 'upload-finished', elapsedMs: now() - startedAt, outcome, ...(message ? { message } : {}) });
+        await checkArchives(pkg);
+        await waitForVersion(pkg, { lookup, now, sleep, emit });
     }
-    if (!pending.length) return;
-    const preparedAt = now();
-    await prepare(pending);
-    for (const pkg of pending) emit({ ...identity(pkg), phase: 'cargo-prepared', elapsedMs: now() - preparedAt });
-    const startedAt = now();
-    for (const pkg of pending) emit({ ...identity(pkg), phase: 'upload-started', elapsedMs: 0 });
-    let outcome = 'success', message;
-    try { await upload(pending); }
-    catch (error) { outcome = 'uncertain'; message = error.message; }
-    for (const pkg of pending) emit({ ...identity(pkg), phase: 'upload-finished', elapsedMs: now() - startedAt, outcome, ...(message ? { message } : {}) });
-    await checkArchives(pending);
-    for (const pkg of pending) await waitForVersion(pkg, { lookup, now, sleep, emit });
 }
 
 // npm itself rejects occupied versions even with --dry-run. Rehearsals still pack

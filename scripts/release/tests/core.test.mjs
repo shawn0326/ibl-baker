@@ -4,6 +4,12 @@ import { spawnSync } from 'node:child_process';
 import { catalog, read, selectPackages, validateSelection, channel, assertChannelAdvance, assertResume,
     assertContext, assertExistingRelease, assertNotes } from '../core.mjs';
 
+function cargoMetadata() {
+    const result = spawnSync('cargo', ['metadata', '--no-deps', '--format-version', '1', '--locked'], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    return JSON.parse(result.stdout);
+}
+
 test('three groups expand in Cargo dependency order and retain independent npm versions', () => {
     const all = catalog();
     assert.deepEqual(selectPackages(all, { rust_cli: true, npm_ktx2_loader: true }).filter(p => p.group === 'rust_cli').map(p => p.name), ['ktx2_writer', 'ibl_core', 'ibl_cli']);
@@ -13,9 +19,35 @@ test('three groups expand in Cargo dependency order and retain independent npm v
     assert.throws(() => selectPackages(all, { rust_cli: 'true' }), /Invalid/);
     assert.throws(() => selectPackages(all, { private_viewer: true }), /Invalid/);
 });
+test('Cargo release dependencies come from metadata rather than package declaration order', () => {
+    const metadata = cargoMetadata();
+    metadata.packages.reverse();
+    metadata.workspace_members.reverse();
+    const rust = catalog(read, metadata).filter(p => p.registry === 'cargo');
+    assert.deepEqual(rust.map(p => p.name), ['ktx2_writer', 'ibl_core', 'ibl_cli']);
+    assert.deepEqual(rust[1].dependencies, [{ registry: 'cargo', name: 'ktx2_writer', version: rust[0].version }]);
+    assert.deepEqual(rust[2].dependencies, [{ registry: 'cargo', name: 'ibl_core', version: rust[0].version }]);
+});
+test('Cargo metadata publish filters and renamed path dependencies are represented in the graph', () => {
+    const metadata = cargoMetadata();
+    const writer = metadata.packages.find(p => p.name === 'ktx2_writer');
+    const core = metadata.packages.find(p => p.name === 'ibl_core');
+    const cli = metadata.packages.find(p => p.name === 'ibl_cli');
+    cli.publish = ['private-registry'];
+    core.dependencies.find(p => p.name === writer.name).rename = 'writer_alias';
+    const cargo = catalog(read, metadata).filter(p => p.registry === 'cargo');
+    assert.deepEqual(cargo.map(p => p.name), ['ktx2_writer', 'ibl_core']);
+    assert.deepEqual(cargo[1].dependencies, [{ registry: 'cargo', name: 'ktx2_writer', version: writer.version }]);
+});
 test('workspace version and internal dependencies cannot drift', () => {
-    assert.throws(() => catalog(path => path === 'crates/ibl_cli/Cargo.toml'
-        ? read(path).replace('version = "' + catalog()[0].version + '"', 'version = "99.0.0"') : read(path)), /dependency/);
+    const metadata = cargoMetadata();
+    metadata.packages.find(p => p.name === 'ibl_cli').dependencies.find(p => p.name === 'ibl_core').req = '^99.0.0';
+    assert.throws(() => catalog(read, metadata), /dependency/);
+});
+test('published Cargo packages cannot depend on non-publishable workspace members', () => {
+    const metadata = cargoMetadata();
+    metadata.packages.find(p => p.name === 'ibl_core').publish = [];
+    assert.throws(() => catalog(read, metadata), /non-publishable workspace package/);
 });
 test('occupied versions are reported in rehearsals and rejected in new production runs', async () => {
     const pkg = selectPackages(catalog(), { npm_ibla_loader: true });
@@ -74,7 +106,7 @@ test('npm CLI forms an independent complete release group with exact platform de
     assert.equal(new Set(cli.map(p => p.version)).size, 1);
     assert.equal(new Set(cli.map(p => p.tag)).size, 1);
     assert.equal(cli[3].binaryVersion, all[0].version);
-    assert.deepEqual(cli[3].dependencies, cli.slice(0, 3).map(p => ({ name: p.name, version: p.version })));
+    assert.deepEqual(cli[3].dependencies, cli.slice(0, 3).map(p => ({ registry: 'npm', name: p.name, version: p.version })));
     assert.equal(selectPackages(all, { rust_cli: true, npm_cli: true, npm_ktx2_loader: true }).length, 8);
     assert.equal(selectPackages(all, { rust_cli: true, npm_cli: true, npm_ibla_loader: true, npm_ktx2_loader: true }).length, 9);
 });

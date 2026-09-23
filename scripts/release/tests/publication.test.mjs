@@ -57,6 +57,22 @@ test('npm resumes a partial release without reuploading matching packages', asyn
     assert.equal(c.events.find(e => e.phase === 'upload-finished').outcome, 'uncertain');
     assert.equal(c.events.at(-1).phase, 'registry-confirmed');
 });
+test('npm confirms dependencies before uploading dependents even when input is reversed', async () => {
+    const core = npmPkg('core'), app = { ...npmPkg('app'), dependencies: [{ registry: 'npm', name: core.name, version: core.version }] };
+    const registry = new Map(), events = [];
+    await publishNpmPackages([app, core], {
+        ...clock(),
+        lookup: async p => registry.get(p.name) ?? null,
+        checkChannel: async () => {},
+        upload: async p => {
+            events.push('upload:' + p.name);
+            if (p === app) assert.ok(registry.has(core.name));
+            registry.set(p.name, receipt(p));
+        },
+        emit: event => { if (event.phase === 'registry-confirmed') events.push('confirmed:' + event.name); },
+    });
+    assert.deepEqual(events, ['upload:core', 'confirmed:core', 'upload:app', 'confirmed:app']);
+});
 test('npm rejects conflicting receipts and channel downgrades before upload', async () => {
     let uploads = 0;
     const upload = async () => uploads++;
@@ -66,26 +82,52 @@ test('npm rejects conflicting receipts and channel downgrades before upload', as
         lookup: async () => null, checkChannel: async () => { throw new Error('backwards'); } }), /backwards/);
     assert.equal(uploads, 0);
 });
-test('Cargo partial batch failure resumes only the remaining approved archive', async () => {
-    const packages = ['snapshot', 'runtime'].map(name => ({ name, version: '1.0.0', registry: 'cargo', sha256: 'approved-' + name }));
-    const registry = new Map(), batches = [], prepared = [], checked = [];
-    let first = true;
+test('Cargo partial publication resumes only the remaining approved archive', async () => {
+    const packages = ['snapshot', 'runtime'].map(name => ({ name, version: '1.0.0', registry: 'cargo', sha256: 'approved-' + name, dependencies: [] }));
+    const registry = new Map(), uploads = [], prepared = [], checked = [];
+    let first = true, failSnapshot = true;
     const callbacks = {
         lookup: async p => registry.get(p.name) ?? null,
-        prepare: async items => prepared.push(items.map(p => p.name)),
-        checkArchives: async items => checked.push(items.map(p => p.name)),
-        upload: async items => {
-            batches.push(items.map(p => p.name));
-            registry.set(items[0].name, receipt(items[0]));
-            if (first) { first = false; throw new Error('partial upload'); }
-        },
+        prepare: async pkg => prepared.push(pkg.name),
+        checkArchives: async pkg => checked.push(pkg.name),
+        upload: async pkg => {
+            uploads.push(pkg.name);
+            if (pkg.name === 'runtime' && first) {
+                first = false;
+                registry.set(pkg.name, receipt(pkg));
+                throw new Error('lost upload response');
+            }
+            if (pkg.name === 'snapshot' && failSnapshot) { failSnapshot = false; throw new Error('partial upload'); }
+            registry.set(pkg.name, receipt(pkg));
+         },
     };
     await assert.rejects(publishCargoPackages(packages, { ...clock(), ...callbacks }), /visibility timeout/);
     await publishCargoPackages(packages, { ...clock(), ...callbacks });
-    assert.deepEqual(batches, [['snapshot', 'runtime'], ['runtime']]);
-    assert.deepEqual(prepared, batches);
-    assert.deepEqual(checked, batches);
+    assert.deepEqual(uploads, ['runtime', 'snapshot', 'snapshot']);
+    assert.deepEqual(prepared, ['runtime', 'snapshot', 'snapshot']);
+    assert.deepEqual(checked, ['runtime', 'snapshot', 'snapshot']);
     assert.equal(registry.size, 2);
+});
+test('Cargo confirms dependencies before preparing dependents', async () => {
+    const core = { name: 'core', version: '1.0.0', registry: 'cargo', sha256: 'approved-core', dependencies: [] };
+    const cli = { name: 'cli', version: '1.0.0', registry: 'cargo', sha256: 'approved-cli',
+        dependencies: [{ registry: 'cargo', name: core.name, version: core.version }] };
+    const registry = new Map(), events = [];
+    await publishCargoPackages([cli, core], {
+        ...clock(),
+        lookup: async p => registry.get(p.name) ?? null,
+        prepare: async p => {
+            events.push('prepare:' + p.name);
+            if (p === cli) assert.ok(registry.has(core.name));
+        },
+        upload: async p => { events.push('upload:' + p.name); registry.set(p.name, receipt(p)); },
+        checkArchives: async p => events.push('checked:' + p.name),
+        emit: event => { if (event.phase === 'registry-confirmed') events.push('confirmed:' + event.name); },
+    });
+    assert.deepEqual(events, [
+        'prepare:core', 'upload:core', 'checked:core', 'confirmed:core',
+        'prepare:cli', 'upload:cli', 'checked:cli', 'confirmed:cli',
+    ]);
 });
 test('Cargo archive mismatch blocks upload and yanked receipts block resume', async () => {
     const pkg = { name: 'snapshot', version: '1.0.0', registry: 'cargo', sha256: 'approved' };

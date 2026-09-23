@@ -181,15 +181,15 @@ async function publishCargo() {
     const value = manifest();
     assertCliEvidence(value, 'candidate');
     clean();
-    const checkArchives = items => {
-        for (const pkg of items) if (hash(readFileSync(cargoArchive(pkg, cargoTarget))) !== pkg.sha256) {
+    const checkArchives = pkg => {
+        if (hash(readFileSync(cargoArchive(pkg, cargoTarget))) !== pkg.sha256) {
             throw new Error("Cargo archive differs from candidate: " + pkg.name);
         }
     };
     await publishCargoPackages(value.packages.filter(p => p.registry === "cargo"), {
         emit: progress,
-        prepare: items => { run("cargo", cargoArgs(items, true), cargoPublishOptions); checkArchives(items); },
-        upload: items => run("cargo", cargoArgs(items, false), cargoPublishOptions),
+        prepare: pkg => { run("cargo", cargoArgs([pkg], true), cargoPublishOptions); checkArchives(pkg); },
+        upload: pkg => run("cargo", cargoArgs([pkg], false), cargoPublishOptions),
         checkArchives,
     });
 }
