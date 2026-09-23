@@ -57,6 +57,11 @@ pnpm run dev:ibla-viewer
 pnpm run dev:ktx2-viewer
 ```
 
+`pnpm install` also materializes the Cargo workspace dependencies through pnpm's
+experimental Cargo integration. `Cargo.lock` and `pnpm-lock.yaml` remain separate;
+Cargo continues to own Rust metadata, builds, tests and crates.io publishing. Run
+`pnpm install` before invoking Cargo commands in a fresh checkout.
+
 Manual KTX2 validation runs through `packages/ktx2-viewer`.
 After starting `pnpm run dev:ktx2-viewer`, open `http://127.0.0.1:4174/` and drop a `.ktx2` file.
 The hosted GitHub Pages entry is `https://shawn0326.github.io/ibl-baker/ktx2-viewer/`.

@@ -66,10 +66,30 @@ pnpm manages the JavaScript workspace and npm 11.11.0 is resolved directly by th
 release scripts for npm packing, publishing and consumer checks. Actions are pinned
 to reviewed commit SHAs. Release builds do not restore PR caches.
 
+pnpm 12.5.1 also installs the Cargo workspace dependencies through its experimental
+Cargo integration. `pnpm install` materializes `.pnpm/crates/crates-io` and a generated
+`.cargo/config.toml`; both paths are ignored and must not be committed. `Cargo.lock`
+and `pnpm-lock.yaml` remain independent. Cargo still owns metadata, compilation,
+tests and crates.io publishing, and a fresh checkout must run pnpm install before
+running Cargo commands.
+Cargo publish checks run from outside the workspace with an explicit manifest and
+registry. This bypasses the generated source replacement for registry-facing package
+verification while leaving normal workspace builds on the pnpm-managed offline source.
+Ordinary Quality jobs restore the pnpm content store and metadata cache with a key that
+covers both lockfiles and all workspace manifests. Pull requests never save that cache;
+only successful master pushes do. Publish checks and all later release jobs keep caches
+disabled and materialize their dependencies independently.
+Ordinary CI also runs lightweight Windows x64 and macOS arm64 jobs that repeat the frozen
+install, generated-source validation and offline Cargo check. The Ubuntu Quality job runs
+the full offline Rust tests and all existing project checks.
+
 ~~~sh
 pnpm install --frozen-lockfile
-cargo +1.98.0 check --locked --workspace
-cargo +1.98.0 test --locked --workspace
+pnpm run check:pnpm-cargo
+pnpm install --frozen-lockfile --offline
+cargo +1.98.0 metadata --locked --offline --format-version 1
+cargo +1.98.0 check --locked --workspace --offline
+cargo +1.98.0 test --locked --workspace --offline
 pnpm run check:ts
 node scripts/release/run.mjs static
 node --test scripts/release/tests/*.test.mjs
@@ -77,7 +97,10 @@ cargo +1.98.0 build --release --locked -p ibl_cli
 pnpm run ci:fixtures
 ~~~
 
-The frozen install is the lockfile consistency check; `node scripts/release/run.mjs static` validates
+The frozen install is the lockfile consistency check and also materializes the pnpm-managed Cargo
+source. `pnpm run check:pnpm-cargo` verifies that source before the offline Cargo checks. The
+generated source is a build-time dependency location, not a vendored project source.
+`node scripts/release/run.mjs static` validates
 publication metadata and Cargo.lock without depending on a JavaScript lockfile
 format. The generated CI samples live under target/ci-fixtures, never fixtures/outputs.
 The latter is ignored by Git and is not present in a clean clone. Set

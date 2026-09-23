@@ -4,6 +4,8 @@
 /packages/*/dist/
 /packages/*/artifacts/
 /node_modules/
+/.pnpm/
+/.cargo/config.toml
 /playwright-report/
 /test-results/
 /.three-e2e-dev.log

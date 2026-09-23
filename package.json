@@ -8,6 +8,7 @@
     "test:ibla-viewer": "pnpm --filter @ibltools/ibla-viewer run test",
     "test:ktx2-viewer": "pnpm --filter @ibltools/ktx2-viewer run test",
     "check:rs": "cargo check --workspace",
+    "check:pnpm-cargo": "node scripts/check-pnpm-cargo.mjs",
     "check:ts": "tsc -b packages/ibla-loader packages/ktx2-loader packages/ibla-viewer packages/ktx2-viewer --noEmit",
     "dev:ibla-viewer": "pnpm --filter @ibltools/ibla-viewer run dev",
     "dev:ktx2-viewer": "pnpm --filter @ibltools/ktx2-viewer run dev",

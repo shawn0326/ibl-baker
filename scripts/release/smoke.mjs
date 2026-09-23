@@ -1,5 +1,5 @@
 import { copyFileSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { catalog, root } from './core.mjs';
 import { output, npmCli, run, cargoArchive, archivePath } from './io.mjs';
 import { consumer } from './consumer.mjs';
@@ -12,9 +12,10 @@ for (const pkg of packages.filter(p => p.registry === 'npm')) {
 }
 const crates = packages.filter(p => p.registry === 'cargo');
 const target = resolve(root, 'target/release-smoke-cargo');
-// Local checks may inspect uncommitted edits; actual release preparation requires a clean checkout.
-run('cargo', ['publish', '--dry-run', '--locked', '--all-features', '--allow-dirty', '--target-dir', target,
-    ...crates.flatMap(p => ['-p', p.name])]);
+// Run above the workspace so registry packaging does not inherit pnpm's source replacement.
+run('cargo', ['publish', '--dry-run', '--locked', '--all-features', '--allow-dirty', '--registry', 'crates-io',
+    '--manifest-path', resolve(root, 'Cargo.toml'), '--target-dir', target, ...crates.flatMap(p => ['-p', p.name])],
+{ cwd: dirname(root) });
 for (const pkg of crates) {
     pkg.archive = pkg.name + '-' + pkg.version + '.crate';
     copyFileSync(cargoArchive(pkg, target), archivePath(pkg.archive));

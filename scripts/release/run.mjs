@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { parse } from 'smol-toml';
 import { catalog, root, read, json, hash, repository, selectPackages, assertContext, validateSelection,
     assertNotes, assertResume, assertChannelAdvance, getJson, platforms, assertExistingRelease } from './core.mjs';
@@ -18,6 +18,8 @@ const sha = () => run('git', ['rev-parse', 'HEAD']);
 const dryRun = inputs.dry_run !== false;
 const selected = () => selectPackages(packages, inputs);
 const cargoTarget = resolve(root, 'target/release-build');
+// Registry commands must not inherit pnpm's workspace-local crates.io replacement.
+const cargoPublishOptions = { cwd: dirname(root) };
 
 function staticCheck() {
     const cargoLock = parse(read('Cargo.lock'));
@@ -82,7 +84,7 @@ async function restore() {
 }
 function cargoArgs(items, dryRun) {
     return ['publish', ...(dryRun ? ['--dry-run'] : []), '--locked', '--all-features', '--registry', 'crates-io',
-        '--target-dir', cargoTarget, ...items.flatMap(p => ['-p', p.name])];
+        '--manifest-path', resolve(root, 'Cargo.toml'), '--target-dir', cargoTarget, ...items.flatMap(p => ['-p', p.name])];
 }
 async function prepare() {
     context();
@@ -124,7 +126,7 @@ async function prepare() {
     }
     const crates = items.filter(p => p.registry === 'cargo');
     if (crates.length) {
-        run('cargo', cargoArgs(crates, true));
+        run('cargo', cargoArgs(crates, true), cargoPublishOptions);
         for (const pkg of crates) {
             pkg.archive = pkg.name + '-' + pkg.version + '.crate';
             copyFileSync(cargoArchive(pkg, cargoTarget), archivePath(pkg.archive));
@@ -186,8 +188,8 @@ async function publishCargo() {
     };
     await publishCargoPackages(value.packages.filter(p => p.registry === "cargo"), {
         emit: progress,
-        prepare: items => { run("cargo", cargoArgs(items, true)); checkArchives(items); },
-        upload: items => run("cargo", cargoArgs(items, false)),
+        prepare: items => { run("cargo", cargoArgs(items, true), cargoPublishOptions); checkArchives(items); },
+        upload: items => run("cargo", cargoArgs(items, false), cargoPublishOptions),
         checkArchives,
     });
 }
