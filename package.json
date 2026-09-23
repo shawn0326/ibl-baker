@@ -2,9 +2,11 @@
   "name": "ibl-baker-workspace",
   "private": true,
   "scripts": {
-    "test": "pnpm run test:rust && pnpm run test:js && pnpm run test:ibla-viewer && pnpm run test:ktx2-viewer && pnpm run test:cli",
+    "test": "pnpm run test:rust && pnpm run test:workspace && pnpm run test:cli",
     "test:rust": "cargo test --workspace",
-    "test:js": "pnpm --filter @ibltools/ibla-loader run test && pnpm --filter @ibltools/ktx2-loader run test",
+    "test:workspace": "pnpm -r --filter @ibltools/ibla-loader --filter @ibltools/ktx2-loader --filter @ibltools/ibla-viewer --filter @ibltools/ktx2-viewer run test",
+    "test:js": "pnpm -r --filter @ibltools/ibla-loader --filter @ibltools/ktx2-loader run test",
+    "test:viewers": "pnpm -r --filter @ibltools/ibla-viewer --filter @ibltools/ktx2-viewer run test",
     "test:ibla-viewer": "pnpm --filter @ibltools/ibla-viewer run test",
     "test:ktx2-viewer": "pnpm --filter @ibltools/ktx2-viewer run test",
     "check:rs": "cargo check --workspace",
