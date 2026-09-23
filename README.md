@@ -50,6 +50,7 @@ Common pnpm entry points:
 ```bash
 pnpm install
 pnpm run fixtures:refresh
+pnpm run test:workspace
 pnpm run test:js
 pnpm run test:ibla-viewer
 pnpm run test:ktx2-viewer

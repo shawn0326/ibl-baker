@@ -75,10 +75,12 @@ running Cargo commands.
 Cargo publish checks run from outside the workspace with an explicit manifest and
 registry. This bypasses the generated source replacement for registry-facing package
 verification while leaving normal workspace builds on the pnpm-managed offline source.
-Ordinary Quality jobs restore the pnpm content store and metadata cache with a key that
-covers both lockfiles and all workspace manifests. Pull requests never save that cache;
-only successful master pushes do. Publish checks and all later release jobs keep caches
-disabled and materialize their dependencies independently.
+Ordinary CI jobs restore the pnpm content store and metadata cache with a key that covers
+both lockfiles and all workspace manifests. The key is also isolated by the pnpm, Rust,
+runner operating system and runner architecture versions. A changed manifest can restore
+an older same-platform cache, but the frozen install and offline checks still validate it.
+Pull requests never save that cache; only successful master pushes do. Publish checks and
+all later release jobs keep caches disabled and materialize their dependencies independently.
 Ordinary CI also runs lightweight Windows x64 and macOS arm64 jobs that repeat the frozen
 install, generated-source validation and offline Cargo check. The Ubuntu Quality job runs
 the full offline Rust tests and all existing project checks.
@@ -108,13 +110,16 @@ IBL_FIXTURE_DIR to the absolute target/ci-fixtures path for loader tests and
 release consumers. With that environment set, run:
 
 ~~~sh
-pnpm run test:js
-pnpm run test:ibla-viewer
-pnpm run test:ktx2-viewer
+pnpm run test:workspace
 node scripts/release/smoke.mjs
 pnpm run test:cli
 node scripts/release/cli-smoke.mjs
 ~~~
+
+`pnpm run test:workspace` runs the loader and viewer workspace tests through pnpm's
+dependency-aware task scheduler. Loader tests can run concurrently, while each viewer
+waits for its workspace loader test. The individual commands remain useful when a single
+package needs to be inspected.
 
 Use RUSTUP_TOOLCHAIN=1.98.0 when running release scripts. In PowerShell, set
 environment variables using $env:RUSTUP_TOOLCHAIN = '1.98.0' and

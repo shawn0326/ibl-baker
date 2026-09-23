@@ -21,7 +21,7 @@
 - [x] PR1：解除 release tooling 对外层 npm 执行上下文和 JavaScript lockfile 格式的依赖，固定使用 npm 11.11.0。
 - [x] PR2：将 JavaScript workspace 切换到 pnpm，保留 npm 作为 npm registry 发布与消费者验证客户端。
 - [x] PR3：启用 pnpm Cargo 依赖安装与缓存，单独验证实验性 Cargo 集成；Cargo source 生成物不入库，Quality CI 覆盖 offline metadata/check/test 和发布归档 smoke。
-- [ ] PR4：优化 pnpm CI 缓存和 workspace 任务编排。
+- [x] PR4：优化 pnpm CI 缓存和 workspace 任务编排。
 - [ ] PR5：将发布器的手工依赖顺序抽象为通用依赖图。
 
 - [x] 优先排查并修正 irradiance bake 过早绑定 `irradiance_size` 的问题，避免在卷积前先将源环境重采样到过低分辨率后再做 diffuse 过滤。
