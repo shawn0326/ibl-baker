@@ -15,9 +15,9 @@ change versions or refresh local fixtures.
 
 Rust crates remain one coordinated group, ordered as ktx2_writer, ibl_core,
 ibl_cli. Their internal dependency versions must match the workspace version.
-The npm loaders have independent versions. Viewer packages are private and are
-never published; update their loader dependency references when bumping loaders
-so development continues to use the workspace packages.
+The npm loaders have independent versions. The private Pages site is never published;
+update its loader dependency references when bumping loaders so development continues
+to use the workspace packages.
 
 Only change versions for consumer-facing changes. CI, website and release
 infrastructure changes do not require a package release. Update the relevant
@@ -56,7 +56,7 @@ obsolete publish tokens and restrict traditional npm token publishing.
 ## Daily CI and local checks
 
 Pushes to master, pull requests, and manually dispatched CI run the same quality
-checks used by Publish. Only successful master CI deploys the two viewers to Pages.
+checks used by Publish. Only successful master CI deploys the private site to Pages.
 master requires a PR and the checks / Quality status check, including for
 administrators. Another person's PR approval is not required. Force pushes and
 branch deletion are forbidden.
@@ -120,10 +120,10 @@ pnpm run test:cli
 node scripts/release/cli-smoke.mjs
 ~~~
 
-`pnpm run test:workspace` runs the loader and viewer workspace tests through pnpm's
-dependency-aware task scheduler. Loader tests can run concurrently, while each viewer
-waits for its workspace loader test. The individual commands remain useful when a single
-package needs to be inspected.
+`pnpm run test:workspace` runs the loader and site workspace tests through pnpm's
+dependency-aware task scheduler. Loader tests can run concurrently, while the site waits
+for its workspace loaders. The individual commands remain useful when a single package
+needs to be inspected.
 
 The repository toolchain pin is propagated to release-script Cargo subprocesses,
 including commands whose working directory is outside the checkout. No manual
@@ -376,7 +376,7 @@ and all three registry consumers; bootstrap does not waive those checks.
 ### npm CLI rollout evidence
 
 Local validation passed: 62 Rust tests, 23 release/recovery tests, 22 loader tests,
-TypeScript, both viewer builds, Cargo/npm archive consumers, Windows CLI tarball
+TypeScript, the site build, Cargo/npm archive consumers, Windows CLI tarball
 installation and real console Ctrl+C cancellation. Actionlint passed.
 
 - [Implementation PR #4](https://github.com/shawn0326/ibl-baker/pull/4) merged as 20df67d83c5bd095dd070d1224fd4cb119d86efc.
@@ -406,7 +406,7 @@ Rollout on 2026-09-17:
 - [Implementation PR CI](https://github.com/shawn0326/ibl-baker/actions/runs/35194599409): passed.
 - [Master CI and Pages deployment](https://github.com/shawn0326/ibl-baker/actions/runs/35195117843): passed.
 - Master protection was read back after configuration: required PR, checks / Quality from GitHub Actions, strict status checks, administrator enforcement, no force pushes/deletion, zero required approving reviews.
-- Local validation passed: 61 Rust tests, 22 loader tests, both viewer builds, TypeScript, 17 release/recovery tests, actionlint, Cargo dry-runs and archive consumers. Existing registry versions also passed exact-version consumer checks; no registry uploads were performed.
+- Local validation passed: 61 Rust tests, 22 loader tests, the site build, TypeScript, 17 release/recovery tests, actionlint, Cargo dry-runs and archive consumers. Existing registry versions also passed exact-version consumer checks; no registry uploads were performed.
 
 The [first all-group rehearsal](https://github.com/shawn0326/ibl-baker/actions/runs/35195133128)
 passed all three platform builds and quality checks, then exposed npm 11.11 rejecting
