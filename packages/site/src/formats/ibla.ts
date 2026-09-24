@@ -36,13 +36,19 @@ export async function loadIBLA(
   renderSummary(elements, fileName, fileSize, parsed, null);
   renderLevels(elements, parsed, null);
 
-  let decodedChunks: DecodedChunk[];
+  const decodedChunks: DecodedChunk[] = [];
   try {
-    decodedChunks = await Promise.all(parsed.chunks.map(async (chunk) => ({
-      chunk,
-      canvas: await decodeChunkToCanvas(chunk, parsed.manifest.encoding),
-    })));
+    for (const chunk of parsed.chunks) {
+      signal.throwIfAborted();
+      decodedChunks.push({
+        chunk,
+        canvas: await decodeChunkToCanvas(chunk, parsed.manifest.encoding),
+      });
+    }
   } catch (error) {
+    if (signal.aborted) {
+      throw error;
+    }
     throw new ViewerPreviewError(errorMessage("PNG preview decode failed", error), parsed.manifest.mipCount);
   }
 

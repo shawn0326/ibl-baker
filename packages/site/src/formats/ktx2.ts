@@ -5,6 +5,7 @@ import {
   type ParsedKTX2IBLLevel,
 } from "@ibltools/ktx2-loader";
 import { ZSTDDecoder } from "zstddec";
+import { bc6hCopyLayout } from "../bc6h-layout.ts";
 import { ViewerPreviewError, type FormatSession, type LevelTable, type SummaryCard, type ViewerElements } from "./types.ts";
 import { formatBytes, renderLevels as renderLevelTable, renderSummary as renderSummaryCards } from "../ui.ts";
 
@@ -12,8 +13,6 @@ const FACE_COUNT = 6;
 const FACE_ORDER = ["px", "nx", "py", "ny", "pz", "nz"] as const;
 const BC6H_FORMAT = "bc6h-rgb-ufloat" as GPUTextureFormat;
 const CANVAS_FORMAT_FALLBACK = "bgra8unorm" as GPUTextureFormat;
-const BC6H_BLOCK_SIZE = 4;
-const BC6H_BYTES_PER_BLOCK = 16;
 const MAX_PREVIEW_FACE_SIZE = 256;
 const MIN_PREVIEW_FACE_SIZE = 64;
 const CROSS_COLUMNS = 4;
@@ -48,8 +47,11 @@ export async function loadKTX2(
 
   let decodedLevels: DecodedLevel[];
   try {
-    decodedLevels = await decodeLevels(parsed);
+    decodedLevels = await decodeLevels(parsed, signal);
   } catch (error) {
+    if (signal.aborted) {
+      throw error;
+    }
     throw new ViewerPreviewError(errorMessage("Zstd decode failed", error), parsed.levels.length);
   }
 
@@ -58,7 +60,7 @@ export async function loadKTX2(
   renderSummary(elements, fileName, fileSize, parsed, decodedLevels);
   renderLevels(elements, parsed, decodedLevels);
 
-  const previewResult = await createPreviewRenderer(parsed, decodedLevels, elements.previewCanvas);
+  const previewResult = await createPreviewRenderer(parsed, decodedLevels, elements.previewCanvas, signal);
   if (signal.aborted) {
     if (previewResult.kind === "ok") {
       previewResult.renderer.destroy();
@@ -86,7 +88,12 @@ export async function loadKTX2(
     };
   }
 
-  previewResult.renderer.renderMip(0);
+  try {
+    previewResult.renderer.renderMip(0);
+  } catch (error) {
+    previewResult.renderer.destroy();
+    throw new ViewerPreviewError(errorMessage("WebGPU preview failed", error), parsed.levels.length);
+  }
   const message = [
     `Parsed ${fileName}.`,
     "Preview ready.",
@@ -119,9 +126,11 @@ function parseKTX2(bytes: Uint8Array): ParsedKTX2IBL {
   }
 }
 
-async function decodeLevels(parsed: ParsedKTX2IBL): Promise<DecodedLevel[]> {
+async function decodeLevels(parsed: ParsedKTX2IBL, signal: AbortSignal): Promise<DecodedLevel[]> {
   const decoder = await getZstdDecoder();
-  return parsed.levels.map((level) => {
+  const decodedLevels: DecodedLevel[] = [];
+  for (const level of parsed.levels) {
+    signal.throwIfAborted();
     const bytes = decoder.decode(level.compressedBytes, level.uncompressedByteLength);
     if (bytes.byteLength !== level.uncompressedByteLength) {
       throw new Error(
@@ -129,8 +138,9 @@ async function decodeLevels(parsed: ParsedKTX2IBL): Promise<DecodedLevel[]> {
       );
     }
 
-    return { level, bytes };
-  });
+    decodedLevels.push({ level, bytes });
+  }
+  return decodedLevels;
 }
 
 async function getZstdDecoder(): Promise<ZSTDDecoder> {
@@ -149,7 +159,9 @@ async function createPreviewRenderer(
   parsed: ParsedKTX2IBL,
   decodedLevels: DecodedLevel[],
   canvas: HTMLCanvasElement,
+  signal: AbortSignal,
 ): Promise<{ kind: "ok"; renderer: PreviewRenderer } | { kind: "unavailable"; reason: string }> {
+  signal.throwIfAborted();
   if (!("gpu" in navigator) || navigator.gpu === undefined) {
     return { kind: "unavailable", reason: "WebGPU is not available in this browser." };
   }
@@ -160,6 +172,7 @@ async function createPreviewRenderer(
   } catch (error) {
     return { kind: "unavailable", reason: errorMessage("WebGPU adapter request failed", error) };
   }
+  signal.throwIfAborted();
   if (adapter === null) {
     return { kind: "unavailable", reason: "No WebGPU adapter was found." };
   }
@@ -168,20 +181,25 @@ async function createPreviewRenderer(
     return { kind: "unavailable", reason: "The WebGPU adapter does not support texture-compression-bc." };
   }
 
+  let device: GPUDevice | null = null;
+  let texture: GPUTexture | null = null;
+  let uniformBuffer: GPUBuffer | null = null;
   try {
-    const device = await adapter.requestDevice({
+    device = await adapter.requestDevice({
       requiredFeatures: ["texture-compression-bc" as GPUFeatureName],
     });
+    signal.throwIfAborted();
     const canvasFormat =
       typeof navigator.gpu.getPreferredCanvasFormat === "function"
         ? navigator.gpu.getPreferredCanvasFormat()
         : CANVAS_FORMAT_FALLBACK;
     const context = canvas.getContext("webgpu") as GPUCanvasContext | null;
     if (context === null) {
-      return { kind: "unavailable", reason: "Could not create a WebGPU canvas context." };
+      throw new Error("Could not create a WebGPU canvas context.");
     }
 
-    const texture = device.createTexture({
+    const activeDevice = device;
+    texture = activeDevice.createTexture({
       label: "KTX2 BC6H cubemap preview texture",
       size: {
         width: parsed.header.pixelWidth,
@@ -195,24 +213,25 @@ async function createPreviewRenderer(
     });
 
     for (const decoded of decodedLevels) {
-      uploadDecodedLevel(device, texture, decoded);
+      signal.throwIfAborted();
+      uploadDecodedLevel(activeDevice, texture, decoded);
     }
 
-    const shader = device.createShaderModule({ label: "KTX2 viewer shader", code: PREVIEW_SHADER });
-    const pipeline = device.createRenderPipeline({
+    const shader = activeDevice.createShaderModule({ label: "KTX2 viewer shader", code: PREVIEW_SHADER });
+    const pipeline = activeDevice.createRenderPipeline({
       label: "KTX2 viewer pipeline",
       layout: "auto",
       vertex: { module: shader, entryPoint: "vertexMain" },
       fragment: { module: shader, entryPoint: "fragmentMain", targets: [{ format: canvasFormat }] },
       primitive: { topology: "triangle-list" },
     });
-    const sampler = device.createSampler({ magFilter: "nearest", minFilter: "nearest", mipmapFilter: "nearest" });
-    const uniformBuffer = device.createBuffer({
+    const sampler = activeDevice.createSampler({ magFilter: "nearest", minFilter: "nearest", mipmapFilter: "nearest" });
+    uniformBuffer = activeDevice.createBuffer({
       label: "KTX2 viewer uniforms",
       size: 16,
       usage: BUFFER_USAGE_UNIFORM | BUFFER_USAGE_COPY_DST,
     });
-    const bindGroup = device.createBindGroup({
+    const bindGroup = activeDevice.createBindGroup({
       label: "KTX2 viewer bind group",
       layout: pipeline.getBindGroupLayout(0),
       entries: [
@@ -231,45 +250,53 @@ async function createPreviewRenderer(
       ],
     });
 
-    return {
-      kind: "ok",
-      renderer: {
-        renderMip(mipLevel: number): void {
-          const level = parsed.levels[mipLevel];
-          if (level === undefined) {
-            return;
-          }
+    const renderer: PreviewRenderer = {
+      renderMip(mipLevel: number): void {
+        const level = parsed.levels[mipLevel];
+        if (level === undefined) {
+          return;
+        }
 
-          const facePreviewSize = clampInteger(level.width, MIN_PREVIEW_FACE_SIZE, MAX_PREVIEW_FACE_SIZE);
-          canvas.width = facePreviewSize * CROSS_COLUMNS;
-          canvas.height = facePreviewSize * CROSS_ROWS;
-          context.configure({ device, format: canvasFormat, alphaMode: "opaque" });
-          device.queue.writeBuffer(uniformBuffer, 0, new Float32Array([mipLevel, level.width, 0, 0]));
+        const facePreviewSize = clampInteger(level.width, MIN_PREVIEW_FACE_SIZE, MAX_PREVIEW_FACE_SIZE);
+        canvas.width = facePreviewSize * CROSS_COLUMNS;
+        canvas.height = facePreviewSize * CROSS_ROWS;
+        context.configure({ device: activeDevice, format: canvasFormat, alphaMode: "opaque" });
+        activeDevice.queue.writeBuffer(uniformBuffer as GPUBuffer, 0, new Float32Array([mipLevel, level.width, 0, 0]));
 
-          const encoder = device.createCommandEncoder({ label: "KTX2 viewer command encoder" });
-          const pass = encoder.beginRenderPass({
-            label: "KTX2 viewer render pass",
-            colorAttachments: [{
-              view: context.getCurrentTexture().createView(),
-              clearValue: { r: 0.04, g: 0.05, b: 0.06, a: 1 },
-              loadOp: "clear",
-              storeOp: "store",
-            }],
-          });
-          pass.setPipeline(pipeline);
-          pass.setBindGroup(0, bindGroup);
-          pass.draw(6, FACE_COUNT);
-          pass.end();
-          device.queue.submit([encoder.finish()]);
-        },
-        destroy(): void {
-          texture.destroy();
-          uniformBuffer.destroy();
-          device.destroy();
-        },
+        const encoder = activeDevice.createCommandEncoder({ label: "KTX2 viewer command encoder" });
+        const pass = encoder.beginRenderPass({
+          label: "KTX2 viewer render pass",
+          colorAttachments: [{
+            view: context.getCurrentTexture().createView(),
+            clearValue: { r: 0.04, g: 0.05, b: 0.06, a: 1 },
+            loadOp: "clear",
+            storeOp: "store",
+          }],
+        });
+        pass.setPipeline(pipeline);
+        pass.setBindGroup(0, bindGroup);
+        pass.draw(6, FACE_COUNT);
+        pass.end();
+        activeDevice.queue.submit([encoder.finish()]);
+      },
+      destroy(): void {
+        texture?.destroy();
+        uniformBuffer?.destroy();
+        device?.destroy();
+        texture = null;
+        uniformBuffer = null;
+        device = null;
       },
     };
+
+    return {
+      kind: "ok",
+      renderer,
+    };
   } catch (error) {
+    texture?.destroy();
+    uniformBuffer?.destroy();
+    device?.destroy();
     return { kind: "unavailable", reason: errorMessage("WebGPU preview failed", error) };
   }
 }
@@ -283,13 +310,12 @@ function uploadDecodedLevel(device: GPUDevice, texture: GPUTexture, decoded: Dec
 
     const faceEnd = face.uncompressedByteOffset + face.uncompressedByteLength;
     const faceBytes = decoded.bytes.subarray(face.uncompressedByteOffset, faceEnd);
-    const blocksX = Math.ceil(decoded.level.width / BC6H_BLOCK_SIZE);
-    const blocksY = Math.ceil(decoded.level.height / BC6H_BLOCK_SIZE);
+    const layout = bc6hCopyLayout(decoded.level.width, decoded.level.height);
     device.queue.writeTexture(
       { texture, mipLevel: decoded.level.mipLevel, origin: { x: 0, y: 0, z: faceIndex } },
       faceBytes,
-      { bytesPerRow: blocksX * BC6H_BYTES_PER_BLOCK, rowsPerImage: blocksY },
-      { width: blocksX * BC6H_BLOCK_SIZE, height: blocksY * BC6H_BLOCK_SIZE, depthOrArrayLayers: 1 },
+      { bytesPerRow: layout.bytesPerRow, rowsPerImage: layout.rowsPerImage },
+      { width: layout.width, height: layout.height, depthOrArrayLayers: 1 },
     );
   }
 }

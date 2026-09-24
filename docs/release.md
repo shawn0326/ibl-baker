@@ -376,7 +376,7 @@ and all three registry consumers; bootstrap does not waive those checks.
 ### npm CLI rollout evidence
 
 Local validation passed: 62 Rust tests, 23 release/recovery tests, 22 loader tests,
-TypeScript, the site build, Cargo/npm archive consumers, Windows CLI tarball
+TypeScript, both viewer builds, Cargo/npm archive consumers, Windows CLI tarball
 installation and real console Ctrl+C cancellation. Actionlint passed.
 
 - [Implementation PR #4](https://github.com/shawn0326/ibl-baker/pull/4) merged as 20df67d83c5bd095dd070d1224fd4cb119d86efc.
@@ -406,7 +406,7 @@ Rollout on 2026-09-17:
 - [Implementation PR CI](https://github.com/shawn0326/ibl-baker/actions/runs/35194599409): passed.
 - [Master CI and Pages deployment](https://github.com/shawn0326/ibl-baker/actions/runs/35195117843): passed.
 - Master protection was read back after configuration: required PR, checks / Quality from GitHub Actions, strict status checks, administrator enforcement, no force pushes/deletion, zero required approving reviews.
-- Local validation passed: 61 Rust tests, 22 loader tests, the site build, TypeScript, 17 release/recovery tests, actionlint, Cargo dry-runs and archive consumers. Existing registry versions also passed exact-version consumer checks; no registry uploads were performed.
+- Local validation passed: 61 Rust tests, 22 loader tests, both viewer builds, TypeScript, 17 release/recovery tests, actionlint, Cargo dry-runs and archive consumers. Existing registry versions also passed exact-version consumer checks; no registry uploads were performed.
 
 The [first all-group rehearsal](https://github.com/shawn0326/ibl-baker/actions/runs/35195133128)
 passed all three platform builds and quality checks, then exposed npm 11.11 rejecting
