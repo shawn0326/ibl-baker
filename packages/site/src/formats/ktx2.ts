@@ -5,7 +5,7 @@ import {
   type ParsedKTX2IBLLevel,
 } from "@ibltools/ktx2-loader";
 import { ZSTDDecoder } from "zstddec";
-import { bc6hCopyLayout } from "../bc6h-layout.ts";
+import { bc6hCopyLayout, isBC6HBaseDimensionSupported } from "../bc6h-layout.ts";
 import { ViewerPreviewError, type FormatSession, type LevelTable, type SummaryCard, type ViewerElements } from "./types.ts";
 import { formatBytes, renderLevels as renderLevelTable, renderSummary as renderSummaryCards } from "../ui.ts";
 
@@ -40,6 +40,7 @@ export async function loadKTX2(
   fileSize: number,
   elements: ViewerElements,
   signal: AbortSignal,
+  onPreviewError: (error: Error) => void,
 ): Promise<FormatSession> {
   const parsed = parseKTX2(bytes);
   renderSummary(elements, fileName, fileSize, parsed, null);
@@ -60,7 +61,13 @@ export async function loadKTX2(
   renderSummary(elements, fileName, fileSize, parsed, decodedLevels);
   renderLevels(elements, parsed, decodedLevels);
 
-  const previewResult = await createPreviewRenderer(parsed, decodedLevels, elements.previewCanvas, signal);
+  const previewResult = await createPreviewRenderer(
+    parsed,
+    decodedLevels,
+    elements.previewCanvas,
+    signal,
+    onPreviewError,
+  );
   if (signal.aborted) {
     if (previewResult.kind === "ok") {
       previewResult.renderer.destroy();
@@ -160,8 +167,15 @@ async function createPreviewRenderer(
   decodedLevels: DecodedLevel[],
   canvas: HTMLCanvasElement,
   signal: AbortSignal,
+  onPreviewError: (error: Error) => void,
 ): Promise<{ kind: "ok"; renderer: PreviewRenderer } | { kind: "unavailable"; reason: string }> {
   signal.throwIfAborted();
+  if (!isBC6HBaseDimensionSupported(parsed.header.pixelWidth, parsed.header.pixelHeight)) {
+    return {
+      kind: "unavailable",
+      reason: "WebGPU BC6H preview requires base dimensions aligned to 4-pixel compression blocks.",
+    };
+  }
   if (!("gpu" in navigator) || navigator.gpu === undefined) {
     return { kind: "unavailable", reason: "WebGPU is not available in this browser." };
   }
@@ -288,6 +302,28 @@ async function createPreviewRenderer(
         device = null;
       },
     };
+    let destroyed = false;
+    const handleUncapturedError = (event: GPUUncapturedErrorEvent): void => {
+      event.preventDefault();
+      if (!destroyed) {
+        onPreviewError(new Error(`WebGPU validation failed: ${event.error.message}`));
+      }
+    };
+    activeDevice.addEventListener("uncapturederror", handleUncapturedError);
+    const destroyRenderer = renderer.destroy;
+    renderer.destroy = (): void => {
+      if (destroyed) {
+        return;
+      }
+      destroyed = true;
+      activeDevice.removeEventListener("uncapturederror", handleUncapturedError);
+      destroyRenderer();
+    };
+    void activeDevice.lost.then((info) => {
+      if (!destroyed) {
+        onPreviewError(new Error(`WebGPU device was lost${info.message ? `: ${info.message}` : "."}`));
+      }
+    });
 
     return {
       kind: "ok",

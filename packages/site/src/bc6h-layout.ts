@@ -8,6 +8,10 @@ export interface BC6HCopyLayout {
   height: number;
 }
 
+export function isBC6HBaseDimensionSupported(width: number, height: number): boolean {
+  return width > 0 && height > 0 && width % BC6H_BLOCK_SIZE === 0 && height % BC6H_BLOCK_SIZE === 0;
+}
+
 export function bc6hCopyLayout(width: number, height: number): BC6HCopyLayout {
   return {
     bytesPerRow: Math.ceil(width / BC6H_BLOCK_SIZE) * BC6H_BYTES_PER_BLOCK,

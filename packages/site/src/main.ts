@@ -16,6 +16,7 @@ import {
 const elements = createViewerElements();
 let activeSession: FormatSession | null = null;
 let activeLoad: AbortController | null = null;
+let activeFile: File | null = null;
 let loadGeneration = 0;
 
 setViewerState({
@@ -33,6 +34,7 @@ elements.fileInput.addEventListener("change", () => {
   if (file !== undefined) {
     void loadFile(file);
   }
+  elements.fileInput.value = "";
 });
 
 elements.dropZone.addEventListener("dragenter", (event) => {
@@ -61,7 +63,23 @@ elements.dropZone.addEventListener("drop", (event) => {
 elements.mipSelect.addEventListener("change", () => {
   const mipLevel = Number.parseInt(elements.mipSelect.value, 10);
   if (Number.isInteger(mipLevel) && activeSession !== null) {
-    activeSession.renderMip(mipLevel);
+    const session = activeSession;
+    try {
+      session.renderMip(mipLevel);
+    } catch (error) {
+      session.destroy();
+      activeSession = null;
+      hidePreview(elements);
+      if (activeFile !== null) {
+        showError(
+          activeFile,
+          session.format,
+          "preview-error",
+          errorMessage("Preview failed", error),
+          session.levelCount,
+        );
+      }
+    }
   }
 });
 
@@ -70,6 +88,7 @@ async function loadFile(file: File): Promise<void> {
   activeLoad?.abort();
   const loadController = new AbortController();
   activeLoad = loadController;
+  activeFile = file;
   activeSession?.destroy();
   activeSession = null;
   resetResult(elements);
@@ -159,7 +178,16 @@ function loadFormat(
 ): Promise<FormatSession> {
   return format === "ibla"
     ? loadIBLA(bytes, file.name, file.size, viewerElements, signal)
-    : loadKTX2(bytes, file.name, file.size, viewerElements, signal);
+    : loadKTX2(bytes, file.name, file.size, viewerElements, signal, (error) => {
+        if (signal.aborted || activeSession === null) {
+          return;
+        }
+        const levelCount = activeSession.levelCount;
+        activeSession.destroy();
+        activeSession = null;
+        hidePreview(elements);
+        showError(file, "ktx2", "preview-error", errorMessage("WebGPU preview failed", error), levelCount);
+      });
 }
 
 function showError(
