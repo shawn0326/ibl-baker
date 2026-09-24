@@ -225,6 +225,10 @@ async function finalize() {
         verified.cli = { candidate: cliCandidate, registry: cliRegistry };
         writeJson(join(output, 'verified.json'), verified);
     }
+    const evidence = [
+        { archive: 'manifest.json', sha256: hash(readFileSync(manifestPath)) },
+        { archive: 'verified.json', sha256: hash(readFileSync(join(output, 'verified.json'))) },
+    ];
     const releases = JSON.parse(run('gh', ['api', 'repos/' + repository + '/releases?per_page=100', '--paginate', '--slurp'])).flat();
     const releaseGroups = [...new Set(value.packages.map(p => p.group))].map(id => {
         const items = value.packages.filter(p => p.group === id), pkg = items[0];
@@ -237,7 +241,7 @@ async function finalize() {
         const existing = releases.find(r => r.tag_name === group.tag);
         const marker = 'Commit: ' + value.sha + '\nCandidate SHA-256: ' + hash(readFileSync(manifestPath));
         const published = existing && !existing.draft ? JSON.parse(run('gh', ['api', 'repos/' + repository + '/releases/' + existing.id])) : existing;
-        if (assertExistingRelease(published, commit, group, value.sha, marker)) continue;
+        if (assertExistingRelease(published, commit, group, value.sha, marker, evidence)) continue;
         if (!commit) {
             const refPath = join(output, group.id + '-tag.json');
             writeJson(refPath, { ref: 'refs/tags/' + group.tag, sha: value.sha });

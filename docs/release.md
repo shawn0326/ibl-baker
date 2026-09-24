@@ -133,7 +133,11 @@ environment variables using `$env:IBL_FIXTURE_DIR = (Resolve-Path target/ci-fixt
 
 The existing smoke tests package the Rust crates and two loaders, perform Cargo's native multi-package
 dry-run, and install archives outside the workspace. The release dependency graph is derived from
-Cargo metadata and workspace manifests; the candidate records the resulting stable topological order.
+Cargo metadata, public workspace manifests and generated CLI manifests; the candidate records the
+resulting stable topological order. This is a release graph for the repository's current publishable
+artifacts, not a general replacement for Cargo or pnpm dependency resolution. Cargo path dependencies,
+public npm workspace dependencies and generated CLI platform dependencies are release-gated; unsupported
+or ambiguous publication relationships must fail closed rather than be inferred.
 Local smoke checks allow
 uncommitted changes; production candidate preparation requires a clean checkout.
 Candidate-only Cargo consumer patches point exclusively at extracted, checked
@@ -240,7 +244,9 @@ visible before the full run completes.
 - Missing/expired original candidates block automatic recovery. If preparation
   failed before any candidate/upload, investigate and start a fresh run.
 - If verification or Release creation fails after publication, rerun failed jobs.
-  Completed Releases are checked and left unchanged. Tags are never moved.
+  Completed Releases with all expected archive and evidence assets are checked and left unchanged.
+  Missing evidence assets are re-uploaded; checksum conflicts fail instead of being overwritten.
+  Tags are never moved.
 - Fix npm dist-tag issues interactively with npm authentication; OIDC does not
   authorize arbitrary dist-tag maintenance.
 - Correct faulty published contents by releasing a new version. Use npm
@@ -309,8 +315,10 @@ the native CLI. Full candidate and registry consumers run on the three release
 platforms. Local CLI smoke needs a release binary but not a clean checkout.
 It packs the current workspace loaders so unpublished coordinated loader changes
 are tested from local archives instead of being resolved from the registry.
-When the native CLI or Rust group changes the KTX2 contract, the publish selection
-must include `npm_ktx2_loader` so the writer and parser are released together.
+The current release policy conservatively requires `npm_ktx2_loader` whenever `rust_cli` or
+`npm_cli` is selected, so the writer and parser versions remain synchronized. This applies even
+when a particular change is not known to alter the KTX2 contract; relaxing that coupling requires
+explicit contract-version metadata and a separate release-policy change.
 Signal tests use real Unix signals and Windows console Ctrl+C.
 
 ### First publication

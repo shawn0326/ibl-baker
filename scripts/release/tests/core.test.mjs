@@ -85,12 +85,19 @@ test('every mutating command is blocked unless dry_run is explicitly false', () 
 });
 test('release finalization resumes a matching draft or skips a matching published release', () => {
     const group = { tag: 'v1.0.0', assets: [{ archive: 'bin.zip', sha256: 'abc' }, { archive: 'p.crate', sha256: 'def' }] };
-    const release = { body: 'marker', draft: false, assets: [{ name: 'bin.zip', digest: 'sha256:abc' }, { name: 'p.crate', digest: 'sha256:def' }] };
+    const evidence = [{ archive: 'manifest.json', sha256: 'manifest' }, { archive: 'verified.json', sha256: 'verified' }];
+    const release = { body: 'marker', draft: false, assets: [
+        { name: 'bin.zip', digest: 'sha256:abc' }, { name: 'p.crate', digest: 'sha256:def' },
+        { name: 'manifest.json', digest: 'sha256:manifest' }, { name: 'verified.json', digest: 'sha256:verified' },
+    ] };
     assert.equal(assertExistingRelease(undefined, undefined, group, 'sha', 'marker'), false);
     assert.equal(assertExistingRelease({ ...release, draft: true }, 'sha', group, 'sha', 'marker'), false);
-    assert.equal(assertExistingRelease(release, 'sha', group, 'sha', 'marker'), true);
-    assert.throws(() => assertExistingRelease(release, 'other', group, 'sha', 'marker'), /commit/);
-    assert.throws(() => assertExistingRelease({ ...release, assets: [] }, 'sha', group, 'sha', 'marker'), /assets/);
+    assert.throws(() => assertExistingRelease({ ...release, draft: true, assets: release.assets.map(a => a.name === 'manifest.json' ? { ...a, digest: 'sha256:wrong' } : a) }, 'sha', group, 'sha', 'marker', evidence), /assets/);
+    assert.equal(assertExistingRelease(release, 'sha', group, 'sha', 'marker', evidence), true);
+    assert.equal(assertExistingRelease({ ...release, assets: release.assets.slice(0, 2) }, 'sha', group, 'sha', 'marker', evidence), false);
+    assert.throws(() => assertExistingRelease({ ...release, assets: release.assets.slice(0, 2).concat({ name: 'manifest.json', digest: 'sha256:wrong' }) }, 'sha', group, 'sha', 'marker', evidence), /assets/);
+    assert.throws(() => assertExistingRelease(release, 'other', group, 'sha', 'marker', evidence), /commit/);
+    assert.throws(() => assertExistingRelease({ ...release, assets: release.assets.map(a => a.name === 'verified.json' ? { ...a, digest: 'sha256:wrong' } : a) }, 'sha', group, 'sha', 'marker', evidence), /assets/);
     assert.throws(() => assertExistingRelease({ ...release, body: 'other' }, 'sha', group, 'sha', 'marker'), /different candidate/);
 });
 test('release notes use the group heading and require a dated entry', () => {

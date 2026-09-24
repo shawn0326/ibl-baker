@@ -209,11 +209,19 @@ export function assertChannelAdvance(pkg, tags) {
     const current = tags?.[pkg.channel];
     if (current && compareVersions(pkg.version, current) < 0) throw new Error('Refusing to move npm ' + pkg.channel + ' backwards: ' + pkg.name);
 }
-export function assertExistingRelease(existing, commit, group, sha, marker) {
+export function assertExistingRelease(existing, commit, group, sha, marker, evidence = []) {
     if (commit && commit !== sha) throw new Error('Existing tag points at another commit: ' + group.tag);
     if (!existing) return false;
     if (!existing.body?.includes(marker)) throw new Error('Existing release belongs to a different candidate: ' + group.tag);
-    if (existing.draft) return false;
-    if (!group.assets.every(p => existing.assets.some(a => a.name === p.archive && a.digest === 'sha256:' + p.sha256))) throw new Error('Existing release assets differ from candidate.');
-    return true;
+    const assets = existing.assets ?? [];
+    let missing = false;
+    for (const expected of [...group.assets, ...evidence]) {
+        const actual = assets.find(asset => asset.name === expected.archive);
+        if (!actual) {
+            missing = true;
+            continue;
+        }
+        if (actual.digest !== 'sha256:' + expected.sha256) throw new Error('Existing release assets differ from candidate.');
+    }
+    return existing.draft || missing ? false : true;
 }

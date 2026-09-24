@@ -22,8 +22,6 @@
 - [x] PR2：将 JavaScript workspace 切换到 pnpm，保留 npm 作为 npm registry 发布与消费者验证客户端。
 - [x] PR3：启用 pnpm Cargo 依赖安装与缓存，单独验证实验性 Cargo 集成；Cargo source 生成物不入库，Quality CI 覆盖 offline metadata/check/test 和发布归档 smoke。
 - [x] PR4：优化 pnpm CI 缓存和 workspace 任务编排。
-- [ ] PR5：将发布器的手工依赖顺序抽象为通用依赖图。
-
 - [x] 优先排查并修正 irradiance bake 过早绑定 `irradiance_size` 的问题，避免在卷积前先将源环境重采样到过低分辨率后再做 diffuse 过滤。
 - [x] 优先排查并修正 irradiance 的 sample cap 偏低问题，重新对齐与参考实现的采样预算与 LOD 行为，避免 HDR 小范围高亮贡献被过度抹平。
 - [x] 新增 `packages/ktx2-loader`，提供浏览器侧 KTX2 加载能力，并在 README 中明确当前仅支持仓库现阶段产物画像（如 `KTX2 + BC6H_UFLOAT + zstd + cubemap`）。
@@ -39,6 +37,7 @@
 ## 自动发包流程
 
 - [x] PR5：从 Cargo metadata、npm workspace manifests 和动态 CLI manifests 构建统一 release dependency graph，使用稳定拓扑顺序发布，并在每个 registry receipt 确认后继续处理 dependent。
+- [x] Release finalization 校验 `manifest.json` / `verified.json` 证据资产，缺失时允许安全重传，内容冲突时拒绝恢复。
 - [x] 实现共用 CI、三个发布组选项、候选归档、OIDC 发布与恢复机制。
 - [x] 原地维护 docs/release.md，新增发布说明目录和 README 入口。
 - [x] 完成本地 Rust、TypeScript、loader/viewer、发布规则及工作区外消费者检查。
