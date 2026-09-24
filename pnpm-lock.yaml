@@ -190,19 +190,6 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
-  packages/ibla-viewer:
-    dependencies:
-      '@ibltools/ibla-loader':
-        specifier: workspace:0.2.0
-        version: link:../ibla-loader
-    devDependencies:
-      '@types/node':
-        specifier: ^25.5.2
-        version: 25.5.2
-      vite:
-        specifier: ^7.1.3
-        version: 7.3.1(@types/node@25.5.2)
-
   packages/ktx2-loader:
     devDependencies:
       '@types/node':
@@ -212,8 +199,11 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
-  packages/ktx2-viewer:
+  packages/site:
     dependencies:
+      '@ibltools/ibla-loader':
+        specifier: workspace:0.2.0
+        version: link:../ibla-loader
       '@ibltools/ktx2-loader':
         specifier: workspace:0.3.0
         version: link:../ktx2-loader

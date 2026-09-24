@@ -10,6 +10,9 @@
     "paths": {
       "@ibltools/ibla-loader": [
         "../ibla-loader/src/index.ts"
+      ],
+      "@ibltools/ktx2-loader": [
+        "../ktx2-loader/src/index.ts"
       ]
     },
     "strict": true,

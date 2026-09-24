@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>KTX2 Viewer</title>
+    <title>IBL Asset Viewer</title>
     <style>
       :root {
         color-scheme: light;
@@ -345,21 +345,21 @@
   <body>
     <main>
       <section class="intro">
-        <h1>KTX2 Viewer</h1>
+        <h1>IBL Asset Viewer</h1>
         <p>
-          Drop an <code>ibl-baker</code> <code>.ktx2</code> cubemap to inspect its layout.
-          GPU preview uses WebGPU <code>texture-compression-bc</code> when available.
+          Drop an <code>ibl-baker</code> <code>.ibla</code> or <code>.ktx2</code> asset to inspect its layout.
+          Files are processed locally in this browser and are never uploaded.
         </p>
       </section>
 
       <section id="drop-zone" class="drop-zone">
-        <strong>Drop a .ktx2 file</strong>
-        <span>Manual validation only. Repository fixtures are not loaded by this viewer.</span>
+        <strong>Drop a .ibla or .ktx2 file</strong>
+        <span>Manual validation only. Repository fixtures are not loaded by this site.</span>
         <label class="file-button" for="file-input">Choose file</label>
-        <input id="file-input" type="file" accept=".ktx2,model/ktx2">
+        <input id="file-input" type="file" accept=".ibla,.ktx2,model/ktx2">
       </section>
 
-      <pre id="status" class="status">Idle. Choose or drop a .ktx2 file.</pre>
+      <pre id="status" class="status">Idle. Choose or drop a .ibla or .ktx2 file.</pre>
       <section id="summary" class="summary-grid" aria-live="polite"></section>
 
       <section id="preview-panel" class="preview-panel" hidden>
@@ -373,7 +373,7 @@
         <div class="preview-frame">
           <canvas id="preview-canvas"></canvas>
         </div>
-        <div class="face-labels">
+        <div id="face-labels" class="face-labels">
           <span class="label-py">PY</span>
           <span class="label-nx">NX</span>
           <span class="label-pz">PZ</span>
