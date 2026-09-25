@@ -1,5 +1,7 @@
 # ibl_core
 
+[![crates.io](https://img.shields.io/crates/v/ibl_core?logo=rust)](https://crates.io/crates/ibl_core)
+
 `ibl_core` is the renderer-agnostic Rust core for the `ibl-baker` workspace.
 It owns HDR/EXR input handling, bake pipeline execution, output encoding, and validation logic.
 

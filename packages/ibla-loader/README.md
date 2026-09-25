@@ -1,10 +1,14 @@
 # @ibltools/ibla-loader
 
+[![npm version](https://img.shields.io/npm/v/%40ibltools%2Fibla-loader?logo=npm)](https://www.npmjs.com/package/@ibltools/ibla-loader)
+
 `@ibltools/ibla-loader` is the parser-only TypeScript loader for `.ibla` assets.
 
 This package exposes the public v1 parsing contract for applications and renderer-specific integrations.
 The shared `.ibla` container contract is defined in the repository format specification:
-<https://github.com/shawn0326/ibl-baker/blob/main/docs/format-spec.md>
+<https://github.com/shawn0326/ibl-baker/blob/master/docs/format-spec.md>
+
+For manual browser validation, use the [IBL Asset Viewer](https://shawn0326.github.io/ibl-baker/).
 
 ## Installation
 

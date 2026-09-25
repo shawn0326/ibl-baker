@@ -1,5 +1,7 @@
 # @ibltools/site
 
+[Open the live viewer](https://shawn0326.github.io/ibl-baker/) · [View the source repository](https://github.com/shawn0326/ibl-baker)
+
 `@ibltools/site` is the private browser application deployed to the project's GitHub Pages site.
 It provides a local, drag-and-drop validation entry point for `.ibla` and `.ktx2` assets.
 Files are processed in the browser and are not uploaded.

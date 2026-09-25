@@ -9,6 +9,11 @@ The CLI produces two output formats:
 
 BRDF LUT is always emitted as a standalone `.png`.
 
+## Live Viewer
+
+Open the [IBL Asset Viewer](https://shawn0326.github.io/ibl-baker/) to inspect `.ibla` and `.ktx2`
+assets locally in the browser. Files are processed locally and are not uploaded.
+
 ## Documentation
 
 | Document | Description |
