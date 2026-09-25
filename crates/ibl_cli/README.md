@@ -1,5 +1,7 @@
 # ibl-baker CLI
 
+[![crates.io](https://img.shields.io/crates/v/ibl_cli?logo=rust)](https://crates.io/crates/ibl_cli)
+
 `ibl-baker` is the command-line tool for baking HDR environments into IBL texture assets.
 
 It supports two output formats:

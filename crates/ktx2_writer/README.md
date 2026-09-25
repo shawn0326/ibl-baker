@@ -1,5 +1,7 @@
 # ktx2_writer
 
+[![crates.io](https://img.shields.io/crates/v/ktx2_writer?logo=rust)](https://crates.io/crates/ktx2_writer)
+
 `ktx2_writer` is a small write-only KTX2 serializer used by the `ibl-baker` workspace.
 
 It writes cubemap assets with:

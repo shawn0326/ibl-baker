@@ -5,7 +5,7 @@
   "description": "Parser-only TypeScript loader for .ibla assets.",
   "license": "MIT",
   "type": "module",
-  "homepage": "https://github.com/shawn0326/ibl-baker/tree/main/packages/ibla-loader#readme",
+  "homepage": "https://github.com/shawn0326/ibl-baker/tree/master/packages/ibla-loader#readme",
   "bugs": {
     "url": "https://github.com/shawn0326/ibl-baker/issues"
   },

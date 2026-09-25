@@ -1,13 +1,14 @@
 {
-  "name": "@ibltools/ibla-viewer",
-  "version": "0.2.0",
+  "name": "@ibltools/site",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@ibltools/ibla-loader": "workspace:0.2.0"
+    "@ibltools/ibla-loader": "workspace:0.2.0",
+    "@ibltools/ktx2-loader": "workspace:0.3.0",
+    "zstddec": "^0.2.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",
@@ -16,6 +17,6 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4175",
     "build": "vite build",
-    "test": "vite build"
+    "test": "vite build && node --experimental-strip-types --test --test-concurrency=1"
   }
 }

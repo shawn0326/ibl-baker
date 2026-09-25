@@ -1,5 +1,7 @@
 # @ibltools/ktx2-loader
 
+[![npm version](https://img.shields.io/npm/v/%40ibltools%2Fktx2-loader?logo=npm)](https://www.npmjs.com/package/@ibltools/ktx2-loader)
+
 `@ibltools/ktx2-loader` is a narrow TypeScript loader for KTX2 assets produced by `ibl-baker`.
 
 It is intentionally not a general-purpose KTX2 parser.
@@ -15,7 +17,9 @@ The supported profile is the current CLI output shape:
 - `KTXwriter` metadata beginning with `ibl-baker `
 
 The KTX2 output profile is documented in the CLI README:
-<https://github.com/shawn0326/ibl-baker/blob/main/crates/ibl_cli/README.md#ktx2-output>
+<https://github.com/shawn0326/ibl-baker/blob/master/crates/ibl_cli/README.md#ktx2-output>
+
+For manual browser validation, use the [IBL Asset Viewer](https://shawn0326.github.io/ibl-baker/).
 
 ## Installation
 

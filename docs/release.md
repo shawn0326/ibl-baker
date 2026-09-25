@@ -15,9 +15,9 @@ change versions or refresh local fixtures.
 
 Rust crates remain one coordinated group, ordered as ktx2_writer, ibl_core,
 ibl_cli. Their internal dependency versions must match the workspace version.
-The npm loaders have independent versions. Viewer packages are private and are
-never published; update their loader dependency references when bumping loaders
-so development continues to use the workspace packages.
+The npm loaders have independent versions. The private Pages site is never published;
+update its loader dependency references when bumping loaders so development continues
+to use the workspace packages.
 
 Only change versions for consumer-facing changes. CI, website and release
 infrastructure changes do not require a package release. Update the relevant
@@ -56,7 +56,7 @@ obsolete publish tokens and restrict traditional npm token publishing.
 ## Daily CI and local checks
 
 Pushes to master, pull requests, and manually dispatched CI run the same quality
-checks used by Publish. Only successful master CI deploys the two viewers to Pages.
+checks used by Publish. Only successful master CI deploys the private site to Pages.
 master requires a PR and the checks / Quality status check, including for
 administrators. Another person's PR approval is not required. Force pushes and
 branch deletion are forbidden.
@@ -120,10 +120,10 @@ pnpm run test:cli
 node scripts/release/cli-smoke.mjs
 ~~~
 
-`pnpm run test:workspace` runs the loader and viewer workspace tests through pnpm's
-dependency-aware task scheduler. Loader tests can run concurrently, while each viewer
-waits for its workspace loader test. The individual commands remain useful when a single
-package needs to be inspected.
+`pnpm run test:workspace` runs the loader and site workspace tests through pnpm's
+dependency-aware task scheduler. Loader tests can run concurrently, while the site waits
+for its workspace loaders. The individual commands remain useful when a single package
+needs to be inspected.
 
 The repository toolchain pin is propagated to release-script Cargo subprocesses,
 including commands whose working directory is outside the checkout. No manual

@@ -1,5 +1,7 @@
 # @ibltools/cli
 
+[![npm version](https://img.shields.io/npm/v/%40ibltools%2Fcli?logo=npm)](https://www.npmjs.com/package/@ibltools/cli)
+
 Install the prebuilt Rust `ibl-baker` CLI through npm. Node.js 24 or newer is required; Rust is not required.
 
 ```sh

@@ -25,12 +25,9 @@
 - [x] 优先排查并修正 irradiance bake 过早绑定 `irradiance_size` 的问题，避免在卷积前先将源环境重采样到过低分辨率后再做 diffuse 过滤。
 - [x] 优先排查并修正 irradiance 的 sample cap 偏低问题，重新对齐与参考实现的采样预算与 LOD 行为，避免 HDR 小范围高亮贡献被过度抹平。
 - [x] 新增 `packages/ktx2-loader`，提供浏览器侧 KTX2 加载能力，并在 README 中明确当前仅支持仓库现阶段产物画像（如 `KTX2 + BC6H_UFLOAT + zstd + cubemap`）。
-- [x] 新增 `packages/ktx2-viewer`，作为私有浏览器验收工具，支持拖拽 `.ktx2` 文件进行预览与错误展示。
-- [x] `packages/ktx2-viewer` 首版不接仓库内 fixture 目录，优先支持手动拖拽验收，避免目录结构耦合。
-- [x] 新增 `packages/ibla-viewer`，作为私有浏览器验收工具，支持拖拽 `.ibla` 文件、cubemap cross 预览与错误展示。
-- [x] `packages/ibla-viewer` 显示路径与 `packages/ktx2-viewer` 对齐，统一使用 linear → Reinhard → gamma，便于对比 `.ibla` 与 `.ktx2` 输出。
-- [x] 将手动浏览器验收入口收敛到 `packages/ibla-viewer` / `packages/ktx2-viewer`。
-- [x] 将 `packages/ibla-viewer` / `packages/ktx2-viewer` 通过 GitHub Pages workflow 部署到仓库 Pages 子路径，继续保持手动拖拽验收入口。
+- [x] 将 `.ibla` 与 `.ktx2` 浏览器验收入口合并为私有 `packages/site` 应用，支持统一拖拽、格式识别、解析结果与预览。
+- [x] `packages/site` 不接仓库内 fixture 目录，继续保持手动拖拽验收，避免目录结构耦合。
+- [x] `packages/site` 通过 GitHub Pages 部署到根路径；旧 `/ibla-viewer/` 与 `/ktx2-viewer/` 路径保留静态跳转。
 - [x] 将公开 `.ibla` JS 包迁移为 `@ibltools/ibla-loader`（`packages/ibla-loader`），旧 `@ibltools/loader` 由发布者后续在 npm 手动废弃。
 - [x] 修正 KTX2 BC6H UFLOAT header 的 Vulkan format 值为 `143`；新 writer 仅写标准值，新 loader 对既有 `131` 产物保留受限兼容。
 

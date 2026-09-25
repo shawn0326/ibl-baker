@@ -19,8 +19,7 @@
 - `packages/cli`：私有源码 workspace，生成公开 `@ibltools/cli` 入口及三个预编译平台包；不提供运行时 JS API，不通过 postinstall 下载。
 - `packages/ibla-loader`：公开 `.ibla` JS 包（`@ibltools/ibla-loader`），提供 parser-only 的 `parseIBLA(buffer)`；不处理 `.ktx2`。
 - `packages/ktx2-loader`：公开 KTX2 JS 包（`@ibltools/ktx2-loader`），提供 narrow parser-only 的 `parseKTX2IBL(buffer)`；不做 zstd、BC6H decode 或 GPU 上传。
-- `packages/ibla-viewer`：私有浏览器验收工具，用于手动拖拽 `.ibla` 文件、解析 PNG payload，并使用与 KTX2 viewer 一致的 linear → Reinhard → gamma 显示路径；不接仓库 fixture 目录。
-- `packages/ktx2-viewer`：私有浏览器验收工具，用于手动拖拽 `.ktx2` 文件、解析、zstd 解压，并在 WebGPU 支持 `texture-compression-bc` 时做 BC6H 预览；首版不接仓库 fixture 目录。
+- `packages/site`：私有 GitHub Pages 浏览器应用，用于手动拖拽 `.ibla` / `.ktx2` 文件，分别执行 PNG/RGBD 预览或 zstd/BC6H WebGPU 预览；不接仓库 fixture 目录。
 - `fixtures/outputs`：本地生成且被 Git 忽略的产物样例；CI 使用 `target/ci-fixtures` 临时样例。
 - `scripts/refresh-fixtures.mjs`：刷新仓库内 fixtures 的入口脚本。
 
@@ -61,8 +60,7 @@ BRDF LUT 始终输出为独立 `.png`，不受格式选项影响。
 - KTX2 输出固定为 BC6H_UFLOAT + zstd，不引入其他压缩格式。
 - `packages/ibla-loader` 在 v1 中保持 parser-only，只处理 `.ibla`，不加入 KTX2 解析、PNG decode、RGBD decode、GPU 上传或运行时纹理封装。
 - `packages/ktx2-loader` 在 v1 中保持 parser-only，只处理当前 `ibl-baker` KTX2 产物画像，不加入 zstd、BC6H decode、GPU 上传或运行时纹理封装。
-- `packages/ibla-viewer` 是仓库内部验收工具，不作为公开运行时集成层承诺；保持手动拖拽入口，不耦合仓库 fixture 目录。
-- `packages/ktx2-viewer` 是仓库内部验收工具，不作为公开运行时集成层承诺；首版保持手动拖拽入口，不耦合仓库 fixture 目录。
+- `packages/site` 是仓库内部 Pages 验收工具，不作为公开运行时集成层承诺；保持手动拖拽入口，不耦合仓库 fixture 目录。
 - 如需引擎适配、分发包装或额外运行时能力，放在独立包中实现，不反向污染核心库与 loader。
 
 ## 演进原则
