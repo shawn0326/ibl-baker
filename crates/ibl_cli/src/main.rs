@@ -664,7 +664,7 @@ fn parse_hdr_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
 }
 
 fn parse_exr_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
-    if bytes.len() < 8 || &bytes[..4] != [0x76, 0x2f, 0x31, 0x01] {
+    if bytes.len() < 8 || bytes[..4] != [0x76, 0x2f, 0x31, 0x01] {
         return None;
     }
 
