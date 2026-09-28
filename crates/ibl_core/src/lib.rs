@@ -1710,6 +1710,95 @@ mod tests {
     }
 
     #[test]
+    fn bake_to_ktx2_writes_specular_and_rejects_brdf_lut() {
+        let input = unique_temp_path("ktx2-file-input").with_extension("hdr");
+        write_test_hdr(&input, 8, 4);
+
+        let bytes = bake_to_ktx2(
+            &input,
+            BakeOptions {
+                cube_size: 4,
+                irradiance_size: 2,
+                sample_count: 16,
+                quality: BakeQuality::Low,
+                ..BakeOptions::default()
+            },
+        )
+        .expect("specular KTX2 should bake");
+        assert_ktx2_cubemap_header(&bytes, 4, 3);
+
+        let error = bake_to_ktx2(
+            &input,
+            BakeOptions {
+                asset_kind: AssetKind::BrdfLut,
+                cube_size: 4,
+                irradiance_size: 2,
+                sample_count: 16,
+                quality: BakeQuality::Low,
+                ..BakeOptions::default()
+            },
+        )
+        .expect_err("BRDF LUT should reject KTX2 output");
+        assert!(error
+            .to_string()
+            .contains("BRDF LUT does not support KTX2 output"));
+
+        let error = bake_to_ktx2(
+            &input,
+            BakeOptions {
+                cube_size: 0,
+                ..BakeOptions::default()
+            },
+        )
+        .expect_err("zero image sizes should be rejected");
+        assert!(error
+            .to_string()
+            .contains("image sizes must be greater than zero"));
+
+        fs::remove_file(&input).ok();
+    }
+
+    #[test]
+    fn bake_cubemap_to_ktx2_writes_irradiance() {
+        let input_dir = unique_temp_path("ktx2-cubemap-input");
+        fs::create_dir_all(&input_dir).expect("cubemap dir should be created");
+        for (name, color) in [
+            ("px.png", glam::Vec3::new(1.0, 0.0, 0.0)),
+            ("nx.png", glam::Vec3::new(0.0, 1.0, 0.0)),
+            ("py.png", glam::Vec3::new(0.0, 0.0, 1.0)),
+            ("ny.png", glam::Vec3::new(1.0, 1.0, 0.0)),
+            ("pz.png", glam::Vec3::new(1.0, 0.0, 1.0)),
+            ("nz.png", glam::Vec3::new(0.0, 1.0, 1.0)),
+        ] {
+            write_solid_png(&input_dir.join(name), color);
+        }
+
+        let input = CubemapInputPaths::from_face_order([
+            input_dir.join("px.png"),
+            input_dir.join("nx.png"),
+            input_dir.join("py.png"),
+            input_dir.join("ny.png"),
+            input_dir.join("pz.png"),
+            input_dir.join("nz.png"),
+        ]);
+        let bytes = bake_cubemap_to_ktx2(
+            &input,
+            BakeOptions {
+                asset_kind: AssetKind::IrradianceCubemap,
+                cube_size: 4,
+                irradiance_size: 2,
+                sample_count: 16,
+                quality: BakeQuality::Low,
+                ..BakeOptions::default()
+            },
+        )
+        .expect("irradiance KTX2 should bake");
+        assert_ktx2_cubemap_header(&bytes, 2, 1);
+
+        fs::remove_dir_all(&input_dir).ok();
+    }
+
+    #[test]
     fn validate_detects_duplicate_keys_and_offset_errors() {
         let bytes = encode_png_image(
             &single_color_image(1, 1, glam::Vec3::new(0.25, 0.5, 0.75)),
@@ -1927,6 +2016,22 @@ mod tests {
             u32::from_be_bytes(bytes[16..20].try_into().expect("png width bytes")),
             u32::from_be_bytes(bytes[20..24].try_into().expect("png height bytes")),
         )
+    }
+
+    fn assert_ktx2_cubemap_header(bytes: &[u8], size: u32, mip_count: u32) {
+        assert_eq!(
+            &bytes[..12],
+            &[0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
+        assert_eq!(u32::from_le_bytes(bytes[12..16].try_into().unwrap()), 143);
+        assert_eq!(u32::from_le_bytes(bytes[20..24].try_into().unwrap()), size);
+        assert_eq!(u32::from_le_bytes(bytes[24..28].try_into().unwrap()), size);
+        assert_eq!(u32::from_le_bytes(bytes[36..40].try_into().unwrap()), 6);
+        assert_eq!(
+            u32::from_le_bytes(bytes[40..44].try_into().unwrap()),
+            mip_count
+        );
+        assert_eq!(u32::from_le_bytes(bytes[44..48].try_into().unwrap()), 2);
     }
 
     fn single_color_image(width: u32, height: u32, color: glam::Vec3) -> source_image::SourceImage {

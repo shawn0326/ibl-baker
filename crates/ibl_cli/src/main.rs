@@ -1022,10 +1022,9 @@ mod tests {
     }
 
     #[test]
-    fn validate_reports_summary_for_specular_assets() {
-        let input = unique_temp_path("validate-specular-input");
-        let output_dir = unique_temp_path("validate-specular-out");
-        let asset_path = output_dir.join("specular.ibla");
+    fn validate_reports_distinct_summaries_for_baked_assets() {
+        let input = unique_temp_path("validate-input");
+        let output_dir = unique_temp_path("validate-out");
 
         write_test_hdr(&input, 8, 4);
 
@@ -1035,23 +1034,131 @@ mod tests {
             input.to_string_lossy().to_string(),
             "--out-dir".to_string(),
             output_dir.to_string_lossy().to_string(),
-            "--target".to_string(),
-            "specular".to_string(),
+            "--size".to_string(),
+            "8".to_string(),
+            "--irradiance-size".to_string(),
+            "4".to_string(),
+            "--samples".to_string(),
+            "16".to_string(),
+            "--quality".to_string(),
+            "low".to_string(),
         ])
         .expect("bake should succeed");
 
-        let validate_output = run(vec![
-            "ibl-baker".to_string(),
-            "validate".to_string(),
-            asset_path.to_string_lossy().to_string(),
-        ])
-        .expect("validate should succeed");
+        for (name, expected_chunks, expected_size, expected_mips) in
+            [("specular", 24, 8, 4), ("irradiance", 6, 4, 1)]
+        {
+            let validate_output = run(vec![
+                "ibl-baker".to_string(),
+                "validate".to_string(),
+                output_dir
+                    .join(format!("{name}.ibla"))
+                    .to_string_lossy()
+                    .to_string(),
+            ])
+            .expect("validate should succeed");
 
-        assert!(validate_output.contains("Face Count: 6"));
-        assert!(validate_output.contains("Validation: passed"));
+            assert!(validate_output.contains("Face Count: 6"));
+            assert!(validate_output.contains(&format!("Chunks: {expected_chunks}")));
+            assert!(validate_output.contains(&format!("Width: {expected_size}")));
+            assert!(validate_output.contains(&format!("Mip Count: {expected_mips}")));
+            assert!(validate_output.contains("Validation: passed"));
+        }
 
         fs::remove_file(&input).ok();
         fs::remove_dir_all(&output_dir).ok();
+    }
+
+    #[test]
+    fn bake_output_formats_select_assets_and_keep_lut_as_png() {
+        let input = unique_temp_path("output-formats-input").with_extension("hdr");
+        write_test_hdr(&input, 8, 4);
+
+        for (format, has_ibla, has_ktx2) in [
+            ("ibla", true, false),
+            ("ktx2", false, true),
+            ("both", true, true),
+        ] {
+            let output_dir = unique_temp_path(&format!("output-format-{format}"));
+            run(vec![
+                "ibl-baker".to_string(),
+                "bake".to_string(),
+                input.to_string_lossy().to_string(),
+                "--out-dir".to_string(),
+                output_dir.to_string_lossy().to_string(),
+                "--target".to_string(),
+                "specular".to_string(),
+                "--size".to_string(),
+                "4".to_string(),
+                "--irradiance-size".to_string(),
+                "2".to_string(),
+                "--samples".to_string(),
+                "16".to_string(),
+                "--quality".to_string(),
+                "low".to_string(),
+                "--output-format".to_string(),
+                format.to_string(),
+            ])
+            .expect("bake should succeed");
+
+            assert_eq!(output_dir.join("specular.ibla").is_file(), has_ibla);
+            assert_eq!(output_dir.join("specular.ktx2").is_file(), has_ktx2);
+            assert!(!output_dir.join("irradiance.ibla").exists());
+            assert!(!output_dir.join("brdf-lut.png").exists());
+            fs::remove_dir_all(&output_dir).ok();
+        }
+
+        let irradiance_output_dir = unique_temp_path("output-format-irradiance");
+        run(vec![
+            "ibl-baker".to_string(),
+            "bake".to_string(),
+            input.to_string_lossy().to_string(),
+            "--out-dir".to_string(),
+            irradiance_output_dir.to_string_lossy().to_string(),
+            "--target".to_string(),
+            "irradiance".to_string(),
+            "--size".to_string(),
+            "4".to_string(),
+            "--irradiance-size".to_string(),
+            "2".to_string(),
+            "--samples".to_string(),
+            "16".to_string(),
+            "--quality".to_string(),
+            "low".to_string(),
+            "--output-format".to_string(),
+            "ktx2".to_string(),
+        ])
+        .expect("irradiance KTX2 bake should succeed");
+        assert!(irradiance_output_dir.join("irradiance.ktx2").is_file());
+        assert!(!irradiance_output_dir.join("irradiance.ibla").exists());
+        fs::remove_dir_all(&irradiance_output_dir).ok();
+
+        let lut_output_dir = unique_temp_path("output-format-lut");
+        run(vec![
+            "ibl-baker".to_string(),
+            "bake".to_string(),
+            input.to_string_lossy().to_string(),
+            "--out-dir".to_string(),
+            lut_output_dir.to_string_lossy().to_string(),
+            "--target".to_string(),
+            "lut".to_string(),
+            "--samples".to_string(),
+            "16".to_string(),
+            "--quality".to_string(),
+            "low".to_string(),
+            "--irradiance-size".to_string(),
+            "2".to_string(),
+            "--output-format".to_string(),
+            "ktx2".to_string(),
+        ])
+        .expect("LUT bake should succeed");
+
+        let lut = fs::read(lut_output_dir.join("brdf-lut.png")).expect("LUT PNG should exist");
+        assert_eq!(&lut[..8], b"\x89PNG\r\n\x1a\n");
+        assert!(!lut_output_dir.join("specular.ktx2").exists());
+
+        fs::remove_file(&input).ok();
+        fs::remove_dir_all(&lut_output_dir).ok();
     }
 
     #[test]
@@ -1265,33 +1372,11 @@ mod tests {
     fn bake_rejects_mixed_format_cubemap_faces() {
         let input_dir = unique_temp_path("cubemap-mixed");
         fs::create_dir_all(&input_dir).expect("cubemap dir should be created");
-        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
         write_solid_png(&input_dir.join("px.png"), 8, [255, 0, 0]);
-        fs::copy(
-            repo_root.join("fixtures/inputs/Bridge2/negx.jpg"),
-            input_dir.join("nx.jpg"),
-        )
-        .expect("nx fixture should copy");
-        fs::copy(
-            repo_root.join("fixtures/inputs/Bridge2/posy.jpg"),
-            input_dir.join("py.jpg"),
-        )
-        .expect("py fixture should copy");
-        fs::copy(
-            repo_root.join("fixtures/inputs/Bridge2/negy.jpg"),
-            input_dir.join("ny.jpg"),
-        )
-        .expect("ny fixture should copy");
-        fs::copy(
-            repo_root.join("fixtures/inputs/Bridge2/posz.jpg"),
-            input_dir.join("pz.jpg"),
-        )
-        .expect("pz fixture should copy");
-        fs::copy(
-            repo_root.join("fixtures/inputs/Bridge2/negz.jpg"),
-            input_dir.join("nz.jpg"),
-        )
-        .expect("nz fixture should copy");
+        fs::write(input_dir.join("nx.jpg"), b"").expect("placeholder face should be written");
+        for name in ["py.jpg", "ny.jpg", "pz.jpg", "nz.jpg"] {
+            fs::write(input_dir.join(name), b"").expect("placeholder face should be written");
+        }
 
         let error = run(vec![
             "ibl-baker".to_string(),
@@ -1351,39 +1436,6 @@ mod tests {
         fs::remove_dir_all(&input_dir).ok();
         fs::remove_dir_all(&output_dir_a).ok();
         fs::remove_dir_all(&output_dir_b).ok();
-    }
-
-    #[test]
-    fn validate_reports_summary_for_irradiance_assets() {
-        let input = unique_temp_path("validate-irradiance-input");
-        let output_dir = unique_temp_path("validate-irradiance-out");
-        let asset_path = output_dir.join("irradiance.ibla");
-
-        write_test_hdr(&input, 8, 4);
-
-        run(vec![
-            "ibl-baker".to_string(),
-            "bake".to_string(),
-            input.to_string_lossy().to_string(),
-            "--out-dir".to_string(),
-            output_dir.to_string_lossy().to_string(),
-            "--target".to_string(),
-            "irradiance".to_string(),
-        ])
-        .expect("bake should succeed");
-
-        let validate_output = run(vec![
-            "ibl-baker".to_string(),
-            "validate".to_string(),
-            asset_path.to_string_lossy().to_string(),
-        ])
-        .expect("validate should succeed");
-
-        assert!(validate_output.contains("Face Count: 6"));
-        assert!(validate_output.contains("Validation: passed"));
-
-        fs::remove_file(&input).ok();
-        fs::remove_dir_all(&output_dir).ok();
     }
 
     #[test]
