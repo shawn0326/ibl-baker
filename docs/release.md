@@ -67,8 +67,9 @@ the checkout therefore use the release toolchain automatically. Commands run
 outside the checkout, such as registry consumers, should set `RUSTUP_TOOLCHAIN`
 explicitly when they must use the same toolchain.
 pnpm manages the JavaScript workspace and npm 11.11.0 is resolved directly by the
-release scripts for npm packing, publishing and consumer checks. Actions are pinned
-to reviewed commit SHAs. Release builds do not restore PR caches.
+release scripts for npm packing, publishing and consumer checks. The npm wrapper removes
+pnpm-only configuration before invoking npm. Actions are pinned to reviewed commit SHAs.
+Release builds do not restore PR caches.
 
 pnpm 12.5.1 also installs the Cargo workspace dependencies through its experimental
 Cargo integration. `pnpm install` materializes `.pnpm/crates/crates-io` and a generated
@@ -93,7 +94,10 @@ the full offline Rust tests and all existing project checks.
 pnpm install --frozen-lockfile
 pnpm run check:pnpm-cargo
 pnpm install --frozen-lockfile --offline
+pnpm run check:source
 cargo +1.98.0 metadata --locked --offline --format-version 1
+pnpm run check:fmt
+pnpm run check:clippy
 cargo +1.98.0 check --locked --workspace --offline
 cargo +1.98.0 test --locked --workspace --offline
 pnpm run check:ts
@@ -104,8 +108,11 @@ pnpm run ci:fixtures
 ~~~
 
 The frozen install is the lockfile consistency check and also materializes the pnpm-managed Cargo
-source. `pnpm run check:pnpm-cargo` verifies that source before the offline Cargo checks. The
-generated source is a build-time dependency location, not a vendored project source.
+source. `pnpm run check:pnpm-cargo` verifies that source before the offline Cargo checks.
+`pnpm run check:fmt` enforces the rustfmt baseline, and `pnpm run check:clippy` treats all Clippy
+warnings across workspace targets and features as errors. `pnpm run check:source` validates every
+tracked JavaScript file with Node.js and parses every tracked JSON file. The generated source is a
+build-time dependency location, not a vendored project source.
 `node scripts/release/run.mjs static` validates
 publication metadata and Cargo.lock without depending on a JavaScript lockfile
 format. The generated CI samples live under target/ci-fixtures, never fixtures/outputs.

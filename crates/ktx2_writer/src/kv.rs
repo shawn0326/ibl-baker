@@ -22,7 +22,7 @@ fn push_kv_entry(out: &mut Vec<u8>, key: &[u8], value: &[u8]) {
     out.extend_from_slice(key);
     out.extend_from_slice(value);
     let pad = (4usize.wrapping_sub(kv_len % 4)) % 4;
-    out.extend(std::iter::repeat(0u8).take(pad));
+    out.extend(std::iter::repeat_n(0u8, pad));
 }
 
 #[cfg(test)]

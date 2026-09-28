@@ -1281,7 +1281,7 @@ fn render_chunk_table_text(records: &[ChunkRecord]) -> String {
 }
 
 fn render_summary_text(asset: &IblAsset) -> String {
-    let lines = vec![
+    let lines = [
         format!("version={}", asset.header.version),
         format!("chunks={}", asset.chunk_table.len()),
         format!("width={}", asset.manifest.width),

@@ -105,8 +105,12 @@ jobs:
       - run: pnpm run check:pnpm-cargo
       - run: git diff --exit-code -- Cargo.lock pnpm-lock.yaml
       - run: rustup toolchain install 1.98.0 --profile minimal
+      - run: rustup component add --toolchain 1.98.0 rustfmt clippy
       - run: pnpm install --frozen-lockfile --offline
+      - run: pnpm run check:source
       - run: cargo metadata --locked --offline --format-version 1 > /dev/null
+      - run: pnpm run check:fmt
+      - run: pnpm run check:clippy
       - run: cargo check --locked --workspace --offline
       - run: cargo test --locked --workspace --offline
       - run: pnpm run check:ts
