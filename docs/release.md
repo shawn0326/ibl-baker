@@ -67,8 +67,9 @@ the checkout therefore use the release toolchain automatically. Commands run
 outside the checkout, such as registry consumers, should set `RUSTUP_TOOLCHAIN`
 explicitly when they must use the same toolchain.
 pnpm manages the JavaScript workspace and npm 11.11.0 is resolved directly by the
-release scripts for npm packing, publishing and consumer checks. Actions are pinned
-to reviewed commit SHAs. Release builds do not restore PR caches.
+release scripts for npm packing, publishing and consumer checks. The npm wrapper removes
+pnpm-only configuration before invoking npm. Actions are pinned to reviewed commit SHAs.
+Release builds do not restore PR caches.
 
 pnpm 12.5.1 also installs the Cargo workspace dependencies through its experimental
 Cargo integration. `pnpm install` materializes `.pnpm/crates/crates-io` and a generated

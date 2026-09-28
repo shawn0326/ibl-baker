@@ -26,13 +26,22 @@ export function packageManifest(name) {
 export function installedPackageVersion(name) {
     return packageManifest(name).version;
 }
+export function npmEnvironment(cliPath, env = process.env) {
+    const npmEnv = Object.fromEntries(Object.entries(env)
+        .filter(([key]) => key.toLowerCase() !== 'npm_config_manage_package_manager_versions'));
+    npmEnv.npm_execpath = cliPath;
+    return npmEnv;
+}
 export function npmCli(args, options) {
     const manifestPath = require.resolve('npm/package.json');
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     const entry = typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.npm;
     if (!entry) throw new Error('npm package does not expose an npm CLI entry.');
     const cliPath = resolve(dirname(manifestPath), entry);
-    return run(process.execPath, [cliPath, ...args], { ...options, env: { ...process.env, ...(options?.env ?? {}), npm_execpath: cliPath } });
+    return run(process.execPath, [cliPath, ...args], {
+        ...options,
+        env: npmEnvironment(cliPath, { ...process.env, ...(options?.env ?? {}) }),
+    });
 }
 export function archivePath(file) {
     if (!file || basename(file) !== file) throw new Error('Invalid candidate artifact filename.');
