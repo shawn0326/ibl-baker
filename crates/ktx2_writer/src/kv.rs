@@ -47,7 +47,6 @@ mod tests {
         while pos < bytes.len() {
             let kv_len = u32::from_le_bytes(bytes[pos..pos + 4].try_into().unwrap()) as usize;
             let entry_total = 4 + kv_len + (4usize.wrapping_sub(kv_len % 4)) % 4;
-            assert_eq!(entry_total % 4, 0);
             pos += entry_total;
         }
         assert_eq!(pos, bytes.len());

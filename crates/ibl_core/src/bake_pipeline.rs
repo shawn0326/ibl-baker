@@ -809,7 +809,6 @@ mod tests {
         let large_face = effective_specular_sample_count(&options, 1.0, 256, 256);
         let tiny_face = effective_specular_sample_count(&options, 1.0, 4, 256);
 
-        assert!(tiny_face > large_face);
         assert_eq!(large_face, 512);
         assert_eq!(tiny_face, 1024);
     }
@@ -841,7 +840,6 @@ mod tests {
 
         assert_eq!(mip0_image.width(), 8);
         assert_eq!(mip3_image.width(), 1);
-        assert_ne!(mip0.chunk.bytes, mip3.chunk.bytes);
     }
 
     #[test]

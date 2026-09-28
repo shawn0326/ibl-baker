@@ -31,18 +31,7 @@ const nonHdrFixtures = [
   {
     inputPath: "spruit_sunrise_2k.jpg",
     outputDirName: "spruit_sunrise_2k",
-  },
-  {
-    inputPath: "spruit_sunrise_2k.jpg",
-    outputDirName: "spruit_sunrise_2k_ktx2",
-    extraArgs: [
-      "--target",
-      "specular",
-      "--target",
-      "irradiance",
-      "--output-format",
-      "ktx2",
-    ],
+    extraArgs: ["--output-format", "both"],
   },
   {
     inputPath: "Bridge2",
