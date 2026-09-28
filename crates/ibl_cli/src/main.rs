@@ -313,10 +313,15 @@ fn choose_supported_specular_size(face_size: u32) -> u32 {
         .unwrap_or(AUTO_SIZE_BUCKETS[0])
 }
 
-fn bake_input_to_asset(input: &BakeInput, options: BakeOptions) -> Result<ibl_core::IblAsset, CliError> {
+fn bake_input_to_asset(
+    input: &BakeInput,
+    options: BakeOptions,
+) -> Result<ibl_core::IblAsset, CliError> {
     match input {
         BakeInput::File { path } => bake_to_asset(path, options).map_err(CliError::from),
-        BakeInput::Cubemap { faces, .. } => bake_cubemap_to_asset(faces, options).map_err(CliError::from),
+        BakeInput::Cubemap { faces, .. } => {
+            bake_cubemap_to_asset(faces, options).map_err(CliError::from)
+        }
     }
 }
 
@@ -340,7 +345,10 @@ fn parse_output_format(value: &str) -> Result<OutputFormat, CliError> {
     }
 }
 
-fn resolve_bake_input(input: PathBuf, requested_faces: Option<&str>) -> Result<BakeInput, CliError> {
+fn resolve_bake_input(
+    input: PathBuf,
+    requested_faces: Option<&str>,
+) -> Result<BakeInput, CliError> {
     if input.is_file() {
         if requested_faces.is_some() {
             return Err(CliError::Usage(
@@ -755,7 +763,9 @@ const DEFAULT_SPECULAR_SIZE: u32 = 512;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum BakeInput {
-    File { path: PathBuf },
+    File {
+        path: PathBuf,
+    },
     Cubemap {
         root: PathBuf,
         faces: CubemapInputPaths,
@@ -924,7 +934,9 @@ mod tests {
 
     fn write_solid_png(path: &Path, size: u32, color: [u8; 3]) {
         let image = image::RgbImage::from_pixel(size, size, image::Rgb(color));
-        image.save(path).expect("solid png fixture should be written");
+        image
+            .save(path)
+            .expect("solid png fixture should be written");
     }
 
     fn write_cubemap_dir(root: &Path, names: [&str; 6], size: u32) {
@@ -1282,12 +1294,7 @@ mod tests {
         write_cubemap_dir(
             &input_dir,
             [
-                "posx.png",
-                "negx.png",
-                "posy.png",
-                "negy.png",
-                "posz.png",
-                "negz.png",
+                "posx.png", "negx.png", "posy.png", "negy.png", "posz.png", "negz.png",
             ],
             8,
         );
@@ -1363,7 +1370,9 @@ mod tests {
         ])
         .expect_err("missing cubemap faces should fail");
 
-        assert!(error.to_string().contains("could not auto-detect cubemap faces"));
+        assert!(error
+            .to_string()
+            .contains("could not auto-detect cubemap faces"));
 
         fs::remove_dir_all(&input_dir).ok();
     }

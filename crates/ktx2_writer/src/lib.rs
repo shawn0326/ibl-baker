@@ -188,8 +188,8 @@ fn compress_level(level: &CubemapLevel) -> Result<(Vec<u8>, u64), Ktx2Error> {
 
     let uncompressed_len = uncompressed.len() as u64;
 
-    let zstd_data = zstd::encode_all(&uncompressed[..], 3)
-        .map_err(|e| Ktx2Error::ZstdFailed(e.to_string()))?;
+    let zstd_data =
+        zstd::encode_all(&uncompressed[..], 3).map_err(|e| Ktx2Error::ZstdFailed(e.to_string()))?;
 
     Ok((zstd_data, uncompressed_len))
 }

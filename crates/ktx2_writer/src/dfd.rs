@@ -18,32 +18,22 @@
 ///   sample[0].lower       = 0.0  (0x00000000)
 ///   sample[0].upper       = 65504.0f (0x477FE000 = max UFLOAT16 as f32)
 pub(crate) const BC6H_UFLOAT_DFD: [u8; 44] = [
-    // dfdTotalSize = 44
-    0x2C, 0x00, 0x00, 0x00,
-    // vendorId[16:0]=0, descriptorType[30:16]=0
-    0x00, 0x00, 0x00, 0x00,
-    // versionNumber[15:0]=2, descriptorBlockSize[31:16]=40
-    0x02, 0x00, 0x28, 0x00,
-    // colorModel=133, colorPrimaries=1, transferFunction=1, flags=0
-    0x85, 0x01, 0x01, 0x00,
-    // texelBlockDimension[0..3] = 3, 3, 0, 0
-    0x03, 0x03, 0x00, 0x00,
-    // bytesPlane[0]=16, bytesPlane[1..3]=0
-    0x10, 0x00, 0x00, 0x00,
-    // bytesPlane[4..7]=0
-    0x00, 0x00, 0x00, 0x00,
+    0x2C, 0x00, 0x00, 0x00, // dfdTotalSize = 44
+    0x00, 0x00, 0x00, 0x00, // vendorId[16:0]=0, descriptorType[30:16]=0
+    0x02, 0x00, 0x28, 0x00, // versionNumber[15:0]=2, descriptorBlockSize[31:16]=40
+    0x85, 0x01, 0x01, 0x00, // colorModel=133, colorPrimaries=1, transferFunction=1, flags=0
+    0x03, 0x03, 0x00, 0x00, // texelBlockDimension[0..3] = 3, 3, 0, 0
+    0x10, 0x00, 0x00, 0x00, // bytesPlane[0]=16, bytesPlane[1..3]=0
+    0x00, 0x00, 0x00, 0x00, // bytesPlane[4..7]=0
     // Sample 0, word 0: combined u32 = 0x807F_0000 (LE: 00 00 7F 80)
     //   bits[15:0]  = bitOffset      = 0x0000
     //   bits[23:16] = bitLength-1    = 0x7F (127)
     //   bits[27:24] = channelType    = 0x0
     //   bits[31:28] = qualifiers     = 0x8 (F bit only)
-    0x00, 0x00, 0x7F, 0x80,
-    // Sample 0, word 1: samplePosition[0..3] = 0
-    0x00, 0x00, 0x00, 0x00,
-    // Sample 0, word 2: sampleLower = 0.0f = 0x0000_0000
-    0x00, 0x00, 0x00, 0x00,
-    // Sample 0, word 3: sampleUpper = 65504.0f = 0x477F_E000
-    0x00, 0xE0, 0x7F, 0x47,
+    0x00, 0x00, 0x7F, 0x80, // Sample 0, word 0: fields described above
+    0x00, 0x00, 0x00, 0x00, // Sample 0, word 1: samplePosition[0..3] = 0
+    0x00, 0x00, 0x00, 0x00, // Sample 0, word 2: sampleLower = 0.0f = 0x0000_0000
+    0x00, 0xE0, 0x7F, 0x47, // Sample 0, word 3: sampleUpper = 65504.0f = 0x477F_E000
 ];
 
 #[cfg(test)]
