@@ -292,7 +292,7 @@ const KTX2_FIXTURE_NAMES = [
   "footprint_court",
   "helipad",
   "pisa",
-  "spruit_sunrise_2k_ktx2",
+  "spruit_sunrise_2k",
 ] as const;
 
 function loadFixture(
