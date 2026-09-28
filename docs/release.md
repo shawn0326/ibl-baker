@@ -94,6 +94,8 @@ pnpm install --frozen-lockfile
 pnpm run check:pnpm-cargo
 pnpm install --frozen-lockfile --offline
 cargo +1.98.0 metadata --locked --offline --format-version 1
+pnpm run check:fmt
+pnpm run check:clippy
 cargo +1.98.0 check --locked --workspace --offline
 cargo +1.98.0 test --locked --workspace --offline
 pnpm run check:ts
@@ -104,8 +106,10 @@ pnpm run ci:fixtures
 ~~~
 
 The frozen install is the lockfile consistency check and also materializes the pnpm-managed Cargo
-source. `pnpm run check:pnpm-cargo` verifies that source before the offline Cargo checks. The
-generated source is a build-time dependency location, not a vendored project source.
+source. `pnpm run check:pnpm-cargo` verifies that source before the offline Cargo checks.
+`pnpm run check:fmt` enforces the rustfmt baseline, and `pnpm run check:clippy` treats all Clippy
+warnings across workspace targets and features as errors. The generated source is a build-time
+dependency location, not a vendored project source.
 `node scripts/release/run.mjs static` validates
 publication metadata and Cargo.lock without depending on a JavaScript lockfile
 format. The generated CI samples live under target/ci-fixtures, never fixtures/outputs.
