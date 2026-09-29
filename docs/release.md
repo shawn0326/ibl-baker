@@ -158,12 +158,16 @@ Before a production run, commit one English note per selected release unit:
 - docs/releases/rust-cli-VERSION.md
 - docs/releases/npm-ibla-loader-VERSION.md
 - docs/releases/npm-ktx2-loader-VERSION.md
+- docs/releases/npm-cli-VERSION.md
 
-Use a heading of "# Rust/CLI VERSION", "# @ibltools/ibla-loader VERSION" or
-"# @ibltools/ktx2-loader VERSION", followed by "Date: YYYY-MM-DD". Describe actual
-changes, compatibility implications and relevant installation instructions.
-These committed notes become the GitHub Release body. Do not invent historical
-release notes or mark unreleased packages as published.
+Use a heading of "# Rust/CLI VERSION", "# @ibltools/ibla-loader VERSION",
+"# @ibltools/ktx2-loader VERSION" or "# @ibltools/cli VERSION", followed by
+"Date: YYYY-MM-DD". Describe actual changes, compatibility implications and
+relevant installation instructions.
+The heading is retained in the committed note for validation and archival. When
+the workflow creates a GitHub Release, it uses that heading as the release title
+and removes the first heading from the body to avoid repeating it. Do not invent
+historical release notes or mark unreleased packages as published.
 
 Keep this guide synchronized whenever workflows, toolchains, inputs, checks or
 recovery rules change. README links here; TODO.md remains the execution checklist.

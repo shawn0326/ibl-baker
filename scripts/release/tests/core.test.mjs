@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { catalog, read, selectPackages, validateSelection, channel, assertChannelAdvance, assertResume,
-    assertContext, assertExistingRelease, assertNotes } from '../core.mjs';
+    assertContext, assertExistingRelease, assertNotes, releaseNotesBody } from '../core.mjs';
 
 function cargoMetadata() {
     const result = spawnSync('cargo', ['metadata', '--no-deps', '--format-version', '1', '--locked'], { encoding: 'utf8' });
@@ -104,6 +104,11 @@ test('release notes use the group heading and require a dated entry', () => {
     const p = catalog()[0];
     assertNotes('# Rust/CLI ' + p.version + '\n\nDate: 2026-09-17\n\nChanges.\n', p);
     assert.throws(() => assertNotes('# Placeholder\n', p), /notes/);
+});
+test('GitHub release bodies omit the release note heading', () => {
+    assert.equal(releaseNotesBody('# Rust/CLI 0.2.3\n\nDate: 2026-09-29\n\nChanges.\n'), 'Date: 2026-09-29\n\nChanges.\n');
+    assert.equal(releaseNotesBody('# Rust/CLI 0.2.3\r\n\r\nDate: 2026-09-29\r\n\r\nChanges.\r\n'), 'Date: 2026-09-29\n\nChanges.\n');
+    assert.throws(() => releaseNotesBody('Date: 2026-09-29\n'), /heading/);
 });
 
 test('npm CLI forms an independent complete release group with exact platform dependencies', () => {
