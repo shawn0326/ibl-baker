@@ -137,6 +137,13 @@ const BC6H_UFLOAT_DFD = Uint8Array.of(
   0x00,
   0x00,
   0x00,
+  0x00,
+  0x80,
+  0x3f,
+);
+const LEGACY_BC6H_UFLOAT_DFD = Uint8Array.of(
+  ...BC6H_UFLOAT_DFD.subarray(0, 40),
+  0x00,
   0xe0,
   0x7f,
   0x47,
@@ -208,10 +215,12 @@ export function parseKTX2IBL(buffer: ArrayBuffer | Uint8Array): ParsedKTX2IBL {
     );
   }
 
-  if (!bytesEqual(bytes.subarray(dfdByteOffset, dfdEnd), BC6H_UFLOAT_DFD)) {
+  const expectedDfd =
+    header.vkFormat === LEGACY_IBL_BAKER_VK_FORMAT ? LEGACY_BC6H_UFLOAT_DFD : BC6H_UFLOAT_DFD;
+  if (!bytesEqual(bytes.subarray(dfdByteOffset, dfdEnd), expectedDfd)) {
     throw new KTX2IBLParseError(
       "INVALID_DATA_FORMAT_DESCRIPTOR",
-      "KTX2 data format descriptor does not match the supported BC6H UFLOAT descriptor.",
+      `KTX2 data format descriptor does not match the supported BC6H UFLOAT descriptor for vkFormat ${header.vkFormat}.`,
     );
   }
 

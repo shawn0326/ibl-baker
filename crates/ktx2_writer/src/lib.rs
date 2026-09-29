@@ -256,6 +256,11 @@ mod tests {
         let scheme = u32::from_le_bytes(bytes[44..48].try_into().unwrap());
         assert_eq!(scheme, 2);
 
+        let dfd_offset = u32::from_le_bytes(bytes[48..52].try_into().unwrap()) as usize;
+        let dfd_sample_upper =
+            f32::from_le_bytes(bytes[dfd_offset + 40..dfd_offset + 44].try_into().unwrap());
+        assert_eq!(dfd_sample_upper, 1.0);
+
         let reader = ktx2::Reader::new(bytes.as_slice()).expect("KTX2 should parse");
         assert_eq!(
             reader.header().format,

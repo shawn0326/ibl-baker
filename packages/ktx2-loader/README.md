@@ -59,11 +59,15 @@ It does not:
 Consumers that need upload-ready BC6H data should zstd-decompress each level's `compressedBytes`.
 After decompression, use the level's `faces` entries to split the raw BC6H bytes into the six cubemap faces.
 
+New output uses `vkFormat = 143` and the standard BC6H UFLOAT descriptor with a normalized
+sample range of `[0, 1]`.
+
 `ibl-baker` versions through Rust/CLI 0.2.2 incorrectly wrote `vkFormat = 131`, which is
-`VK_FORMAT_BC1_RGB_UNORM_BLOCK`, while their DFD and payload were BC6H UFLOAT. The loader accepts
-those historical files only for the known writer versions `v0.1.0` through `v0.2.2`, and only when
-the BC6H DFD, `ibl-baker` writer metadata, topology, zstd scheme, and level layout all match this
-package's supported profile. New output uses the standard value `143`.
+`VK_FORMAT_BC1_RGB_UNORM_BLOCK`, and used an earlier non-standard BC6H descriptor even though the
+payload contained BC6H UFLOAT data. The loader accepts those historical files only for the known
+writer versions `v0.1.0` through `v0.2.2`, and only when the legacy descriptor, `ibl-baker` writer
+metadata, topology, zstd scheme, and level layout all match this package's supported profile. The
+standard and legacy descriptors are not interchangeable.
 
 ## Public API
 
