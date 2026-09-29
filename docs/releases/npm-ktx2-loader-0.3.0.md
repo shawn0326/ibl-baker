@@ -1,6 +1,6 @@
 # @ibltools/ktx2-loader 0.3.0
 
-Date: 2026-09-21
+Date: 2026-09-29
 
 Recognize the standard `VK_FORMAT_BC6H_UFLOAT_BLOCK` value `143` and Khronos BC6H UFLOAT data format descriptor emitted by Rust/CLI 0.2.3 and later.
 

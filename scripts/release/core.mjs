@@ -177,6 +177,11 @@ export async function validateSelection(selected, dryRun, lookup = registryVersi
 export function assertNotes(text, pkg) {
     if (!text.startsWith('# ' + pkg.notesTitle + ' ' + pkg.version + '\n') || !/^Date: \d{4}-\d{2}-\d{2}$/mu.test(text)) throw new Error('Invalid release notes: ' + pkg.notes);
 }
+export function releaseNotesBody(text) {
+    const match = /^#[^\n]*\n(?:\n)?([\s\S]*)$/u.exec(text.replaceAll('\r\n', '\n'));
+    if (!match) throw new Error('Release notes must start with a heading.');
+    return match[1];
+}
 export function assertResume(manifest, expected) {
     if (manifest.schema !== 1 || manifest.sha !== expected.sha || manifest.runId !== expected.runId || manifest.dryRun !== expected.dryRun
         || JSON.stringify(manifest.packages.map(p => p.id)) !== JSON.stringify(expected.ids)) throw new Error('Candidate does not belong to this SHA, workflow run, mode and selection.');

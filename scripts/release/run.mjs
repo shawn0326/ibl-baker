@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { parse } from 'smol-toml';
 import { catalog, root, read, json, hash, repository, selectPackages, assertContext, validateSelection,
-    assertNotes, assertResume, assertChannelAdvance, getJson, platforms, assertExistingRelease } from './core.mjs';
+    assertNotes, releaseNotesBody, assertResume, assertChannelAdvance, getJson, platforms, assertExistingRelease } from './core.mjs';
 import { output, run, npmCli, installedPackageVersion, writeJson, archivePath, checkFiles, clean, cargoArchive, listFiles, progress } from './io.mjs';
 import { consumer } from './consumer.mjs';
 import { packCli } from './cli-package.mjs';
@@ -248,7 +248,7 @@ async function finalize() {
             run('gh', ['api', 'repos/' + repository + '/git/refs', '--method', 'POST', '--input', refPath]);
         }
         const notesPath = join(output, group.id + '-github-notes.md');
-        writeFileSync(notesPath, readFileSync(archivePath(group.notesFile), 'utf8') + '\n' + marker + '\n');
+        writeFileSync(notesPath, releaseNotesBody(readFileSync(archivePath(group.notesFile), 'utf8')) + '\n' + marker + '\n');
         if (!existing) run('gh', ['release', 'create', group.tag, '--repo', repository, '--target', value.sha, '--draft',
             '--title', group.notesTitle + ' ' + group.version, '--notes-file', notesPath, ...(group.channel === 'next' ? ['--prerelease'] : [])]);
         run('gh', ['release', 'upload', group.tag, '--repo', repository, '--clobber', ...group.assets.map(p => archivePath(p.archive)), manifestPath, join(output, 'verified.json')]);
