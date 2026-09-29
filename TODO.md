@@ -41,7 +41,7 @@
 - [x] 提交实施 PR #1 并通过 GitHub CI。
 - [x] 配置 master 必经 PR、必过 CI、禁止强推和删除，已合并实施 PR #1。
 - [x] 从 master 完成三个发布组的无上传预演（运行 35196405209），下载核对五包与三平台归档，结果见 docs/release.md。
-- [ ] 下一次实际版本发布时验证所选包的 OIDC、provenance、上传后消费者及 Release 收尾。
+- [x] 2026-09-29 正式发布验证所选包的 OIDC、provenance、上传后消费者及 Release 收尾（Publish run 36571226684）。真实部分发布失败恢复仍未实测，恢复顺序和 checksum 防护由模拟测试覆盖。
 
 ## npm CLI 分发
 
@@ -54,8 +54,8 @@
 - [x] PR #5 修正 macOS 临时目录断言；master 的 npm CLI 单组预演 35302832171 与四组联合预演 35302835316 均通过。
 - [x] 下载并独立核对两个候选的包、原生归档、版本及三平台报告，确认 npm/原生二进制一致；验收链接见 docs/release.md。
 - [x] 完成四个 npm CLI 包 0.1.0 首次发布、registry 原包哈希校验及 Trusted Publisher 配置，详见 docs/release.md。
-- [ ] 等待 npm 包索引可见并完成首次发布后的普通 registry 安装验收。
-- [ ] 下一新版本通过正式工作流验证真实 OIDC、provenance 及三平台 registry 消费者。
+- [x] 四个 npm CLI 包首次发布后的普通 registry 安装验收已通过；npm CLI 0.1.1 在 Linux、macOS、Windows registry consumer 均通过（Publish run 36571226684）。
+- [x] npm CLI 0.1.1、KTX2 loader 0.3.0 和 Rust/CLI 0.2.3 通过正式 OIDC/provenance 发布和三平台 registry consumer 验收（Publish run 36571226684）。
 
 ## 需要单独立项再展开的方向
 

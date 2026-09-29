@@ -411,6 +411,16 @@ complete. Record the PR/run links and remaining real-publication validation here
 Do not treat rehearsals as proof of OIDC authorization, registry checksums after
 upload, provenance, or real partial-failure recovery.
 
+### Release 0.2.3 / npm 0.3.0 and 0.1.1 (2026-09-29)
+
+- [Production Publish run 36571226684](https://github.com/shawn0326/ibl-baker/actions/runs/36571226684) completed successfully for source commit `e20bbace74117a34fd604b1f0537c476e7f05366`.
+- Released three independent units: Rust/CLI `0.2.3`, `@ibltools/ktx2-loader` `0.3.0`, and the four-package npm CLI group `0.1.1`. The `.ibla` loader was not selected.
+- Published crates.io packages: `ktx2_writer@0.2.3`, `ibl_core@0.2.3`, and `ibl_cli@0.2.3`. Published npm packages: `@ibltools/ktx2-loader@0.3.0`, `@ibltools/cli@0.1.1`, `@ibltools/cli-win32-x64@0.1.1`, `@ibltools/cli-darwin-arm64@0.1.1`, and `@ibltools/cli-linux-x64-gnu@0.1.1`.
+- All eight registry receipts passed verification against the candidate SHA-256 values in `verified.json`. crates.io metadata records GitHub Trusted Publishing run `36571226684` and source SHA `e20bbace74117a34fd604b1f0537c476e7f05366` for each new crate version. npm registry metadata exposes SLSA provenance attestations for all five new npm versions; package integrity values match the candidate.
+- Cargo and KTX2 loader registry consumers passed in the production verification job. npm CLI registry consumers passed on Linux x64, macOS arm64, and Windows x64. The production `verify`, `cli-registry`, and `finalize` jobs passed.
+- Finalization created separate tags and GitHub Releases at the original source commit: [Rust/CLI `v0.2.3`](https://github.com/shawn0326/ibl-baker/releases/tag/v0.2.3), [KTX2 loader `npm/ktx2-loader/v0.3.0`](https://github.com/shawn0326/ibl-baker/releases/tag/npm/ktx2-loader/v0.3.0), and [npm CLI `npm/cli/v0.1.1`](https://github.com/shawn0326/ibl-baker/releases/tag/npm/cli/v0.1.1). Each Release contains its package archives and candidate/verification evidence; the Rust/CLI Release also contains all three platform binaries. The committed note headings are omitted from Release bodies to avoid duplicating Release titles.
+- Successful OIDC publishing, post-upload registry integrity/provenance checks, all three platform registry consumers, and Release finalization are now verified. Real recovery after a partial production publication remains untested; recovery ordering and checksum safeguards still have simulated test coverage only.
+
 Rollout on 2026-09-17:
 
 - [Implementation PR #1](https://github.com/shawn0326/ibl-baker/pull/1) merged as e2bc2848e2ac9b1779947e37dcb7791812d8024e.
@@ -431,4 +441,4 @@ above addresses that behavior; production availability checks remain unchanged.
 - [Successful all-group rehearsal](https://github.com/shawn0326/ibl-baker/actions/runs/35196405209): passed on 559ed79d5a4e026e002ce4ed6a4c0abcab2b33d4. All five package archives, Windows x64/macOS arm64/Linux x64 binaries and external candidate consumers passed.
 - Downloaded release-candidate artifact 10486711223 and independently verified every package/binary SHA-256 and release-note checksum. Toolchain evidence matches Node 24.19.0, npm 11.11.0 and Cargo 1.98.0.
 - The three crates remain 0.2.1 and both loaders remain 0.2.0. All five occupied versions and missing new release notes are explicitly marked NOT publishable. The publish, verify and finalize jobs were skipped; no registry upload, tag or Release was created.
-- Infrastructure acceptance is complete. Actual five-package OIDC publication, npm provenance after upload, production verification/Release finalization and real partial-failure recovery remain for the next explicitly selected release. Recovery behavior is currently covered by simulated tests.
+- Infrastructure acceptance is complete. The 2026-09-29 production release verified actual OIDC publication, npm provenance after upload, registry consumers and Release finalization. Real partial-failure recovery remains unverified and is covered by simulated tests only; see the release evidence above.
