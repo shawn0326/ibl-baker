@@ -16,7 +16,7 @@
 ///   sample[0].channelType = 0    (KHR_DF_CHANNEL_BC6H_COLOR)
 ///   sample[0].qualifiers  = F    (bit[31] = 1: float data)
 ///   sample[0].lower       = 0.0  (0x00000000)
-///   sample[0].upper       = 65504.0f (0x477FE000 = max UFLOAT16 as f32)
+///   sample[0].upper       = 1.0f (0x3F800000)
 pub(crate) const BC6H_UFLOAT_DFD: [u8; 44] = [
     0x2C, 0x00, 0x00, 0x00, // dfdTotalSize = 44
     0x00, 0x00, 0x00, 0x00, // vendorId[16:0]=0, descriptorType[30:16]=0
@@ -33,7 +33,7 @@ pub(crate) const BC6H_UFLOAT_DFD: [u8; 44] = [
     0x00, 0x00, 0x7F, 0x80, // Sample 0, word 0: fields described above
     0x00, 0x00, 0x00, 0x00, // Sample 0, word 1: samplePosition[0..3] = 0
     0x00, 0x00, 0x00, 0x00, // Sample 0, word 2: sampleLower = 0.0f = 0x0000_0000
-    0x00, 0xE0, 0x7F, 0x47, // Sample 0, word 3: sampleUpper = 65504.0f = 0x477F_E000
+    0x00, 0x00, 0x80, 0x3F, // Sample 0, word 3: sampleUpper = 1.0f = 0x3F80_0000
 ];
 
 #[cfg(test)]
@@ -53,8 +53,8 @@ mod tests {
     }
 
     #[test]
-    fn dfd_sample_upper_is_65504f() {
+    fn dfd_sample_upper_is_one() {
         let upper = f32::from_le_bytes(BC6H_UFLOAT_DFD[40..44].try_into().unwrap());
-        assert!((upper - 65504.0_f32).abs() < 1.0);
+        assert_eq!(upper, 1.0_f32);
     }
 }

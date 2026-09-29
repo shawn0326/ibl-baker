@@ -29,7 +29,7 @@
 - [x] `packages/site` 不接仓库内 fixture 目录，继续保持手动拖拽验收，避免目录结构耦合。
 - [x] `packages/site` 通过 GitHub Pages 部署到根路径；旧 `/ibla-viewer/` 与 `/ktx2-viewer/` 路径保留静态跳转。
 - [x] 将公开 `.ibla` JS 包迁移为 `@ibltools/ibla-loader`（`packages/ibla-loader`），旧 `@ibltools/loader` 由发布者后续在 npm 手动废弃。
-- [x] 修正 KTX2 BC6H UFLOAT header 的 Vulkan format 值为 `143`；新 writer 仅写标准值，新 loader 对既有 `131` 产物保留受限兼容。
+- [x] 修正 KTX2 BC6H UFLOAT header 的 Vulkan format 值为 `143`，并写入标准 `[0, 1]` DFD；新 loader 对既有 `131` + 旧 DFD 产物保留严格受限兼容。
 
 ## 自动发包流程
 

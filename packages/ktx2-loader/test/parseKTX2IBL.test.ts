@@ -65,6 +65,13 @@ const BC6H_UFLOAT_DFD = Uint8Array.of(
   0x00,
   0x00,
   0x00,
+  0x00,
+  0x80,
+  0x3f,
+);
+const LEGACY_BC6H_UFLOAT_DFD = Uint8Array.of(
+  ...BC6H_UFLOAT_DFD.subarray(0, 40),
+  0x00,
   0xe0,
   0x7f,
   0x47,
@@ -127,6 +134,7 @@ test("parseKTX2IBL parses a synthetic BC6H zstd cubemap", () => {
 test("parseKTX2IBL parses legacy ibl-baker files with vkFormat 131", () => {
   const bytes = createKtx2Bytes({
     vkFormat: 131,
+    dfd: LEGACY_BC6H_UFLOAT_DFD,
     pixelWidth: 4,
     levelPayloads: [Uint8Array.of(1)],
     keyValues: {
@@ -198,9 +206,34 @@ test("parseKTX2IBL throws INVALID_DATA_FORMAT_DESCRIPTOR for descriptor mismatch
   assertParseError(() => parseKTX2IBL(bytes), "INVALID_DATA_FORMAT_DESCRIPTOR");
 });
 
+test("parseKTX2IBL rejects the legacy descriptor for vkFormat 143", () => {
+  const bytes = createKtx2Bytes({
+    dfd: LEGACY_BC6H_UFLOAT_DFD,
+    pixelWidth: 4,
+    levelPayloads: [Uint8Array.of(1)],
+  });
+
+  assertParseError(() => parseKTX2IBL(bytes), "INVALID_DATA_FORMAT_DESCRIPTOR");
+});
+
+test("parseKTX2IBL rejects the standard descriptor for legacy vkFormat 131", () => {
+  const bytes = createKtx2Bytes({
+    vkFormat: 131,
+    pixelWidth: 4,
+    levelPayloads: [Uint8Array.of(1)],
+    keyValues: {
+      KTXorientation: "rd",
+      KTXwriter: "ibl-baker v0.2.2",
+    },
+  });
+
+  assertParseError(() => parseKTX2IBL(bytes), "INVALID_DATA_FORMAT_DESCRIPTOR");
+});
+
 test("parseKTX2IBL rejects vkFormat 131 without the BC6H descriptor", () => {
   const bytes = createKtx2Bytes({
     vkFormat: 131,
+    dfd: LEGACY_BC6H_UFLOAT_DFD,
     pixelWidth: 4,
     levelPayloads: [Uint8Array.of(1)],
   });
@@ -213,6 +246,7 @@ test("parseKTX2IBL rejects vkFormat 131 without the BC6H descriptor", () => {
 test("parseKTX2IBL rejects vkFormat 131 without ibl-baker metadata", () => {
   const bytes = createKtx2Bytes({
     vkFormat: 131,
+    dfd: LEGACY_BC6H_UFLOAT_DFD,
     pixelWidth: 4,
     levelPayloads: [Uint8Array.of(1)],
     keyValues: {
@@ -227,6 +261,7 @@ test("parseKTX2IBL rejects vkFormat 131 without ibl-baker metadata", () => {
 test("parseKTX2IBL rejects vkFormat 131 from a non-legacy ibl-baker version", () => {
   const bytes = createKtx2Bytes({
     vkFormat: 131,
+    dfd: LEGACY_BC6H_UFLOAT_DFD,
     pixelWidth: 4,
     levelPayloads: [Uint8Array.of(1)],
     keyValues: {
@@ -306,10 +341,12 @@ function loadFixture(
 
 function createKtx2Bytes(options: {
   vkFormat?: number;
+  dfd?: Uint8Array;
   pixelWidth: number;
   levelPayloads: Uint8Array[];
   keyValues?: Record<string, string>;
 }): Uint8Array {
+  const dfd = options.dfd ?? BC6H_UFLOAT_DFD;
   const levelCount = options.levelPayloads.length;
   const levelIndexByteLength = levelCount * LEVEL_INDEX_ENTRY_BYTE_LENGTH;
   const dfdByteOffset = LEVEL_INDEX_START + levelIndexByteLength;
@@ -319,7 +356,7 @@ function createKtx2Bytes(options: {
       KTXwriter: "ibl-baker test",
     },
   );
-  const kvdByteOffset = dfdByteOffset + BC6H_UFLOAT_DFD.byteLength;
+  const kvdByteOffset = dfdByteOffset + dfd.byteLength;
   const imageDataStart = kvdByteOffset + kvd.byteLength;
 
   const levelOffsets = new Array<number>(levelCount);
@@ -343,7 +380,7 @@ function createKtx2Bytes(options: {
   view.setUint32(40, levelCount, true);
   view.setUint32(44, 2, true);
   view.setUint32(48, dfdByteOffset, true);
-  view.setUint32(52, BC6H_UFLOAT_DFD.byteLength, true);
+  view.setUint32(52, dfd.byteLength, true);
   view.setUint32(56, kvdByteOffset, true);
   view.setUint32(60, kvd.byteLength, true);
   view.setBigUint64(64, 0n, true);
@@ -357,7 +394,7 @@ function createKtx2Bytes(options: {
     view.setBigUint64(entryOffset + 16, BigInt(bc6hLevelByteLength(options.pixelWidth, mipLevel)), true);
   }
 
-  out.set(BC6H_UFLOAT_DFD, dfdByteOffset);
+  out.set(dfd, dfdByteOffset);
   out.set(kvd, kvdByteOffset);
   for (let mipLevel = levelCount - 1; mipLevel >= 0; mipLevel -= 1) {
     out.set(expectDefined(options.levelPayloads[mipLevel]), expectDefined(levelOffsets[mipLevel]));
