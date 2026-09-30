@@ -2,78 +2,37 @@
 
 ## 当前基线
 
-- Rust bake/validate 主链路、`.ibla` v1 容器、parser-only TypeScript loader 已落地。
-- KTX2 导出（BC6H + zstd）通过 `crates/ktx2_writer` 实现，CLI `--output-format <ibla|ktx2|both>` 可用。
-- `.ibla` 与 `.ktx2` 两种输出格式地位对等，CLI 默认输出 `.ibla`。
-- 当前对外契约以 `docs/format-spec.md`（纯 `.ibla`）、`crates/ibl_cli/README.md`（CLI + 双格式）、`packages/ibla-loader/README.md` 为准。
-- `fixtures/outputs` 是本地生成且被 Git 忽略的样例目录；CI 使用临时样例。
+- Rust bake/validate 主链路、稳定的 .ibla v1、KTX2 导出与独立 BRDF LUT 已落地。
+- 核心库、KTX2 writer、CLI、两个 parser-only loader 和私有 Pages site 的职责边界保持稳定；site 使用手动拖拽入口。
+- 当前对外契约以 [IBLA 规范](docs/format-spec.md)、[CLI README](crates/ibl_cli/README.md)、[IBLA loader README](packages/ibla-loader/README.md) 和 [KTX2 loader README](packages/ktx2-loader/README.md) 为准。
+- 根目录使用 Cargo 与 pnpm workspace；pnpm 安装 Cargo source，Cargo 负责 Rust 构建和发布，npm 负责 registry 发布与消费者验收。
+- 本地输出位于被 Git 忽略的 fixtures/outputs；CI 使用 target/ci-fixtures。CI 覆盖格式检查、Clippy、源码语法、类型检查、测试及归档消费者。
+- 2026-09-29 已正式发布 Rust/CLI 0.2.3、KTX2 loader 0.3.0 和 npm CLI 0.1.1；所选八包的 OIDC、完整性、provenance、消费者和 Release 收尾已验证，.ibla loader 未参与此次发布。
+- 发布操作以 [Release Process](docs/release.md) 为入口；历史 PR、bootstrap、预演与发布证据见 [Release History](docs/release-history.md)。
 
-## 已完成：v0.2.0 KTX2 导出
+## 本轮收尾
 
-- [x] `crates/ktx2_writer` — write-only KTX2 序列化器，BC6H + zstd，无 CMake 依赖
-- [x] `ibl_core` bake pipeline 分离 f32 计算层与编码层，支持 `.ibla` 和 KTX2 双路径
-- [x] CLI `--output-format <ibla|ktx2|both>` 选项
-- [x] KTX2 fixture 产物（HDR 与 Spruit fixture 均在同一目录生成 IBLA/KTX2 输出）
-- [x] 文档统一：format-spec 仅含 `.ibla`，KTX2 规格写入 CLI README，各级文档统一口径
+- [x] 实现固定名称 CI Gate，汇总 Linux Quality 与 Windows/macOS Cargo 检查，仅 success 结果通过。
+- [x] 修正 bootstrap 当前状态，归档历史发布证据并精简执行清单。
+- [ ] 完成 PR 的失败、取消、跳过与成功路径验收，并验证新的必过检查；验收证据记录在 Release History。
 
-## 下一步
+## 待验证
 
-- [x] PR1：解除 release tooling 对外层 npm 执行上下文和 JavaScript lockfile 格式的依赖，固定使用 npm 11.11.0。
-- [x] PR2：将 JavaScript workspace 切换到 pnpm，保留 npm 作为 npm registry 发布与消费者验证客户端。
-- [x] PR3：启用 pnpm Cargo 依赖安装与缓存，单独验证实验性 Cargo 集成；Cargo source 生成物不入库，Quality CI 覆盖 offline metadata/check/test 和发布归档 smoke。
-- [x] PR4：优化 pnpm CI 缓存和 workspace 任务编排。
-- [x] 优先排查并修正 irradiance bake 过早绑定 `irradiance_size` 的问题，避免在卷积前先将源环境重采样到过低分辨率后再做 diffuse 过滤。
-- [x] 优先排查并修正 irradiance 的 sample cap 偏低问题，重新对齐与参考实现的采样预算与 LOD 行为，避免 HDR 小范围高亮贡献被过度抹平。
-- [x] 新增 `packages/ktx2-loader`，提供浏览器侧 KTX2 加载能力，并在 README 中明确当前仅支持仓库现阶段产物画像（如 `KTX2 + BC6H_UFLOAT + zstd + cubemap`）。
-- [x] 将 `.ibla` 与 `.ktx2` 浏览器验收入口合并为私有 `packages/site` 应用，支持统一拖拽、格式识别、解析结果与预览。
-- [x] `packages/site` 不接仓库内 fixture 目录，继续保持手动拖拽验收，避免目录结构耦合。
-- [x] `packages/site` 通过 GitHub Pages 部署到根路径；旧 `/ibla-viewer/` 与 `/ktx2-viewer/` 路径保留静态跳转。
-- [x] 将公开 `.ibla` JS 包迁移为 `@ibltools/ibla-loader`（`packages/ibla-loader`），旧 `@ibltools/loader` 由发布者后续在 npm 手动废弃。
-- [x] 修正 KTX2 BC6H UFLOAT header 的 Vulkan format 值为 `143`，并写入标准 `[0, 1]` DFD；新 loader 对既有 `131` + 旧 DFD 产物保留严格受限兼容。
+- [ ] 自然发生部分生产发布失败时，记录真实恢复证据；当前恢复顺序和 checksum 防护已有模拟测试覆盖，不人为制造生产发布故障。
+- [ ] 在 .ibla loader 下一次实际版本发布时，补充该包的生产 OIDC/provenance 和 registry 消费者验收。
 
-## 自动发包流程
+## 需要单独立项的方向
 
-- [x] PR5：从 Cargo metadata、npm workspace manifests 和动态 CLI manifests 构建统一 release dependency graph，使用稳定拓扑顺序发布，并在每个 registry receipt 确认后继续处理 dependent。
-- [x] Release finalization 校验 `manifest.json` / `verified.json` 证据资产，缺失时允许安全重传，内容冲突时拒绝恢复。
-- [x] 实现共用 CI、三个发布组选项、候选归档、OIDC 发布与恢复机制。
-- [x] 原地维护 docs/release.md，新增发布说明目录和 README 入口。
-- [x] 完成本地 Rust、TypeScript、loader/viewer、发布规则及工作区外消费者检查。
-- [x] 提交实施 PR #1 并通过 GitHub CI。
-- [x] 配置 master 必经 PR、必过 CI、禁止强推和删除，已合并实施 PR #1。
-- [x] 从 master 完成三个发布组的无上传预演（运行 35196405209），下载核对五包与三平台归档，结果见 docs/release.md。
-- [x] 2026-09-29 正式发布验证所选包的 OIDC、provenance、上传后消费者及 Release 收尾（Publish run 36571226684）。真实部分发布失败恢复仍未实测，恢复顺序和 checksum 防护由模拟测试覆盖。
-
-## npm CLI 分发
-
-- [x] npm 0.1.1 的 --version / -V 同时展示 npm 分发版本与实际 Rust CLI 版本；原生输出不变。
-
-- [x] 实现原生版本命令、薄 launcher 和四包暂存打包。
-- [x] 接入 npm_cli 发布组、三平台消费者和候选恢复校验。
-- [x] 完成本地真实归档消费、Windows 控制台 Ctrl+C、62 项 Rust 测试及 23 项发布回归验证；Unix 信号测试由 Linux/macOS CI 执行。
-- [x] 实施 PR #4 已通过 CI 并合并；Linux 归档消费者及 Unix 信号测试通过。
-- [x] PR #5 修正 macOS 临时目录断言；master 的 npm CLI 单组预演 35302832171 与四组联合预演 35302835316 均通过。
-- [x] 下载并独立核对两个候选的包、原生归档、版本及三平台报告，确认 npm/原生二进制一致；验收链接见 docs/release.md。
-- [x] 完成四个 npm CLI 包 0.1.0 首次发布、registry 原包哈希校验及 Trusted Publisher 配置，详见 docs/release.md。
-- [x] 四个 npm CLI 包首次发布后的普通 registry 安装验收已通过；npm CLI 0.1.1 在 Linux、macOS、Windows registry consumer 均通过（Publish run 36571226684）。
-- [x] npm CLI 0.1.1、KTX2 loader 0.3.0 和 Rust/CLI 0.2.3 通过正式 OIDC/provenance 发布和三平台 registry consumer 验收（Publish run 36571226684）。
-
-## 需要单独立项再展开的方向
-
-- [ ] 特定渲染引擎的运行时集成（放在独立包中设计）。
-- [ ] 评估是否为 LDR 输入提供比 `BC6H_UFLOAT` 更合适的 KTX2 编码路径；仅在收益、兼容性与复杂度权衡明确后再决定是否引入。
-- [ ] 参考实现对比升级为长期质量基线（单独定义基线产物、指标和回归策略）。
-- [x] 明确 npm CLI 分发方案：薄 launcher、三个预编译平台包、独立 npm 版本，复用现有发布流程。
+- [ ] 特定渲染引擎的运行时集成，放在独立包中设计。
+- [ ] 评估 LDR 输入的其它 KTX2 编码路径；以收益、兼容性和复杂度的明确权衡为前提。
+- [ ] 将参考实现对比升级为长期质量基线，单独定义基线产物、指标和回归策略。
 
 ## 暂不纳入当前范围
 
-- 浏览器端 baking
-- Rust loader
-- wasm loader / wasm core
-- napi / node addon
-- 通用多引擎适配层
-- 在 v1 内提前扩展多种 encoding / container 组合
+- 浏览器端 baking、Rust loader、Wasm、N-API / Node addon 和通用多引擎适配层。
+- 在 .ibla v1 内提前扩展 encoding、container 或资产模型。
 
 ## 维护约定
 
-- 任何会改变公开行为或文件契约的改动，必须同步更新对应 README 或 docs。
-- 完成 TODO 项后，在同一轮改动里同步更新本文件状态。
+- 改变公开行为或文件契约时，同步更新对应 README 或 docs。
+- 完成 TODO 项后，在同一轮改动里同步状态；规格细节优先链接对外契约文档。
