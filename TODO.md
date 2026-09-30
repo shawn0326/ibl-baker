@@ -14,7 +14,7 @@
 
 - [x] 实现固定名称 CI Gate，汇总 Linux Quality 与 Windows/macOS Cargo 检查，仅 success 结果通过。
 - [x] 修正 bootstrap 当前状态，归档历史发布证据并精简执行清单。
-- [ ] 完成 PR 的失败、取消、跳过与成功路径验收，并验证新的必过检查；验收证据记录在 Release History。
+- [x] 完成 PR 的失败、取消、跳过与成功路径验收，并验证新的必过检查；验收证据记录在 Release History。
 
 ## 待验证
 
