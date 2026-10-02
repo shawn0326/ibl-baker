@@ -1,7 +1,7 @@
 ﻿use half::f16;
 use intel_tex_2::{bc6h, RgbaSurface};
 
-use crate::Ktx2Error;
+use crate::{Ktx2Error, BC6H_UFLOAT_MAX};
 
 const BLOCK_SIZE: usize = 16; // bytes per BC6H 4×4 block
 const BLOCK_DIM: u32 = 4; // texels per block edge
@@ -32,9 +32,9 @@ pub(crate) fn compress_face_bc6h(pixels: &[f32], face_size: u32) -> Result<Vec<u
             let src = (y * face_usize + x) * 3;
             let dst = (y * padded_usize + x) * 8;
 
-            let r = f16::from_f32(pixels[src]);
-            let g = f16::from_f32(pixels[src + 1]);
-            let b = f16::from_f32(pixels[src + 2]);
+            let r = rgb_to_f16(pixels[src])?;
+            let g = rgb_to_f16(pixels[src + 1])?;
+            let b = rgb_to_f16(pixels[src + 2])?;
             let a = f16::from_f32(1.0);
 
             data[dst..dst + 2].copy_from_slice(&r.to_le_bytes());
@@ -73,6 +73,16 @@ pub(crate) fn compress_face_bc6h(pixels: &[f32], face_size: u32) -> Result<Vec<u
     }
 }
 
+/// Reject invalid components and clamp finite RGB before half-float conversion.
+fn rgb_to_f16(value: f32) -> Result<f16, Ktx2Error> {
+    if !value.is_finite() {
+        return Err(Ktx2Error::InvalidInput(format!(
+            "RGB components must be finite, got {value}"
+        )));
+    }
+    Ok(f16::from_f32(value.clamp(0.0, BC6H_UFLOAT_MAX)))
+}
+
 /// Number of BC6H blocks (per dimension) needed to cover `size` texels.
 #[inline]
 fn blocks_per_dim(size: u32) -> usize {
@@ -88,6 +98,64 @@ fn round_up_to_block(size: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rgb_to_f16_clamps_finite_out_of_range_components() {
+        let below_max = f32::from_bits(BC6H_UFLOAT_MAX.to_bits() - 1);
+        let above_max = f32::from_bits(BC6H_UFLOAT_MAX.to_bits() + 1);
+        for value in [
+            -f32::MAX,
+            -1.0,
+            -f32::MIN_POSITIVE,
+            0.0,
+            below_max,
+            BC6H_UFLOAT_MAX,
+            above_max,
+            f32::MAX,
+        ] {
+            let actual = rgb_to_f16(value).unwrap();
+            assert_eq!(actual, f16::from_f32(value.clamp(0.0, 65504.0)));
+            assert!(actual.is_finite(), "value={value}");
+            assert!(actual.to_f32() >= 0.0, "value={value}");
+        }
+        assert_eq!(rgb_to_f16(-1.0).unwrap(), f16::ZERO);
+        assert_eq!(rgb_to_f16(f32::MAX).unwrap(), f16::MAX);
+    }
+
+    #[test]
+    fn rgb_to_f16_preserves_in_range_half_float_bytes() {
+        for value in [
+            0.0,
+            -0.0,
+            f32::MIN_POSITIVE,
+            0.1,
+            1.0,
+            255.0,
+            4096.0,
+            f32::from_bits(BC6H_UFLOAT_MAX.to_bits() - 1),
+            BC6H_UFLOAT_MAX,
+        ] {
+            assert_eq!(
+                rgb_to_f16(value).unwrap().to_le_bytes(),
+                f16::from_f32(value).to_le_bytes(),
+                "value={value}"
+            );
+        }
+    }
+
+    #[test]
+    fn compress_rejects_non_finite_rgb_before_encoding() {
+        for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for channel in 0..3 {
+                let mut pixels = [0.0; 3];
+                pixels[channel] = value;
+                assert!(matches!(
+                    compress_face_bc6h(&pixels, 1),
+                    Err(Ktx2Error::InvalidInput(_))
+                ));
+            }
+        }
+    }
 
     #[test]
     fn bc6h_output_size_exact_block() {

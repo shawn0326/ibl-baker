@@ -157,6 +157,13 @@ impl EncodingKind {
             Self::Linear => "linear",
         }
     }
+
+    pub(crate) fn max_rgb(self) -> f32 {
+        match self {
+            Self::RgbdSrgb => 255.0,
+            Self::Srgb | Self::Linear => 1.0,
+        }
+    }
 }
 
 impl FromStr for EncodingKind {
@@ -270,6 +277,56 @@ impl Default for BakeOptions {
             sample_count: 1024,
             quality: BakeQuality::Medium,
         }
+    }
+}
+
+/// RGB range and clipping statistics for the final images, before output encoding.
+/// This report is returned separately and is never stored in an output asset.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BakeReport {
+    /// Minimum RGB component across all output pixels, before clipping.
+    pub min_rgb: f32,
+    /// Maximum RGB component across all output pixels, before clipping.
+    pub max_rgb: f32,
+    /// Number of pixels with at least one RGB component outside the encoding range.
+    pub clipped_pixel_count: u64,
+    /// Number of output pixels across all faces and mip levels, excluding padding.
+    pub total_pixel_count: u64,
+}
+
+impl BakeReport {
+    fn from_images<'a>(
+        images: impl IntoIterator<Item = &'a source_image::SourceImage>,
+        encoding_max_rgb: f32,
+    ) -> Result<Self, IblError> {
+        let mut report = Self {
+            min_rgb: f32::INFINITY,
+            max_rgb: f32::NEG_INFINITY,
+            clipped_pixel_count: 0,
+            total_pixel_count: 0,
+        };
+        for image in images {
+            for color in &image.pixels {
+                if !color.is_finite() {
+                    return Err(IblError::InvalidInput(
+                        "output RGB values must be finite".to_string(),
+                    ));
+                }
+                let min_rgb = color.min_element();
+                let max_rgb = color.max_element();
+                report.min_rgb = report.min_rgb.min(min_rgb);
+                report.max_rgb = report.max_rgb.max(max_rgb);
+                report.total_pixel_count += 1;
+                if min_rgb < 0.0 || max_rgb > encoding_max_rgb {
+                    report.clipped_pixel_count += 1;
+                }
+            }
+        }
+        if report.total_pixel_count == 0 {
+            report.min_rgb = 0.0;
+            report.max_rgb = 0.0;
+        }
+        Ok(report)
     }
 }
 
@@ -428,6 +485,14 @@ struct ChunkEntry {
 }
 
 pub fn bake_to_asset<P: AsRef<Path>>(input: P, options: BakeOptions) -> Result<IblAsset, IblError> {
+    bake_to_asset_with_report(input, options).map(|(asset, _report)| asset)
+}
+
+/// Bake a single-file source to an asset and report clipping in the final output images.
+pub fn bake_to_asset_with_report<P: AsRef<Path>>(
+    input: P,
+    options: BakeOptions,
+) -> Result<(IblAsset, BakeReport), IblError> {
     let input_path = input.as_ref();
     if !input_path.exists() {
         return Err(IblError::InvalidInput(format!(
@@ -444,6 +509,14 @@ pub fn bake_cubemap_to_asset(
     input: &CubemapInputPaths,
     options: BakeOptions,
 ) -> Result<IblAsset, IblError> {
+    bake_cubemap_to_asset_with_report(input, options).map(|(asset, _report)| asset)
+}
+
+/// Bake six cubemap faces to an asset and report clipping in the final output images.
+pub fn bake_cubemap_to_asset_with_report(
+    input: &CubemapInputPaths,
+    options: BakeOptions,
+) -> Result<(IblAsset, BakeReport), IblError> {
     let (source, source_format) = load_environment_from_cubemap_paths(input)?;
     bake_environment_to_asset(source_format, &source, options)
 }
@@ -451,6 +524,14 @@ pub fn bake_cubemap_to_asset(
 /// Bake an equirectangular (latlong) or single-file HDR/EXR/LDR source to KTX2 bytes
 /// (BC6H + zstd cubemap). Only valid for `SpecularCubemap` and `IrradianceCubemap` asset kinds.
 pub fn bake_to_ktx2<P: AsRef<Path>>(input: P, options: BakeOptions) -> Result<Vec<u8>, IblError> {
+    bake_to_ktx2_with_report(input, options).map(|(bytes, _report)| bytes)
+}
+
+/// Bake a single-file source to KTX2 and report clipping in the final output images.
+pub fn bake_to_ktx2_with_report<P: AsRef<Path>>(
+    input: P,
+    options: BakeOptions,
+) -> Result<(Vec<u8>, BakeReport), IblError> {
     let input_path = input.as_ref();
     if !input_path.exists() {
         return Err(IblError::InvalidInput(format!(
@@ -468,6 +549,14 @@ pub fn bake_cubemap_to_ktx2(
     input: &CubemapInputPaths,
     options: BakeOptions,
 ) -> Result<Vec<u8>, IblError> {
+    bake_cubemap_to_ktx2_with_report(input, options).map(|(bytes, _report)| bytes)
+}
+
+/// Bake six cubemap faces to KTX2 and report clipping in the final output images.
+pub fn bake_cubemap_to_ktx2_with_report(
+    input: &CubemapInputPaths,
+    options: BakeOptions,
+) -> Result<(Vec<u8>, BakeReport), IblError> {
     let (source, _source_format) = load_environment_from_cubemap_paths(input)?;
     bake_environment_to_ktx2(&source, options)
 }
@@ -475,12 +564,13 @@ pub fn bake_cubemap_to_ktx2(
 fn bake_environment_to_ktx2(
     source: &source_image::EnvironmentSource,
     options: BakeOptions,
-) -> Result<Vec<u8>, IblError> {
+) -> Result<(Vec<u8>, BakeReport), IblError> {
     if options.cube_size == 0 || options.irradiance_size == 0 {
         return Err(IblError::InvalidInput(
             "image sizes must be greater than zero".to_string(),
         ));
     }
+    validate_rotation(&options)?;
     match options.asset_kind {
         AssetKind::SpecularCubemap => {
             let mip_count = estimate_mip_count(options.cube_size);
@@ -501,12 +591,14 @@ fn bake_environment_to_asset(
     source_format: SourceFormat,
     source: &source_image::EnvironmentSource,
     options: BakeOptions,
-) -> Result<IblAsset, IblError> {
+) -> Result<(IblAsset, BakeReport), IblError> {
     if options.cube_size == 0 || options.irradiance_size == 0 {
         return Err(IblError::InvalidInput(
             "image sizes must be greater than zero".to_string(),
         ));
     }
+
+    validate_rotation(&options)?;
 
     let manifest = build_manifest(source_format, &options);
     let mut asset = IblAsset {
@@ -522,7 +614,7 @@ fn bake_environment_to_asset(
         chunks: Vec::new(),
     };
 
-    let entries = match options.asset_kind {
+    let (entries, report) = match options.asset_kind {
         AssetKind::SpecularCubemap => {
             build_specular_chunk_entries(source, &options, asset.manifest.mip_count)?
         }
@@ -532,7 +624,16 @@ fn bake_environment_to_asset(
     asset.chunk_table = entries.iter().map(|entry| entry.record.clone()).collect();
     asset.chunks = entries.iter().map(|entry| entry.chunk.clone()).collect();
 
-    normalize_asset(&asset)
+    Ok((normalize_asset(&asset)?, report))
+}
+
+fn validate_rotation(options: &BakeOptions) -> Result<(), IblError> {
+    if !options.rotation_degrees.is_finite() {
+        return Err(IblError::InvalidInput(
+            "rotation must be finite".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 pub fn write_asset<P: AsRef<Path>>(path: P, asset: &IblAsset) -> Result<(), IblError> {
@@ -1481,6 +1582,156 @@ mod tests {
         let bytes = encode_png_image(&single_color_image(4, 4, color), EncodingKind::Srgb)
             .expect("png should encode");
         fs::write(path, bytes).expect("png should be written");
+    }
+
+    #[test]
+    fn reports_use_exact_encoding_boundaries() {
+        for max_rgb in [1.0_f32, 255.0, ktx2_writer::BC6H_UFLOAT_MAX] {
+            let image = source_image::SourceImage::from_pixels(
+                7,
+                1,
+                vec![
+                    glam::Vec3::new(-f32::MIN_POSITIVE, -1.0, 0.0),
+                    glam::Vec3::ZERO,
+                    glam::Vec3::splat(f32::MIN_POSITIVE),
+                    glam::Vec3::splat(f32::from_bits(max_rgb.to_bits() - 1)),
+                    glam::Vec3::splat(max_rgb),
+                    glam::Vec3::splat(f32::from_bits(max_rgb.to_bits() + 1)),
+                    glam::Vec3::splat(f32::MAX),
+                ],
+            );
+            let report = BakeReport::from_images([&image], max_rgb).unwrap();
+            assert_eq!(report.total_pixel_count, 7);
+            assert_eq!(report.clipped_pixel_count, 3);
+            assert_eq!(report.min_rgb, -1.0);
+            assert_eq!(report.max_rgb, f32::MAX);
+        }
+    }
+
+    #[test]
+    fn single_file_report_apis_preserve_output_and_container_contract() {
+        let input = unique_temp_path("file-report-input").with_extension("png");
+        write_solid_png(&input, glam::Vec3::new(0.25, 0.5, 0.75));
+        let options = BakeOptions {
+            cube_size: 4,
+            irradiance_size: 2,
+            sample_count: 8,
+            quality: BakeQuality::Low,
+            ..BakeOptions::default()
+        };
+        let (asset, report) = bake_to_asset_with_report(&input, options.clone()).unwrap();
+        let old_asset = bake_to_asset(&input, options.clone()).unwrap();
+        assert_eq!(asset, old_asset);
+        assert_eq!(report.total_pixel_count, 6 * (16 + 4 + 1));
+        assert_eq!(report.clipped_pixel_count, 0);
+        let encoded = encode_asset_bytes(&asset).unwrap();
+        assert_eq!(encoded, encode_asset_bytes(&old_asset).unwrap());
+        let manifest_end = HEADER_BYTE_LENGTH + asset.header.manifest_byte_length as usize;
+        let manifest = std::str::from_utf8(&encoded[HEADER_BYTE_LENGTH..manifest_end]).unwrap();
+        assert!(!manifest.contains("report"));
+        assert!(!manifest.contains("clipped"));
+
+        let (ktx2, ktx2_report) = bake_to_ktx2_with_report(&input, options.clone()).unwrap();
+        assert_eq!(ktx2, bake_to_ktx2(&input, options).unwrap());
+        assert_eq!(report, ktx2_report);
+        fs::remove_file(&input).ok();
+    }
+
+    #[test]
+    fn cubemap_report_apis_measure_only_irradiance_output_pixels() {
+        let input_dir = unique_temp_path("cubemap-report-input");
+        fs::create_dir_all(&input_dir).unwrap();
+        let input = CubemapInputPaths::from_face_order(std::array::from_fn(|index| {
+            let path = input_dir.join(format!("{index}.png"));
+            write_solid_png(&path, glam::Vec3::splat(0.5));
+            path
+        }));
+        let options = BakeOptions {
+            asset_kind: AssetKind::IrradianceCubemap,
+            cube_size: 8,
+            irradiance_size: 2,
+            sample_count: 8,
+            quality: BakeQuality::Low,
+            ..BakeOptions::default()
+        };
+        let (asset, report) = bake_cubemap_to_asset_with_report(&input, options.clone()).unwrap();
+        assert_eq!(
+            asset,
+            bake_cubemap_to_asset(&input, options.clone()).unwrap()
+        );
+        assert_eq!(report.total_pixel_count, 24);
+        assert_eq!(report.clipped_pixel_count, 0);
+        let (ktx2, ktx2_report) =
+            bake_cubemap_to_ktx2_with_report(&input, options.clone()).unwrap();
+        assert_eq!(ktx2, bake_cubemap_to_ktx2(&input, options).unwrap());
+        assert_eq!(report, ktx2_report);
+        fs::remove_dir_all(&input_dir).ok();
+    }
+
+    #[test]
+    fn brdf_lut_report_uses_linear_rgb_range() {
+        let input = unique_temp_path("brdf-report-input").with_extension("png");
+        write_solid_png(&input, glam::Vec3::ONE);
+        let (asset, report) = bake_to_asset_with_report(
+            &input,
+            BakeOptions {
+                asset_kind: AssetKind::BrdfLut,
+                output_encoding: EncodingKind::Linear,
+                sample_count: 8,
+                ..BakeOptions::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(asset.manifest.encoding, "linear");
+        assert_eq!(report.total_pixel_count, u64::from(BRDF_LUT_SIZE).pow(2));
+        assert!(report.clipped_pixel_count > 0);
+        assert_eq!(report.min_rgb, 0.0);
+        assert!(report.max_rgb > 1.0);
+        fs::remove_file(&input).ok();
+    }
+
+    #[test]
+    fn source_rgb_non_finite_values_are_rejected_before_resampling() {
+        let input = unique_temp_path("nonfinite-source").with_extension("exr");
+        for invalid in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            exr::prelude::write_rgba_file(&input, 4, 2, |x, _y| {
+                if x == 0 {
+                    (invalid, 0.5_f32, 0.25_f32, 1.0_f32)
+                } else {
+                    (0.5_f32, 0.5_f32, 0.25_f32, 1.0_f32)
+                }
+            })
+            .unwrap();
+            assert!(matches!(
+                bake_to_asset_with_report(&input, BakeOptions::default()),
+                Err(IblError::InvalidInput(_))
+            ));
+            assert!(matches!(
+                bake_to_ktx2_with_report(&input, BakeOptions::default()),
+                Err(IblError::InvalidInput(_))
+            ));
+        }
+        fs::remove_file(&input).ok();
+    }
+
+    #[test]
+    fn source_alpha_is_excluded_from_rgb_validation_and_report() {
+        let input = unique_temp_path("nonfinite-alpha").with_extension("exr");
+        exr::prelude::write_rgba_file(&input, 4, 2, |_, _| (0.25_f32, 0.5_f32, 0.75_f32, f32::NAN))
+            .unwrap();
+        let (_, report) = bake_to_asset_with_report(
+            &input,
+            BakeOptions {
+                cube_size: 1,
+                ..BakeOptions::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(report.total_pixel_count, 6);
+        assert_eq!(report.clipped_pixel_count, 0);
+        assert_eq!(report.min_rgb, 0.25);
+        assert_eq!(report.max_rgb, 0.75);
+        fs::remove_file(&input).ok();
     }
 
     #[test]

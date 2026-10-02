@@ -160,12 +160,19 @@ Normative v1 encoding semantics:
   - RGB channels store RGBD-packed values after sRGB transfer
   - alpha stores the linear `D` term
   - decoding must recover linear HDR values from the sampled RGBA payload
+  - with 8-bit payloads, the minimum nonzero `D` is `1/255`, so the maximum recoverable RGB channel value is `255`
 - `srgb`
   - the payload is an ordinary PNG color image
   - payload RGB data must be interpreted as sRGB color data
 - `linear`
   - the payload is an ordinary PNG image used as linear data
   - payload values must be interpreted without sRGB transfer
+
+The current writer clamps finite negative RGB channels to zero. `rgbd-srgb`
+clips channels above `255`; `srgb` and `linear` clamp linear input RGB to `[0, 1]`.
+NaN and positive or negative infinity are rejected before encoding. These limits
+do not add parameters to the v1 manifest, and clipped values cannot be recovered
+by a reader. Quantization error remains separate from range clipping.
 
 Reference packing contract for `rgbd-srgb`:
 

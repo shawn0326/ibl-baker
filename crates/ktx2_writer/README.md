@@ -15,6 +15,8 @@ It writes cubemap assets with:
 
 The public entry point is `write_bc6h_cubemap_ktx2`, which accepts `CubemapLevel` values and returns a serialized KTX2 byte buffer.
 
+Finite RGB components are clamped to `[0, 65504]` before half-float conversion and BC6H compression. Negative components become zero, and components above the half-float maximum become 65504. The upper limit is also available as `BC6H_UFLOAT_MAX`. NaN and positive or negative infinity return `Ktx2Error::InvalidInput`. The writer does not emit warnings; `ibl_core` and the CLI provide bake diagnostics.
+
 ## Scope
 
 This crate only handles KTX2 writing for the current `ibl-baker` IBL output profile.

@@ -20,6 +20,34 @@ The crate is responsible for:
 
 It stays independent from renderer-specific runtime upload paths.
 
+## Bake Reports And RGB Ranges
+
+The report variants of the existing bake functions return `(output, BakeReport)`:
+
+- `bake_to_asset_with_report` and `bake_cubemap_to_asset_with_report`
+- `bake_to_ktx2_with_report` and `bake_cubemap_to_ktx2_with_report`
+
+`BakeReport` contains `min_rgb` and `max_rgb` (`f32`), measured before encoding,
+and `clipped_pixel_count` and `total_pixel_count` (`u64`). It covers only the final
+output pixels across every face and mip level. A pixel counts as clipped once if
+any RGB component is outside the encoding range. Source images, intermediate
+source mip chains, alpha, and compression padding are excluded.
+
+The existing bake functions keep their signatures and discard the report.
+Reports are not serialized into `.ibla` or KTX2, and the library does not print warnings.
+The CLI uses these reports to warn after successfully writing a clipped output.
+
+PNG output retains its existing component limits: `[0, 255]` for `rgbd-srgb` and
+`[0, 1]` for `srgb` or `linear`. KTX2 output clamps finite RGB components to
+`[0, 65504]` before conversion to half floats and BC6H compression.
+These limits can discard highlights or negative values; no recovery multiplier
+is stored. Non-finite source or output RGB values (`NaN`, positive infinity, or
+negative infinity) return `IblError::InvalidInput` instead of being encoded.
+BRDF LUT reports use the linear range `[0, 1]`.
+
+See the [CLI encoding and KTX2 output documentation](../ibl_cli/README.md) and
+the [`.ibla` format specification](../../docs/format-spec.md) for output contracts.
+
 ## Relationship To Other Packages
 
 - `crates/ibl_cli` exposes the public command-line workflow on top of this crate.
