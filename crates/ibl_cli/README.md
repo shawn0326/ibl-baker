@@ -121,9 +121,9 @@ BRDF LUT always outputs as `.png` regardless of `--output-format`.
 
 The `--encoding` option controls how pixel data is stored:
 
-- `rgbd-srgb` — HDR values packed into sRGB-transferred RGBA PNG; the default for HDR/EXR inputs
-- `srgb` — standard sRGB color PNG; the default for LDR inputs
-- `linear` — linear-valued PNG for data payloads
+- `rgbd-srgb` — HDR values packed into sRGB-transferred RGBA PNG with a recoverable RGB channel range of `[0, 255]`; the default for HDR/EXR inputs
+- `srgb` — standard sRGB color PNG, with linear input RGB clamped to `[0, 1]`; the default for LDR inputs
+- `linear` — linear-valued PNG for data payloads, with input RGB clamped to `[0, 1]`
 
 The full binary format specification is defined in [`docs/format-spec.md`](../../docs/format-spec.md).
 
@@ -135,10 +135,34 @@ KTX2 outputs are GPU-ready cubemaps using BC6H block compression with zstd super
 - Data format descriptor: Khronos BC6H UFLOAT with normalized sample range `[0, 1]`
 - Compression: BC6H unsigned half-float, 4×4 blocks
 - Supercompression: zstd per-level (scheme 2)
-- Input: linear f32 pixels converted to f16 → BC6H (the `--encoding` option has no effect)
-- BC6H `[0, 65504]` range cleanly represents both HDR and LDR sources
+- Input: finite linear f32 RGB clamped to `[0, 65504]` before conversion to f16 → BC6H (the `--encoding` option has no effect)
+- BC6H stores HDR and LDR values in the `[0, 65504]` range with lossy block compression
 - Face order: +X, −X, +Y, −Y, +Z, −Z
 - KV metadata: `KTXorientation=rd`, `KTXwriter=ibl-baker v{version}`
+
+### Range Handling
+
+Finite RGB values outside the output encoding's range are clamped automatically.
+If any pixels are clamped, the CLI writes one warning to stderr after that output
+file is written successfully. Each warning reports the output path and encoding,
+clamped and total pixel counts, and the RGB range before clamping. A pixel is counted
+once if any of its RGB channels is out of range. Counts cover all output faces and
+mip levels, excluding internal source mips, alpha, and BC6H padding.
+
+For example:
+
+```text
+Warning: out/specular.ktx2 (bc6h-ufloat): 5 of 126 pixels had RGB channels clamped to [0, 65504] (pre-clip RGB range: [0, 94124]).
+```
+
+Inputs whose baked output is within range produce no warning. With
+`--output-format both`, each file is checked against its own encoding's range;
+RGBD clipping does not imply BC6H clipping. Warnings leave the success output on
+stdout and the exit code at `0`. BRDF LUT output does not produce an HDR warning.
+
+NaN and positive or negative infinity are invalid RGB inputs and cause an error.
+Clamping does not preserve out-of-range highlight energy. Assets retain their
+existing container contracts; no radiance scaling or restoration metadata is added.
 
 ## `validate`
 

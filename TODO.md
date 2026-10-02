@@ -12,6 +12,7 @@
 
 ## 本轮收尾
 
+- [x] 完成 HDR 编码范围截断防护、核心库 BakeReport 与 CLI 按实际输出汇总的 stderr 告警；范围边界、跨面/mip 计数、两种格式独立告警、写入失败无告警和正常载荷兼容性已通过验收，契约见 [CLI README](crates/ibl_cli/README.md) 与 [核心库 README](crates/ibl_core/README.md)。
 - [x] 实现固定名称 CI Gate，汇总 Linux Quality 与 Windows/macOS Cargo 检查，仅 success 结果通过。
 - [x] 修正 bootstrap 当前状态，归档历史发布证据并精简执行清单。
 - [x] 完成 PR 的失败、取消、跳过与成功路径验收，并验证新的必过检查；验收证据记录在 Release History。
@@ -21,6 +22,10 @@
 - [ ] 自然发生部分生产发布失败时，记录真实恢复证据；当前恢复顺序和 checksum 防护已有模拟测试覆盖，不人为制造生产发布故障。
 - [ ] 在 .ibla loader 下一次实际版本发布时，补充该包的生产 OIDC/provenance 和 registry 消费者验收。
 
+## 待修复
+
+- [ ] 修复 specular 在 `--samples < 8` 时的采样预算无符号下溢；本轮 HDR 告警验收使用 8 次采样，不调整烘焙算法。
+
 ## 需要单独立项的方向
 
 - [ ] 特定渲染引擎的运行时集成，放在独立包中设计。
@@ -29,6 +34,7 @@
 
 ## 暂不纳入当前范围
 
+- HDR 全局缩放、恢复倍率与外部消费协议；仅在代表性场景持续出现明显高光问题后重新评估。
 - 浏览器端 baking、Rust loader、Wasm、N-API / Node addon 和通用多引擎适配层。
 - 在 .ibla v1 内提前扩展 encoding、container 或资产模型。
 

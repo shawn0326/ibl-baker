@@ -53,6 +53,15 @@ impl SourceImage {
         self.pixels[(y as usize) * (self.width as usize) + (x as usize)] = color;
     }
 
+    fn validate_finite_rgb(&self) -> Result<(), IblError> {
+        if self.pixels.iter().any(|color| !color.is_finite()) {
+            return Err(IblError::InvalidInput(
+                "RGB values must be finite".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
     pub(crate) fn sample_bilinear(&self, uv: Vec2, wrap_x: bool) -> Vec3 {
         let width = self.width.max(1) as f32;
         let height = self.height.max(1) as f32;
@@ -108,10 +117,12 @@ impl Rotation {
 }
 
 pub(crate) fn load_source_image(path: &Path) -> Result<SourceImage, IblError> {
-    match SourceFormat::from_input_path(path) {
+    let image = match SourceFormat::from_input_path(path) {
         SourceFormat::Exr => load_exr_source_image(path),
         source_format => load_image_source_image(path, source_format),
-    }
+    }?;
+    image.validate_finite_rgb()?;
+    Ok(image)
 }
 
 pub(crate) fn load_environment_from_file(
@@ -206,6 +217,7 @@ pub(crate) fn encode_png_image(
     image: &SourceImage,
     encoding: EncodingKind,
 ) -> Result<Vec<u8>, IblError> {
+    image.validate_finite_rgb()?;
     let mut bytes = Vec::new();
     let mut encoder = png::Encoder::new(&mut bytes, image.width, image.height);
     encoder.set_color(ColorType::Rgba);

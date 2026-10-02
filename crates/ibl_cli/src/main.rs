@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use ibl_core::{
-    bake_cubemap_to_asset, bake_cubemap_to_ktx2, bake_to_asset, bake_to_ktx2, inspect_asset,
-    read_asset, validate_asset, write_asset, AssetKind, BakeOptions, BakeQuality,
-    CubemapInputPaths, EncodingKind, IblError, SourceFormat,
+    bake_cubemap_to_asset_with_report, bake_cubemap_to_ktx2_with_report, bake_to_asset_with_report,
+    bake_to_ktx2_with_report, inspect_asset, read_asset, validate_asset, write_asset, AssetKind,
+    BakeOptions, BakeQuality, BakeReport, CubemapInputPaths, EncodingKind, IblError, SourceFormat,
 };
 
 fn main() {
@@ -100,15 +100,17 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
                 let emit_ibla = matches!(output_format, OutputFormat::Ibla | OutputFormat::Both);
                 let emit_ktx2 = matches!(output_format, OutputFormat::Ktx2 | OutputFormat::Both);
                 if emit_ibla {
-                    let asset = bake_input_to_asset(&input, target_options.clone())?;
+                    let (asset, report) = bake_input_to_asset(&input, target_options.clone())?;
                     let output = output_dir.join("specular.ibla");
                     write_asset(&output, &asset)?;
+                    warn_if_clipped(&output, &report, asset.manifest.encoding.as_str());
                     outputs.push(output);
                 }
                 if emit_ktx2 {
-                    let ktx2_bytes = bake_input_to_ktx2(&input, target_options)?;
+                    let (ktx2_bytes, report) = bake_input_to_ktx2(&input, target_options)?;
                     let output = output_dir.join("specular.ktx2");
                     fs::write(&output, ktx2_bytes).map_err(IblError::from)?;
+                    warn_if_clipped(&output, &report, "bc6h-ufloat");
                     outputs.push(output);
                 }
             }
@@ -118,15 +120,17 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
                 let emit_ibla = matches!(output_format, OutputFormat::Ibla | OutputFormat::Both);
                 let emit_ktx2 = matches!(output_format, OutputFormat::Ktx2 | OutputFormat::Both);
                 if emit_ibla {
-                    let asset = bake_input_to_asset(&input, target_options.clone())?;
+                    let (asset, report) = bake_input_to_asset(&input, target_options.clone())?;
                     let output = output_dir.join("irradiance.ibla");
                     write_asset(&output, &asset)?;
+                    warn_if_clipped(&output, &report, asset.manifest.encoding.as_str());
                     outputs.push(output);
                 }
                 if emit_ktx2 {
-                    let ktx2_bytes = bake_input_to_ktx2(&input, target_options)?;
+                    let (ktx2_bytes, report) = bake_input_to_ktx2(&input, target_options)?;
                     let output = output_dir.join("irradiance.ktx2");
                     fs::write(&output, ktx2_bytes).map_err(IblError::from)?;
+                    warn_if_clipped(&output, &report, "bc6h-ufloat");
                     outputs.push(output);
                 }
             }
@@ -134,7 +138,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
                 // BRDF LUT always outputs as PNG regardless of --output-format.
                 let mut target_options = options.clone();
                 target_options.asset_kind = AssetKind::BrdfLut;
-                let asset = bake_input_to_asset(&input, target_options)?;
+                let (asset, _) = bake_input_to_asset(&input, target_options)?;
                 let output = output_dir.join("brdf-lut.png");
                 let bytes = asset
                     .chunks
@@ -316,22 +320,46 @@ fn choose_supported_specular_size(face_size: u32) -> u32 {
 fn bake_input_to_asset(
     input: &BakeInput,
     options: BakeOptions,
-) -> Result<ibl_core::IblAsset, CliError> {
+) -> Result<(ibl_core::IblAsset, BakeReport), CliError> {
     match input {
-        BakeInput::File { path } => bake_to_asset(path, options).map_err(CliError::from),
+        BakeInput::File { path } => {
+            bake_to_asset_with_report(path, options).map_err(CliError::from)
+        }
         BakeInput::Cubemap { faces, .. } => {
-            bake_cubemap_to_asset(faces, options).map_err(CliError::from)
+            bake_cubemap_to_asset_with_report(faces, options).map_err(CliError::from)
         }
     }
 }
 
-fn bake_input_to_ktx2(input: &BakeInput, options: BakeOptions) -> Result<Vec<u8>, CliError> {
+fn bake_input_to_ktx2(
+    input: &BakeInput,
+    options: BakeOptions,
+) -> Result<(Vec<u8>, BakeReport), CliError> {
     match input {
-        BakeInput::File { path } => bake_to_ktx2(path, options).map_err(CliError::from),
+        BakeInput::File { path } => bake_to_ktx2_with_report(path, options).map_err(CliError::from),
         BakeInput::Cubemap { faces, .. } => {
-            bake_cubemap_to_ktx2(faces, options).map_err(CliError::from)
+            bake_cubemap_to_ktx2_with_report(faces, options).map_err(CliError::from)
         }
     }
+}
+
+fn warn_if_clipped(output: &Path, report: &BakeReport, encoding: &str) {
+    if report.clipped_pixel_count == 0 {
+        return;
+    }
+    let upper_bound = match encoding {
+        "rgbd-srgb" => 255.0,
+        "bc6h-ufloat" => 65504.0,
+        _ => 1.0,
+    };
+    eprintln!(
+        "Warning: {} ({encoding}): {} of {} pixels had RGB channels clamped to [0, {upper_bound}] (pre-clip RGB range: [{}, {}]).",
+        display_path(output),
+        report.clipped_pixel_count,
+        report.total_pixel_count,
+        report.min_rgb,
+        report.max_rgb,
+    );
 }
 
 fn parse_output_format(value: &str) -> Result<OutputFormat, CliError> {

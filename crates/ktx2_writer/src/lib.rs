@@ -6,6 +6,9 @@ use std::fmt;
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
+/// Largest finite RGB component supported by the BC6H UFLOAT half-float input.
+pub const BC6H_UFLOAT_MAX: f32 = 65504.0;
+
 /// Error type returned by KTX2 write operations.
 #[derive(Debug)]
 pub enum Ktx2Error {
@@ -31,7 +34,8 @@ impl std::error::Error for Ktx2Error {}
 /// Face order (index 0..5): +X, -X, +Y, -Y, +Z, -Z (KTX2 and ibl_core canonical order).
 ///
 /// Each face slice has length `face_size * face_size * 3` (R, G, B interleaved, row-major).
-/// Pixel values must be linear (not sRGB). Values may exceed 1.0 for HDR content.
+/// Pixel values must be finite and linear (not sRGB). Values may exceed 1.0 for HDR
+/// content. Finite components are clamped to `[0, BC6H_UFLOAT_MAX]` when writing.
 pub struct CubemapLevel {
     /// Linear RGB f32 pixels for each of the 6 faces.
     pub face_pixels: [Vec<f32>; 6],
@@ -56,6 +60,9 @@ pub struct WriterMetadata<'a> {
 /// Uses `VK_FORMAT_BC6H_UFLOAT_BLOCK` (unsigned half-float HDR). Suitable for specular
 /// and irradiance cubemaps baked from HDR or LDR source images — BC6H cleanly represents
 /// the linear [0, 65504] range.
+///
+/// Finite RGB components are clamped to `[0, BC6H_UFLOAT_MAX]` before conversion to
+/// half-float. NaN and infinity return [`Ktx2Error::InvalidInput`].
 ///
 /// A `KTXorientation` (`"rd"`) and `KTXwriter` entry are always included in key/value data.
 pub fn write_bc6h_cubemap_ktx2(
@@ -287,6 +294,78 @@ mod tests {
         // pixelWidth == base face size
         let pixel_width = u32::from_le_bytes(bytes[20..24].try_into().unwrap());
         assert_eq!(pixel_width, 8);
+    }
+
+    #[test]
+    fn write_clamps_all_faces_and_mips_like_explicitly_clamped_input() {
+        let samples = [
+            -f32::MAX,
+            -1.0,
+            -f32::MIN_POSITIVE,
+            0.0,
+            0.5,
+            255.0,
+            f32::from_bits(BC6H_UFLOAT_MAX.to_bits() - 1),
+            BC6H_UFLOAT_MAX,
+            f32::from_bits(BC6H_UFLOAT_MAX.to_bits() + 1),
+            f32::MAX,
+        ];
+        let mut levels = vec![
+            make_solid_level(4, 0.0, 0.0, 0.0),
+            make_solid_level(2, 0.0, 0.0, 0.0),
+            make_solid_level(1, 0.0, 0.0, 0.0),
+        ];
+        for (mip, level) in levels.iter_mut().enumerate() {
+            for (face, pixels) in level.face_pixels.iter_mut().enumerate() {
+                for (component, value) in pixels.iter_mut().enumerate() {
+                    *value = samples[(mip * 6 + face + component) % samples.len()];
+                }
+            }
+        }
+        let clamped: Vec<CubemapLevel> = levels
+            .iter()
+            .map(|level| CubemapLevel {
+                face_size: level.face_size,
+                face_pixels: std::array::from_fn(|face| {
+                    level.face_pixels[face]
+                        .iter()
+                        .map(|value| value.clamp(0.0, 65504.0))
+                        .collect()
+                }),
+            })
+            .collect();
+        let meta = WriterMetadata { writer: "test" };
+        let actual = write_bc6h_cubemap_ktx2(&levels, &meta).unwrap();
+        let expected = write_bc6h_cubemap_ktx2(&clamped, &meta).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn write_rejects_non_finite_components_in_every_face_and_mip() {
+        let meta = WriterMetadata { writer: "test" };
+        for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for mip in 0..3 {
+                for face in 0..6 {
+                    for channel in 0..3 {
+                        let mut levels = vec![
+                            make_solid_level(4, 1.0, 0.5, 0.0),
+                            make_solid_level(2, 1.0, 0.5, 0.0),
+                            make_solid_level(1, 1.0, 0.5, 0.0),
+                        ];
+                        let pixels = &mut levels[mip].face_pixels[face];
+                        let last_pixel = pixels.len() - 3;
+                        pixels[last_pixel + channel] = value;
+                        assert!(
+                            matches!(
+                                write_bc6h_cubemap_ktx2(&levels, &meta),
+                                Err(Ktx2Error::InvalidInput(_))
+                            ),
+                            "value={value}, mip={mip}, face={face}, channel={channel}"
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]

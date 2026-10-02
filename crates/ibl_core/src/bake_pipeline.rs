@@ -9,7 +9,8 @@ use crate::source_image::{
     encode_png_image, sample_environment, EnvironmentSource, Rotation, SourceImage,
 };
 use crate::{
-    BakeOptions, BakeQuality, ChunkData, ChunkEntry, ChunkRecord, EncodingKind, Face, IblError,
+    BakeOptions, BakeQuality, BakeReport, ChunkData, ChunkEntry, ChunkRecord, EncodingKind, Face,
+    IblError,
 };
 
 const DEFAULT_SPECULAR_SAMPLES_LOW: u32 = 256;
@@ -130,7 +131,7 @@ pub(crate) fn build_specular_chunk_entries(
     source: &EnvironmentSource,
     options: &BakeOptions,
     mip_count: u32,
-) -> Result<Vec<ChunkEntry>, IblError> {
+) -> Result<(Vec<ChunkEntry>, BakeReport), IblError> {
     let mip_chain = build_specular_raw(source, options, mip_count);
     encode_cubemap_mips(&mip_chain, options.output_encoding)
 }
@@ -138,7 +139,7 @@ pub(crate) fn build_specular_chunk_entries(
 pub(crate) fn build_irradiance_chunk_entries(
     source: &EnvironmentSource,
     options: &BakeOptions,
-) -> Result<Vec<ChunkEntry>, IblError> {
+) -> Result<(Vec<ChunkEntry>, BakeReport), IblError> {
     let faces = build_irradiance_raw(source, options);
     encode_cubemap_mips(&[faces], options.output_encoding)
 }
@@ -167,8 +168,12 @@ pub(crate) fn build_irradiance_raw(
     )
 }
 
-pub(crate) fn encode_mip_chain_to_ktx2(mip_chain: &[CubemapFaces]) -> Result<Vec<u8>, IblError> {
+pub(crate) fn encode_mip_chain_to_ktx2(
+    mip_chain: &[CubemapFaces],
+) -> Result<(Vec<u8>, BakeReport), IblError> {
     use ktx2_writer::{write_bc6h_cubemap_ktx2, CubemapLevel, WriterMetadata};
+
+    let report = BakeReport::from_images(mip_chain.iter().flatten(), ktx2_writer::BC6H_UFLOAT_MAX)?;
 
     let levels: Vec<CubemapLevel> = mip_chain
         .iter()
@@ -192,31 +197,37 @@ pub(crate) fn encode_mip_chain_to_ktx2(mip_chain: &[CubemapFaces]) -> Result<Vec
         writer: concat!("ibl-baker v", env!("CARGO_PKG_VERSION")),
     };
 
-    write_bc6h_cubemap_ktx2(&levels, &meta).map_err(|e| IblError::InvalidInput(e.to_string()))
+    let bytes = write_bc6h_cubemap_ktx2(&levels, &meta)
+        .map_err(|e| IblError::InvalidInput(e.to_string()))?;
+    Ok((bytes, report))
 }
 
 pub(crate) fn build_brdf_lut_chunk_entries(
     size: u32,
     options: &BakeOptions,
-) -> Result<Vec<ChunkEntry>, IblError> {
+) -> Result<(Vec<ChunkEntry>, BakeReport), IblError> {
     let image = build_brdf_lut(size, options);
+    let report = BakeReport::from_images([&image], EncodingKind::Linear.max_rgb())?;
     let bytes = encode_png_image(&image, EncodingKind::Linear)?;
 
-    Ok(vec![ChunkEntry {
-        record: ChunkRecord {
-            mip_level: 0,
-            face: None,
-            byte_offset: 0,
-            byte_length: bytes.len() as u64,
-            width: image.width,
-            height: image.height,
-        },
-        chunk: ChunkData {
-            mip_level: 0,
-            face: None,
-            bytes,
-        },
-    }])
+    Ok((
+        vec![ChunkEntry {
+            record: ChunkRecord {
+                mip_level: 0,
+                face: None,
+                byte_offset: 0,
+                byte_length: bytes.len() as u64,
+                width: image.width,
+                height: image.height,
+            },
+            chunk: ChunkData {
+                mip_level: 0,
+                face: None,
+                bytes,
+            },
+        }],
+        report,
+    ))
 }
 
 pub(crate) fn cubemap_direction(face: Face, uv: Vec2) -> Vec3 {
@@ -554,7 +565,8 @@ fn effective_irradiance_sample_count(options: &BakeOptions) -> u32 {
 fn encode_cubemap_mips(
     mip_chain: &[CubemapFaces],
     encoding: EncodingKind,
-) -> Result<Vec<ChunkEntry>, IblError> {
+) -> Result<(Vec<ChunkEntry>, BakeReport), IblError> {
+    let report = BakeReport::from_images(mip_chain.iter().flatten(), encoding.max_rgb())?;
     let mut entries = Vec::new();
     for (mip_level, faces) in mip_chain.iter().enumerate() {
         for face in Face::all() {
@@ -577,7 +589,7 @@ fn encode_cubemap_mips(
             });
         }
     }
-    Ok(entries)
+    Ok((entries, report))
 }
 
 fn build_brdf_lut(size: u32, options: &BakeOptions) -> SourceImage {
@@ -784,6 +796,85 @@ mod tests {
     }
 
     #[test]
+    fn encoding_reports_count_each_clipped_pixel_once_across_faces_and_mips() {
+        let mut base = array::from_fn(|_| SourceImage::new(2, 2));
+        let mut mip = array::from_fn(|_| SourceImage::new(1, 1));
+        base[0].set(0, 0, Vec3::new(-1.0, 300.0, 0.0));
+        base[5].set(1, 1, Vec3::splat(65505.0));
+        mip[3].set(0, 0, Vec3::new(0.5, 2.0, 0.25));
+        let chain = [base, mip];
+
+        for (encoding, clipped_pixel_count) in [
+            (EncodingKind::RgbdSrgb, 2),
+            (EncodingKind::Srgb, 3),
+            (EncodingKind::Linear, 3),
+        ] {
+            let (entries, report) = encode_cubemap_mips(&chain, encoding).unwrap();
+            assert_eq!(entries.len(), 12);
+            assert_eq!(report.total_pixel_count, 30);
+            assert_eq!(report.clipped_pixel_count, clipped_pixel_count);
+            assert_eq!(report.min_rgb, -1.0);
+            assert_eq!(report.max_rgb, 65505.0);
+        }
+        let (_, report) = encode_mip_chain_to_ktx2(&chain).unwrap();
+        assert_eq!(report.total_pixel_count, 30);
+        assert_eq!(report.clipped_pixel_count, 2);
+        assert_eq!(report.min_rgb, -1.0);
+        assert_eq!(report.max_rgb, 65505.0);
+    }
+
+    #[test]
+    fn png_encoding_matches_manually_clipped_rgb_for_each_encoding() {
+        for encoding in [
+            EncodingKind::RgbdSrgb,
+            EncodingKind::Srgb,
+            EncodingKind::Linear,
+        ] {
+            let max_rgb = encoding.max_rgb();
+            let image = SourceImage::from_pixels(
+                4,
+                1,
+                vec![
+                    Vec3::new(-1.0, 0.5, f32::MAX),
+                    Vec3::splat(max_rgb),
+                    Vec3::splat(f32::from_bits(max_rgb.to_bits() + 1)),
+                    Vec3::splat(f32::from_bits(max_rgb.to_bits() - 1)),
+                ],
+            );
+            let mut clipped = image.clone();
+            for color in &mut clipped.pixels {
+                *color = color.clamp(Vec3::ZERO, Vec3::splat(max_rgb));
+            }
+            assert_eq!(
+                encode_png_image(&image, encoding).unwrap(),
+                encode_png_image(&clipped, encoding).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn output_encoders_reject_non_finite_rgb() {
+        for invalid in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut faces = array::from_fn(|_| SourceImage::new(1, 1));
+            faces[5].set(0, 0, Vec3::new(0.0, invalid, 0.0));
+            for encoding in [
+                EncodingKind::RgbdSrgb,
+                EncodingKind::Srgb,
+                EncodingKind::Linear,
+            ] {
+                assert!(matches!(
+                    encode_cubemap_mips(&[faces.clone()], encoding),
+                    Err(IblError::InvalidInput(_))
+                ));
+            }
+            assert!(matches!(
+                encode_mip_chain_to_ktx2(&[faces]),
+                Err(IblError::InvalidInput(_))
+            ));
+        }
+    }
+
+    #[test]
     fn specular_prefilter_uses_more_samples_for_rougher_mips() {
         let options = BakeOptions {
             sample_count: 256,
@@ -823,7 +914,7 @@ mod tests {
             ..BakeOptions::default()
         };
 
-        let entries =
+        let (entries, _) =
             build_specular_chunk_entries(&EnvironmentSource::Latlong(source), &options, 4)
                 .expect("specular should bake");
         let mip0 = entries
@@ -852,8 +943,9 @@ mod tests {
             ..BakeOptions::default()
         };
 
-        let entries = build_irradiance_chunk_entries(&EnvironmentSource::Latlong(source), &options)
-            .expect("irradiance should bake");
+        let (entries, _) =
+            build_irradiance_chunk_entries(&EnvironmentSource::Latlong(source), &options)
+                .expect("irradiance should bake");
         let face = entries
             .iter()
             .find(|entry| entry.record.face == Some(Face::PositiveZ))
