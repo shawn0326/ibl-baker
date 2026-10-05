@@ -13,10 +13,12 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import re
 import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import time
 
 sys.dont_write_bytecode = True
@@ -216,11 +218,14 @@ def run_cached(command, directory, identity):
     record_path = directory / "generation.json"
     if record_path.exists():
         old = json.loads(record_path.read_text(encoding="utf-8"))
-        hashes = old.get("outputs_sha256", {})
-        if old.get("identity") == identity and hashes and all(
-                (directory / name).is_file() and digest(directory / name) == value for name, value in hashes.items()):
-            print(f"Reusing verified output: {directory}", flush=True)
-            return old
+        if old.get("identity") == identity and old.get("returncode") == 0:
+            try:
+                verify_output_inventory(directory, old.get("outputs_sha256", {}))
+            except (ValueError, OSError) as error:
+                print(f"Invalid generation cache; regenerating {directory}: {error}", flush=True)
+            else:
+                print(f"Reusing verified output: {directory}", flush=True)
+                return old
     if directory.exists():
         # Callers supply only task-owned generation directories beneath target/.
         if not directory.resolve().is_relative_to((ROOT / "target").resolve()):
@@ -238,6 +243,47 @@ def run_cached(command, directory, identity):
     record["outputs_sha256"] = {str(p.relative_to(directory)): digest(p) for p in sorted(directory.rglob("*")) if p.is_file()}
     save_json(record_path, record)
     return record
+
+
+def valid_sha256(value):
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def verify_output_inventory(directory, hashes):
+    """Reject extra unrecorded faces as well as changed or missing artifacts."""
+    if not isinstance(hashes, dict) or not hashes or any(
+            not isinstance(path, str) or not valid_sha256(value) for path, value in hashes.items()):
+        raise ValueError("Expected nonempty output inventory with canonical SHA-256 values")
+    normalized = {path.replace("\\", "/"): value for path, value in hashes.items()}
+    actual = {path.relative_to(directory).as_posix(): path for path in directory.rglob("*")
+              if path.is_file() and path != directory / "generation.json"}
+    if len(normalized) != len(hashes) or set(normalized) != set(actual):
+        raise ValueError("Saved output inventory differs from exact directory contents excluding generation.json")
+    if any(digest(actual[path]) != value for path, value in normalized.items()):
+        raise ValueError("Saved output artifact hash changed")
+    return len(normalized)
+
+
+def verify_saved_generation(directory, source_sha256, size, samples, name, producer_sha256=None):
+    """Verify stored producer identities and raw bytes without rebuilding tools."""
+    path = directory / "generation.json"
+    record = json.loads(path.read_text(encoding="utf-8"))
+    expected = {"source_sha256": source_sha256, "size": size, "samples": samples, "tool": name}
+    identity = record.get("identity", {})
+    if not isinstance(identity, dict) or type(identity.get("schema")) is not int or identity.get("schema") != 1:
+        raise ValueError(f"Expected generation schema 1: {path}")
+    if not valid_sha256(identity.get("producer_sha256")) or not valid_sha256(identity.get("source_sha256")):
+        raise ValueError(f"Saved generation is missing valid producer/source SHA-256 identities: {path}")
+    if record.get("returncode") != 0 or any(identity.get(k) != v for k, v in expected.items()):
+        raise ValueError(f"Saved generation identity differs from requested analysis: {path}")
+    if producer_sha256 is not None and identity["producer_sha256"] != producer_sha256:
+        raise ValueError(f"Producer executable identity differs across matrix cases or supplied binary: {path}")
+    if name == "cmgen" and (identity.get("producer_sha256") != CMGEN_SHA256 or identity.get("cmgen_version") != "v1.77.2"):
+        raise ValueError(f"Saved reference was not produced by pinned actual cmgen: {path}")
+    hashes = record.get("outputs_sha256", {})
+    count = verify_output_inventory(directory, hashes)
+    return {"generation_record_sha256": digest(path), "identity": identity,
+            "verified_output_count": count, "exact_output_inventory_and_hashes_match": True}
 
 
 def generate(args, paths, cases, sizes):
@@ -313,6 +359,99 @@ def metrics(candidate, reference):
             "bright_probe_count": int(np.sum(bright))}
 
 
+def synthetic_diagnostics(case, assets, runs, probes):
+    """Closed-form checks for these analytic signals, not a general renderer."""
+    if case not in ("constant", "directional", "lamps"):
+        return None
+    mip0 = {face: {name: digest(runs / name / f"m0_{face}.f32") for name in ("baseline", "candidate")}
+            for face in FACES}
+    result = {"mip0_sha256": mip0,
+              "mip0_baseline_candidate_bitwise_equal": all(v["baseline"] == v["candidate"] for v in mip0.values())}
+    if case == "directional":
+        # (1/pi) integral_{n.l>0} (0.5+0.5*l) (n.l) dOmega = 0.5+n/3.
+        # The analytic source is continuous; stored latlong texels approximate it.
+        reference = .5 + probes / 3
+        values = {name: asset.sample(probes, 1.) for name, asset in assets.items()}
+        design = np.concatenate((np.ones((len(probes), 1)), probes), axis=1)
+        fits = {}
+        for r in (.05, 1.):
+            fits[str(r)] = {}
+            for name, asset in assets.items():
+                colors = values[name] if r == 1. else asset.sample(probes, r)
+                coefficients = np.linalg.lstsq(design, colors, rcond=None)[0]
+                matrix = coefficients[1:]
+                diagonal = np.diag(matrix)
+                off_diagonal = matrix - np.diag(diagonal)
+                fits[str(r)][name] = {
+                    "coefficients_constant_x_y_z_rows_rgb_columns": coefficients.tolist(),
+                    "max_abs_off_diagonal": float(np.max(np.abs(off_diagonal))),
+                    "positive_dominant_diagonal": bool(np.all(diagonal > 0) and
+                                                      np.min(diagonal) > np.max(np.abs(off_diagonal))),
+                    "fit_relative_rms_residual": metrics(colors, design @ coefficients)["all"]["relative_rmse"],
+                }
+        result["r1_closed_form_normalized_cosine"] = {
+            "source_function": "L(direction)=0.5+0.5*direction, independently in RGB",
+            "reference_function": "normalized cosine convolution=0.5+normal/3",
+            "formula": "(1/pi) integral over normal.light>0 of L(light)*(normal.light)*dOmega",
+            "scope": "Exact for this continuous analytic field and normalized cosine kernel only; r=1 N=V normalized GGX prefilter has this kernel. Does not validate a full physical BRDF renderer. Measured error also includes discrete input projection, output grids and common cubemap reconstruction.",
+            "vs_continuous_analytic_reference": {name: metrics(v, reference) for name, v in values.items()},
+            "candidate_vs_baseline": metrics(values["candidate"], values["baseline"]),
+        }
+        ideal_tails = {}
+        for name, asset in assets.items():
+            n = asset.levels[-1].size
+            q = (np.arange(n) + .5) / n * 2 - 1
+            u, v = np.meshgrid(q, q)
+            # Store exact closed-form center values in this asset's cube space;
+            # the x/z swap is its own inverse for the real cmgen panorama path.
+            faces = [.5 + asset.transform(face_direction(face, u, v)) / 3 for face in range(6)]
+            ideal = Cubemap(faces).sample(asset.transform(probes))
+            ideal_tails[name] = {
+                "tail_face_size": n,
+                "center_values": "exact continuous normalized-cosine field at each texel center, aligned to the method's stored cube orientation",
+                "ideal_tail_reconstruction_vs_closed_form": metrics(ideal, reference),
+                "actual_tail_vs_ideal_tail_reconstruction": metrics(values[name], ideal),
+            }
+        result["r1_ideal_tail_only_model"] = {
+            "construction": "Evaluate 0.5+direction/3 at actual tail face texel centers, then reconstruct the six ideal faces with the same common Cubemap sampler at the same 4096 directions",
+            "scope": "Isolates output-grid reconstruction in this idealized analytic model; no bake, source mips or FIS. These errors are not an additive attribution of total production error: source/filter/grid errors can cancel or compound.",
+            "methods": ideal_tails,
+        }
+        result["directional_affine_fits"] = {
+            "interpretation": "Positive dominant RGB-axis diagonal supports unchanged axis orientation for this signal; fitting does not prove correctness for arbitrary illumination.",
+            "roughnesses": fits,
+        }
+    elif case == "lamps":
+        lamps = []
+        for center in ([1., .15, 1.], [1., 1., 1.]):
+            axis = normalize(np.asarray(center))
+            tangent = normalize(np.cross(np.array([0., 1., 0.]), axis))
+            bitangent = np.cross(axis, tangent)
+            u, v = np.meshgrid(np.deg2rad(np.linspace(-4.5, 4.5, 31)),
+                               np.deg2rad(np.linspace(-4.5, 4.5, 31)))
+            rays = normalize(axis + np.tan(u.reshape(-1, 1)) * tangent + np.tan(v.reshape(-1, 1)) * bitangent)
+            maxima = {}
+            for name, asset in assets.items():
+                rgb = asset.sample(rays, .05)
+                luma = rgb @ LUMA
+                index = int(np.argmax(luma))
+                maxima[name] = {"grid_index": index, "direction": rays[index].tolist(), "peak_luma": float(luma[index]),
+                                "center_luma": float(asset.sample(axis[None, :], .05)[0] @ LUMA)}
+            same = maxima["baseline"]["grid_index"] == maxima["candidate"]["grid_index"]
+            angle = 0. if same else float(np.rad2deg(np.arccos(np.clip(np.dot(
+                maxima["baseline"]["direction"], maxima["candidate"]["direction"]), -1, 1))))
+            lamps.append({"center_direction": axis.tolist(), "actual_outputs": maxima,
+                          "baseline_candidate_peak_equal_on_grid": same,
+                          "candidate_baseline_peak_angle_degrees": angle,
+                          "candidate_baseline_peak_luma_ratio": maxima["candidate"]["peak_luma"] / max(maxima["baseline"]["peak_luma"], 1e-12)})
+        result["r005_local_lamp_peaks"] = {
+            "roughness": .05, "grid": "31x31 tangent-angle grid, +/-4.5 degrees on each axis, 0.3 degree step",
+            "scope": "Peak locations are compared on this finite grid; equality does not bound a sub-grid peak displacement. Peak values are linear luminance before exposure or encoding.",
+            "lamps": lamps,
+        }
+    return result
+
+
 def tonemap(rgb, exposure):
     x = np.maximum(rgb * exposure, 0)
     mapped = np.clip(x * (2.51 * x + .03) / (x * (2.43 * x + .59) + .14), 0, 1)
@@ -372,9 +511,19 @@ def analyze(args, paths, cases, sizes):
     probes = fibonacci(4096)
     mask, normals, reflected, nv = sphere_geometry(args.sphere_size)
     rows, cases_report, regressions = [], [], []
+    producer_hashes = {"cmgen": CMGEN_SHA256}
+    for name, binary in (("baseline", args.baseline_exporter), ("candidate", args.candidate_exporter)):
+        if binary is not None:
+            producer_hashes[name] = digest(binary.resolve())
     for case in cases:
         for size in sizes:
             runs = args.out / "runs" / case / str(size)
+            source_sha256 = digest(paths[case])
+            verified = {}
+            for name in ("baseline", "candidate", "cmgen"):
+                verified[name] = verify_saved_generation(runs / name, source_sha256, size, args.samples,
+                                                         name, producer_hashes.get(name))
+                producer_hashes.setdefault(name, verified[name]["identity"]["producer_sha256"])
             assets = {name: Asset(runs / name / paths[case].stem if name == "cmgen" else runs / name, name == "cmgen")
                       for name in ("baseline", "candidate", "cmgen")}
             baseline_lut = runs / "baseline/brdf-lut.png"
@@ -423,6 +572,8 @@ def analyze(args, paths, cases, sizes):
                 linear_error_maps(subdir, images, mask)
             details = {"case": case, "size": size, "source_sha256": digest(paths[case]), "brdf_png_sha256": digest(baseline_lut),
                        "exposure": exposure, "specular": diagnostics, "diffuse_vs_actual_cmgen": irrigation,
+                       "verified_generation": verified,
+                       "synthetic_diagnostics": synthetic_diagnostics(case, assets, runs, probes),
                        "level_dimensions": {name: [level.size for level in asset.levels] for name, asset in assets.items()}}
             save_json(directory / "metrics.json", details)
             cases_report.append(details)
@@ -438,6 +589,7 @@ def analyze(args, paths, cases, sizes):
               "material": "ordinary split-sum; shared actual baseline production PNG LUT/material; each method's actual diffuse; no direct light; orthographic sphere yaw35",
               "analysis_tool_sha256": digest(Path(__file__)),
               "analysis_dependencies": {"numpy": np.__version__, "OpenEXR": OpenEXR.__version__, "Pillow": Image.__version__},
+              "verified_producer_hashes_fixed_across_matrix": producer_hashes,
               "bright_region": "top 5% reference luminance, reported separately from all probes; ties can exceed 5%",
               "sphere_size": args.sphere_size, "uniform_probe_count": len(probes), "roughnesses": ROUGHNESSES,
               "cases": cases_report, "observed_regressions": regressions,
@@ -451,6 +603,25 @@ def analyze(args, paths, cases, sizes):
     summary += [f"- {item['case']} {item['size']} r={item['roughness']:g} {item['region']}: {item['baseline_relative_rmse']:.6%} -> {item['candidate_relative_rmse']:.6%}." for item in regressions]
     if not regressions:
         summary.append("No increases above the reporting floor (0.1% relative or 1e-7 absolute) in uniform specular probe RMSE.")
+    synthetic = [case for case in cases_report if case["synthetic_diagnostics"] is not None]
+    if synthetic:
+        summary += ["", "## Independent synthetic diagnostics", "",
+                    "These checks apply to the known analytic signals only; they are not a full physical BRDF reference renderer."]
+        for case in synthetic:
+            diagnostics = case["synthetic_diagnostics"]
+            summary.append(f"- {case['case']} {case['size']}: mip0 baseline/candidate float bytes equal: {diagnostics['mip0_baseline_candidate_bitwise_equal']}.")
+            if "r1_closed_form_normalized_cosine" in diagnostics:
+                reference = diagnostics["r1_closed_form_normalized_cosine"]
+                values = reference["vs_continuous_analytic_reference"]
+                summary.append(f"- Directional {case['size']} r=1 against exact continuous normalized-cosine field 0.5+n/3: baseline {values['baseline']['all']['relative_rmse']:.6%}, candidate {values['candidate']['all']['relative_rmse']:.6%}, actual cmgen {values['cmgen']['all']['relative_rmse']:.6%}. Candidate/baseline change {reference['candidate_vs_baseline']['all']['relative_rmse']:.6%}.")
+                fits = diagnostics["directional_affine_fits"]["roughnesses"]
+                summary.append(f"- Directional {case['size']} candidate affine RGB-axis fit positive/dominant: r=.05 {fits['0.05']['candidate']['positive_dominant_diagonal']}, r=1 {fits['1.0']['candidate']['positive_dominant_diagonal']}. Full coefficients/residuals are in report.json.")
+                tails = diagnostics["r1_ideal_tail_only_model"]["methods"]
+                summary.append(f"- Directional {case['size']} ideal tail-only reconstruction versus closed form: candidate {tails['candidate']['tail_face_size']}x{tails['candidate']['tail_face_size']} {tails['candidate']['ideal_tail_reconstruction_vs_closed_form']['all']['relative_rmse']:.6%}; cmgen {tails['cmgen']['tail_face_size']}x{tails['cmgen']['tail_face_size']} {tails['cmgen']['ideal_tail_reconstruction_vs_closed_form']['all']['relative_rmse']:.6%}. This isolates an ideal grid model and does not additively attribute the production error.")
+            if "r005_local_lamp_peaks" in diagnostics:
+                for index, lamp in enumerate(diagnostics["r005_local_lamp_peaks"]["lamps"]):
+                    summary.append(f"- Lamps {case['size']} r=.05 lamp {index}: baseline/candidate peak positions equal on 0.3-degree grid: {lamp['baseline_candidate_peak_equal_on_grid']}; peak luminance ratio {lamp['candidate_baseline_peak_luma_ratio']:.9f}.")
+        summary += ["", "The continuous analytic cosine check includes the pipeline's discrete projection and output-grid reconstruction error. A small analytic regression is a real deterministic difference and must not be relabeled random noise. Fixed minimum output size and source-FIS conventions remain outside this phase."]
     summary += ["", "## Completion status", "", "This report records diagnostics. Visual inspection, analytic correctness tests and separate production-process performance gates must all pass before phase two is marked complete."]
     (args.out / "report.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
     print(f"Wrote {args.out / 'report.md'}; preserved {len(regressions)} diagnostic regressions", flush=True)
@@ -473,7 +644,67 @@ def self_check():
             assert np.max(np.ptp(colors, axis=0)) < 1e-5
     value = metrics(np.ones((100, 3)), np.ones((100, 3)))
     assert value["all"]["rmse"] == 0 and value["all"]["mean_luma_ratio"] == 1
-    print("Self-check passed: common cubemap orientation, centers, constants, corners and metrics")
+    saved_generation_self_check()
+    print("Self-check passed: common cubemap orientation, centers, constants, corners, metrics and saved-generation integrity")
+
+
+def saved_generation_self_check():
+    """Tiny integrity regressions, isolated in a cleaned task-owned target dir."""
+    target = (ROOT / "target").resolve()
+    if not target.is_relative_to(ROOT.resolve()):
+        raise ValueError("Self-check temporary directory must stay inside the repository")
+    target.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="source-sampling-selfcheck-", dir=target) as temporary:
+        directory = Path(temporary).resolve()
+        if not directory.is_relative_to(target):
+            raise ValueError("Unexpected self-check temporary path")
+        raw_path = directory / "m0_px.f32"
+        original_raw = struct.pack("<3f", .25, 1., 4.)
+        raw_path.write_bytes(original_raw)
+        source_sha256, producer_sha256 = "a" * 64, "b" * 64
+        record = {"identity": {"schema": 1, "source_sha256": source_sha256,
+                               "producer_sha256": producer_sha256, "size": 1, "samples": 32, "tool": "baseline"},
+                  "returncode": 0, "outputs_sha256": {raw_path.name: digest(raw_path)}}
+        manifest = directory / "generation.json"
+
+        def write_record(value=record):
+            save_json(manifest, value)
+
+        def verify():
+            return verify_saved_generation(directory, source_sha256, 1, 32, "baseline", producer_sha256)
+
+        def expect_rejected(label):
+            try:
+                verify()
+            except (ValueError, OSError):
+                return
+            raise AssertionError(f"Saved-generation self-check accepted {label}")
+
+        write_record()
+        checked = verify()
+        assert checked["verified_output_count"] == 1 and checked["exact_output_inventory_and_hashes_match"]
+        for key in ("producer_sha256", "schema"):
+            missing = json.loads(json.dumps(record))
+            del missing["identity"][key]
+            write_record(missing)
+            expect_rejected(f"missing {key}")
+        for key, value in (("schema", 2), ("schema", True), ("producer_sha256", "not-a-sha256"),
+                           ("producer_sha256", None), ("producer_sha256", "c" * 64)):
+            invalid = json.loads(json.dumps(record))
+            invalid["identity"][key] = value
+            write_record(invalid)
+            expect_rejected(f"invalid or cross-case mismatched {key}={value!r}")
+        write_record()
+        extra = directory / "m1_px.f32"
+        extra.write_bytes(original_raw)
+        expect_rejected("extra unrecorded mip")
+        extra.unlink()
+        raw_path.write_bytes(struct.pack("<3f", .5, 1., 4.))
+        expect_rejected("modified recorded raw bytes")
+        raw_path.unlink()
+        expect_rejected("missing recorded raw file")
+        raw_path.write_bytes(original_raw)
+        assert verify()["exact_output_inventory_and_hashes_match"]
 
 
 def main():
