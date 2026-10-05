@@ -5,8 +5,10 @@ use std::f32::consts::{PI, TAU};
 use glam::{Vec2, Vec3};
 use rayon::prelude::*;
 
+pub(crate) use crate::cubemap::cubemap_direction;
+use crate::cubemap::{direction_to_face_uv, CubemapBorders};
 use crate::source_image::{
-    encode_png_image, sample_environment, EnvironmentSource, Rotation, SourceImage,
+    encode_png_image, EnvironmentSampler, EnvironmentSource, Rotation, SourceImage,
 };
 use crate::{
     BakeOptions, BakeQuality, BakeReport, ChunkData, ChunkEntry, ChunkRecord, EncodingKind, Face,
@@ -91,6 +93,7 @@ impl SampleKernelCache {
 struct BakeContext<'a> {
     base_cubemap: CubemapFaces,
     cubemap_mips: Vec<CubemapFaces>,
+    cubemap_borders: Vec<CubemapBorders>,
     direction_caches: BTreeMap<u32, DirectionCache>,
     kernel_cache: SampleKernelCache,
     _source: &'a EnvironmentSource,
@@ -102,6 +105,7 @@ impl<'a> BakeContext<'a> {
         let base_directions = build_direction_cache(base_size);
         let base_cubemap = render_cubemap_faces(source, rotation, &base_directions, base_size);
         let cubemap_mips = build_cubemap_mip_chain(&base_cubemap);
+        let cubemap_borders = cubemap_mips.iter().map(CubemapBorders::new).collect();
 
         let mut direction_caches = BTreeMap::new();
         direction_caches.insert(base_size, base_directions);
@@ -109,6 +113,7 @@ impl<'a> BakeContext<'a> {
         Self {
             base_cubemap,
             cubemap_mips,
+            cubemap_borders,
             direction_caches,
             kernel_cache: SampleKernelCache::default(),
             _source: source,
@@ -230,18 +235,6 @@ pub(crate) fn build_brdf_lut_chunk_entries(
     ))
 }
 
-pub(crate) fn cubemap_direction(face: Face, uv: Vec2) -> Vec3 {
-    match face {
-        Face::PositiveX => Vec3::new(1.0, -uv.y, -uv.x),
-        Face::NegativeX => Vec3::new(-1.0, -uv.y, uv.x),
-        Face::PositiveY => Vec3::new(uv.x, 1.0, uv.y),
-        Face::NegativeY => Vec3::new(uv.x, -1.0, -uv.y),
-        Face::PositiveZ => Vec3::new(uv.x, -uv.y, 1.0),
-        Face::NegativeZ => Vec3::new(-uv.x, -uv.y, -1.0),
-    }
-    .normalize_or_zero()
-}
-
 fn build_specular_mip_chain(
     context: &mut BakeContext<'_>,
     options: &BakeOptions,
@@ -276,7 +269,10 @@ fn build_cubemap_mip_chain(base_faces: &CubemapFaces) -> Vec<CubemapFaces> {
         if prev[0].width <= 1 && prev[0].height <= 1 {
             break;
         }
-        levels.push(array::from_fn(|index| downsample_half(&prev[index])));
+        let weights = BoxDownsampleWeights::new(prev[0].width, prev[0].height);
+        levels.push(array::from_fn(|index| {
+            downsample_half(&prev[index], weights.as_ref())
+        }));
     }
     levels
 }
@@ -304,23 +300,24 @@ fn render_cubemap_faces(
     direction_cache: &DirectionCache,
     size: u32,
 ) -> CubemapFaces {
+    let sampler = EnvironmentSampler::new(source);
     let faces = Face::all()
         .par_iter()
         .copied()
-        .map(|face| render_cubemap_face(source, rotation, &direction_cache[face.index()], size))
+        .map(|face| render_cubemap_face(&sampler, rotation, &direction_cache[face.index()], size))
         .collect::<Vec<_>>();
     vec_into_cubemap_faces(faces)
 }
 
 fn render_cubemap_face(
-    source: &EnvironmentSource,
+    source: &EnvironmentSampler<'_>,
     rotation: Rotation,
     directions: &[Vec3],
     size: u32,
 ) -> SourceImage {
     let pixels = directions
         .iter()
-        .map(|direction| sample_environment(source, *direction, rotation))
+        .map(|direction| source.sample(*direction, rotation))
         .collect();
     SourceImage::from_pixels(size, size, pixels)
 }
@@ -350,6 +347,7 @@ fn render_filtered_faces(
         .map(|face| {
             render_filtered_face(
                 &context.cubemap_mips,
+                &context.cubemap_borders,
                 &directions[face.index()],
                 size,
                 kernel,
@@ -363,8 +361,10 @@ fn render_filtered_faces(
     vec_into_cubemap_faces(faces)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_filtered_face(
     cubemap_mips: &[CubemapFaces],
+    cubemap_borders: &[CubemapBorders],
     directions: &[Vec3],
     size: u32,
     kernel: &[KernelSample],
@@ -377,6 +377,7 @@ fn render_filtered_face(
         .map(|direction| {
             filter_direction(
                 cubemap_mips,
+                cubemap_borders,
                 *direction,
                 kernel,
                 distribution,
@@ -390,6 +391,7 @@ fn render_filtered_face(
 
 fn filter_direction(
     cubemap_mips: &[CubemapFaces],
+    cubemap_borders: &[CubemapBorders],
     direction: Vec3,
     kernel: &[KernelSample],
     distribution: Distribution,
@@ -400,7 +402,7 @@ fn filter_direction(
     if matches!(distribution, Distribution::Ggx)
         && (roughness <= MIN_ROUGHNESS || kernel.len() <= 1)
     {
-        return sample_cubemap_lod(cubemap_mips, normal, 0.0);
+        return sample_cubemap_lod(cubemap_mips, cubemap_borders, normal, 0.0);
     }
 
     let tbn = generate_tbn(normal);
@@ -412,11 +414,11 @@ fn filter_direction(
             for sample in kernel {
                 let light = (tbn * sample.local_direction).normalize_or_zero();
                 let lod = compute_cubemap_lod(sample.pdf, sample_count, base_width, cubemap_mips);
-                accumulated += sample_cubemap_lod(cubemap_mips, light, lod);
+                accumulated += sample_cubemap_lod(cubemap_mips, cubemap_borders, light, lod);
             }
 
             if kernel.is_empty() {
-                sample_cubemap_lod(cubemap_mips, normal, 0.0)
+                sample_cubemap_lod(cubemap_mips, cubemap_borders, normal, 0.0)
             } else {
                 accumulated / kernel.len() as f32
             }
@@ -434,7 +436,8 @@ fn filter_direction(
                 if ndotl > 0.0 {
                     let lod =
                         compute_cubemap_lod(sample.pdf, sample_count, base_width, cubemap_mips);
-                    accumulated += sample_cubemap_lod(cubemap_mips, light, lod) * ndotl;
+                    accumulated +=
+                        sample_cubemap_lod(cubemap_mips, cubemap_borders, light, lod) * ndotl;
                     total_weight += ndotl;
                 }
             }
@@ -442,7 +445,7 @@ fn filter_direction(
             if total_weight > 0.0 {
                 accumulated / total_weight
             } else {
-                sample_cubemap_lod(cubemap_mips, normal, 0.0)
+                sample_cubemap_lod(cubemap_mips, cubemap_borders, normal, 0.0)
             }
         }
     }
@@ -464,56 +467,97 @@ fn compute_cubemap_lod(
     (0.5 * texel_ratio.max(1.0).log2()).clamp(0.0, max_lod)
 }
 
-fn sample_cubemap_lod(cubemap_mips: &[CubemapFaces], direction: Vec3, lod: f32) -> Vec3 {
+fn sample_cubemap_lod(
+    cubemap_mips: &[CubemapFaces],
+    cubemap_borders: &[CubemapBorders],
+    direction: Vec3,
+    lod: f32,
+) -> Vec3 {
     let max_level = (cubemap_mips.len() - 1) as f32;
     let lod = lod.clamp(0.0, max_level);
     let level_low = lod.floor() as usize;
     let level_high = (level_low + 1).min(cubemap_mips.len() - 1);
     let fract = lod - lod.floor();
 
-    let sample_low = sample_cubemap(&cubemap_mips[level_low], direction);
+    let (face, uv) = direction_to_face_uv(direction.normalize_or_zero());
+    let sample_low = cubemap_borders[level_low].sample_bilinear(&cubemap_mips[level_low], face, uv);
     if level_low == level_high || fract < 1.0e-4 {
         return sample_low;
     }
 
-    let sample_high = sample_cubemap(&cubemap_mips[level_high], direction);
+    let sample_high =
+        cubemap_borders[level_high].sample_bilinear(&cubemap_mips[level_high], face, uv);
     sample_low.lerp(sample_high, fract)
 }
 
-fn sample_cubemap(faces: &CubemapFaces, direction: Vec3) -> Vec3 {
-    let (face, uv) = direction_to_face_uv(direction.normalize_or_zero());
-    faces[face.index()].sample_bilinear(uv, false)
+struct AxisOverlap {
+    first: u32,
+    weights: Vec<f64>,
 }
 
-fn direction_to_face_uv(direction: Vec3) -> (Face, Vec2) {
-    let abs = direction.abs();
-    let (face, u, v, major_axis) = if abs.x >= abs.y && abs.x >= abs.z {
-        if direction.x >= 0.0 {
-            (Face::PositiveX, -direction.z, -direction.y, abs.x)
-        } else {
-            (Face::NegativeX, direction.z, -direction.y, abs.x)
-        }
-    } else if abs.y >= abs.x && abs.y >= abs.z {
-        if direction.y >= 0.0 {
-            (Face::PositiveY, direction.x, direction.z, abs.y)
-        } else {
-            (Face::NegativeY, direction.x, -direction.z, abs.y)
-        }
-    } else if direction.z >= 0.0 {
-        (Face::PositiveZ, direction.x, -direction.y, abs.z)
-    } else {
-        (Face::NegativeZ, -direction.x, -direction.y, abs.z)
-    };
-
-    let major_axis = major_axis.max(1.0e-8);
-    let uv = Vec2::new(0.5 * (u / major_axis + 1.0), 0.5 * (v / major_axis + 1.0));
-    (face, uv)
+struct BoxDownsampleWeights {
+    horizontal: Vec<AxisOverlap>,
+    vertical: Vec<AxisOverlap>,
 }
 
-fn downsample_half(image: &SourceImage) -> SourceImage {
+impl BoxDownsampleWeights {
+    fn new(width: u32, height: u32) -> Option<Self> {
+        let odd_width = width > 1 && width & 1 != 0;
+        let odd_height = height > 1 && height & 1 != 0;
+        if !odd_width && !odd_height {
+            return None;
+        }
+        Some(Self {
+            horizontal: Self::axis_overlaps(width, (width / 2).max(1)),
+            vertical: Self::axis_overlaps(height, (height / 2).max(1)),
+        })
+    }
+
+    fn axis_overlaps(source_size: u32, target_size: u32) -> Vec<AxisOverlap> {
+        let scale = source_size as f64 / target_size as f64;
+        (0..target_size)
+            .map(|target| {
+                let start = target as f64 * scale;
+                let end = (target + 1) as f64 * scale;
+                let first = start.floor() as u32;
+                let last = (end.ceil() as u32).min(source_size);
+                let weights = (first..last)
+                    .map(|source| ((source + 1) as f64).min(end) - (source as f64).max(start))
+                    .map(|overlap| overlap / (end - start))
+                    .collect();
+                AxisOverlap { first, weights }
+            })
+            .collect()
+    }
+}
+
+fn downsample_half(image: &SourceImage, weights: Option<&BoxDownsampleWeights>) -> SourceImage {
     let new_width = (image.width / 2).max(1);
     let new_height = (image.height / 2).max(1);
     let mut result = SourceImage::new(new_width, new_height);
+    if let Some(weights) = weights {
+        for (y, vertical) in weights.vertical.iter().enumerate() {
+            for (x, horizontal) in weights.horizontal.iter().enumerate() {
+                let mut sum = [0.0_f64; 3];
+                for (dy, &wy) in vertical.weights.iter().enumerate() {
+                    for (dx, &wx) in horizontal.weights.iter().enumerate() {
+                        let color =
+                            image.get(horizontal.first + dx as u32, vertical.first + dy as u32);
+                        let weight = wx * wy;
+                        sum[0] += color.x as f64 * weight;
+                        sum[1] += color.y as f64 * weight;
+                        sum[2] += color.z as f64 * weight;
+                    }
+                }
+                result.set(
+                    x as u32,
+                    y as u32,
+                    Vec3::new(sum[0] as f32, sum[1] as f32, sum[2] as f32),
+                );
+            }
+        }
+        return result;
+    }
     for y in 0..new_height {
         for x in 0..new_width {
             let sx = x * 2;
@@ -758,6 +802,133 @@ mod tests {
     use super::*;
     use crate::source_image::EnvironmentSource;
 
+    fn constant_cube(size: u32, color: Vec3) -> CubemapFaces {
+        array::from_fn(|_| {
+            SourceImage::from_pixels(size, size, vec![color; (size * size) as usize])
+        })
+    }
+
+    #[test]
+    fn trilinear_sampling_interpolates_integer_fractional_and_clamped_lods() {
+        let colors = [
+            Vec3::new(0.125, 4.0, 1024.0),
+            Vec3::new(0.5, 16.0, 32.0),
+            Vec3::new(2.0, 1.0, 4096.0),
+            Vec3::new(0.0, 8.0, 0.25),
+        ];
+        let mips: Vec<_> = [8, 4, 2, 1]
+            .into_iter()
+            .zip(colors)
+            .map(|(size, color)| constant_cube(size, color))
+            .collect();
+        let borders: Vec<_> = mips.iter().map(CubemapBorders::new).collect();
+        for lod in [-1.0_f32, 0.0, 0.25, 0.75, 1.0, 1.5, 2.0, 2.75, 3.0, 4.0] {
+            let clamped = lod.clamp(0.0, 3.0);
+            let lower = clamped.floor() as usize;
+            let upper = (lower + 1).min(3);
+            let fraction = clamped - lower as f32;
+            let expected = colors[lower] * (1.0 - fraction) + colors[upper] * fraction;
+            for direction in [
+                Vec3::X,
+                Vec3::NEG_Y,
+                Vec3::NEG_Z,
+                Vec3::new(1.0, 1.0, 0.3),
+                Vec3::new(-1.0, 1.0, -1.0),
+            ] {
+                let actual = sample_cubemap_lod(&mips, &borders, direction, lod);
+                assert!(
+                    (actual - expected).abs().max_element()
+                        <= 2.0e-6 * expected.max_element().max(1.0),
+                    "LOD {lod}, direction {direction}, actual {actual}, expected {expected}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn fractional_lod_uses_neighbor_faces_at_both_source_levels() {
+        let level_colors = [
+            [1.0_f32, 7.0, 19.0, 23.0, 41.0, 59.0],
+            [3.0, 11.0, 29.0, 37.0, 61.0, 83.0],
+        ];
+        let mips: Vec<CubemapFaces> = [8, 4]
+            .into_iter()
+            .zip(level_colors)
+            .map(|(size, colors)| {
+                array::from_fn(|face| {
+                    SourceImage::from_pixels(
+                        size,
+                        size,
+                        vec![Vec3::splat(colors[face]); (size * size) as usize],
+                    )
+                })
+            })
+            .collect();
+        let borders: Vec<_> = mips.iter().map(CubemapBorders::new).collect();
+        for lod in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            for (direction, adjacent) in [
+                (Vec3::new(1.0, 0.0, 1.0), &[0_usize, 4][..]),
+                (Vec3::new(-1.0, -1.0, 0.0), &[1, 3][..]),
+                (Vec3::new(0.0, 1.0, -1.0), &[2, 5][..]),
+                (Vec3::new(1.0, 1.0, 1.0), &[0, 2, 4][..]),
+                (Vec3::new(-1.0, -1.0, -1.0), &[1, 3, 5][..]),
+            ] {
+                let means = level_colors.map(|colors| {
+                    adjacent.iter().map(|&face| colors[face]).sum::<f32>() / adjacent.len() as f32
+                });
+                let expected = means[0] * (1.0 - lod) + means[1] * lod;
+                let actual = sample_cubemap_lod(&mips, &borders, direction, lod);
+                assert!(
+                    (actual - Vec3::splat(expected)).abs().max_element() <= 1.0e-5,
+                    "LOD {lod}, direction {direction}, actual {actual}, expected {expected}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn complete_specular_and_irradiance_filters_preserve_constant_hdr_inputs() {
+        for color in [
+            Vec3::ZERO,
+            Vec3::new(0.125, 16.0, 4096.0),
+            Vec3::new(0.03, 23.75, 35000.0),
+        ] {
+            for size in [1, 7, 16] {
+                let options = BakeOptions {
+                    cube_size: size,
+                    irradiance_size: 3,
+                    rotation_degrees: 37.0,
+                    sample_count: 1024,
+                    quality: BakeQuality::High,
+                    ..BakeOptions::default()
+                };
+                let mip_count = u32::BITS - size.leading_zeros();
+                for source in [
+                    EnvironmentSource::Latlong(SourceImage::from_pixels(11, 7, vec![color; 77])),
+                    EnvironmentSource::Cubemap(constant_cube(size, color)),
+                ] {
+                    let specular = build_specular_raw(&source, &options, mip_count);
+                    assert_eq!(specular.len(), mip_count as usize);
+                    let irradiance = build_irradiance_raw(&source, &options);
+                    for pixel in specular
+                        .iter()
+                        .flatten()
+                        .chain(irradiance.iter())
+                        .flat_map(|image| image.pixels.iter())
+                    {
+                        for channel in 0..3 {
+                            let tolerance = 2.0e-5 * color[channel].abs().max(1.0);
+                            assert!(
+                                (pixel[channel] - color[channel]).abs() <= tolerance,
+                                "size {size}, expected {color}, actual {pixel}, channel {channel}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn hotspot_latlong(width: u32, height: u32) -> SourceImage {
         let mut image = SourceImage::new(width, height);
         for y in 0..height {
@@ -793,6 +964,219 @@ mod tests {
                     .sum::<f32>()
             })
             .sum()
+    }
+
+    fn cube_uv_mean(image: &SourceImage) -> [f64; 3] {
+        let mut sum = [0.0; 3];
+        for color in &image.pixels {
+            sum[0] += color.x as f64;
+            sum[1] += color.y as f64;
+            sum[2] += color.z as f64;
+        }
+        sum.map(|channel| channel / image.pixels.len() as f64)
+    }
+
+    // Integrate the piecewise-constant image through a continuous summed-area
+    // table. This reference does not use the production overlap weights.
+    fn summed_area_box_reference(image: &SourceImage) -> SourceImage {
+        let stride = image.width as usize + 1;
+        let mut integral = vec![[0.0_f64; 3]; stride * (image.height as usize + 1)];
+        for y in 0..image.height as usize {
+            for x in 0..image.width as usize {
+                let color = image.get(x as u32, y as u32).to_array();
+                let index = (y + 1) * stride + x + 1;
+                for (channel, &value) in color.iter().enumerate() {
+                    integral[index][channel] = value as f64
+                        + integral[index - 1][channel]
+                        + integral[index - stride][channel]
+                        - integral[index - stride - 1][channel];
+                }
+            }
+        }
+        let evaluate = |x: f64, y: f64| -> [f64; 3] {
+            let ix = x.floor() as usize;
+            let iy = y.floor() as usize;
+            let next_x = (ix + 1).min(image.width as usize);
+            let next_y = (iy + 1).min(image.height as usize);
+            let tx = x - ix as f64;
+            let ty = y - iy as f64;
+            array::from_fn(|channel| {
+                let top = integral[iy * stride + ix][channel] * (1.0 - tx)
+                    + integral[iy * stride + next_x][channel] * tx;
+                let bottom = integral[next_y * stride + ix][channel] * (1.0 - tx)
+                    + integral[next_y * stride + next_x][channel] * tx;
+                top * (1.0 - ty) + bottom * ty
+            })
+        };
+        let width = (image.width / 2).max(1);
+        let height = (image.height / 2).max(1);
+        let mut result = SourceImage::new(width, height);
+        for y in 0..height {
+            for x in 0..width {
+                let left = x as f64 * image.width as f64 / width as f64;
+                let right = (x + 1) as f64 * image.width as f64 / width as f64;
+                let top = y as f64 * image.height as f64 / height as f64;
+                let bottom = (y + 1) as f64 * image.height as f64 / height as f64;
+                let a = evaluate(left, top);
+                let b = evaluate(right, top);
+                let c = evaluate(left, bottom);
+                let d = evaluate(right, bottom);
+                let area = (right - left) * (bottom - top);
+                result.set(
+                    x,
+                    y,
+                    Vec3::from_array(array::from_fn(|channel| {
+                        ((d[channel] - c[channel] - b[channel] + a[channel]) / area) as f32
+                    })),
+                );
+            }
+        }
+        result
+    }
+
+    #[test]
+    fn source_mip_box_filter_matches_independent_rectangle_integrals() {
+        for (width, height) in [
+            (3, 3),
+            (5, 5),
+            (6, 6),
+            (7, 7),
+            (255, 255),
+            (3, 2),
+            (2, 7),
+            (1, 5),
+            (5, 1),
+        ] {
+            let mut image = SourceImage::new(width, height);
+            for y in 0..height {
+                for x in 0..width {
+                    image.set(
+                        x,
+                        y,
+                        Vec3::new(
+                            if x == width - 1 { 17.25 } else { 0.0 },
+                            if y == height - 1 { 30.5 } else { 0.0 },
+                            ((x * 13 + y * 7) % 53) as f32 / 7.0,
+                        ),
+                    );
+                }
+            }
+            let weights = BoxDownsampleWeights::new(width, height);
+            let actual = downsample_half(&image, weights.as_ref());
+            let expected = summed_area_box_reference(&image);
+            assert_eq!(
+                (actual.width, actual.height),
+                (expected.width, expected.height)
+            );
+            for (index, (actual, expected)) in
+                actual.pixels.iter().zip(&expected.pixels).enumerate()
+            {
+                let tolerance = 2.0e-6 * expected.abs().max_element().max(1.0);
+                assert!(
+                    (*actual - *expected).abs().max_element() <= tolerance,
+                    "{width}x{height}, pixel {index}: {actual:?} != {expected:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn source_mip_chain_preserves_cube_uv_mean_and_boundary_lights() {
+        for size in [3, 5, 6, 7, 255] {
+            let faces = array::from_fn(|face| {
+                let mut image = SourceImage::new(size, size);
+                for y in 0..size {
+                    for x in 0..size {
+                        image.set(
+                            x,
+                            y,
+                            Vec3::new(
+                                if x == size - 1 { 17.25 } else { 0.0 },
+                                if y == size - 1 { 30.5 } else { 0.0 },
+                                ((x * 13 + y * 7 + face as u32) % 53) as f32 / 7.0,
+                            ),
+                        );
+                    }
+                }
+                image
+            });
+            let expected_means = faces.each_ref().map(cube_uv_mean);
+            let chain = build_cubemap_mip_chain(&faces);
+            for mip in &chain {
+                for (face, expected) in mip.iter().zip(expected_means) {
+                    for (actual, expected) in cube_uv_mean(face).into_iter().zip(expected) {
+                        assert!(
+                            (actual - expected).abs() <= 2.0e-6 * expected.abs().max(1.0),
+                            "size {size}, mip width {}: {actual} != {expected}",
+                            face.width
+                        );
+                    }
+                }
+            }
+            let last = chain.last().unwrap();
+            assert_eq!((last[0].width, last[0].height), (1, 1));
+            for face in last {
+                assert!(face.get(0, 0).x > 0.0);
+                assert!(face.get(0, 0).y > 0.0);
+            }
+        }
+    }
+
+    #[test]
+    fn source_mip_box_filter_preserves_constant_hdr_and_singleton() {
+        let color = Vec3::new(0.125, 42.25, 65504.0);
+        for size in [1, 2, 3, 4, 5, 6, 7, 255, 256] {
+            let faces = array::from_fn(|_| {
+                SourceImage::from_pixels(size, size, vec![color; (size * size) as usize])
+            });
+            let chain = build_cubemap_mip_chain(&faces);
+            for actual in chain.iter().flatten().flat_map(|face| &face.pixels) {
+                assert!(
+                    (*actual - color).abs().max_element()
+                        <= 2.0e-6 * color.abs().max_element().max(1.0)
+                );
+            }
+            if size == 1 {
+                assert_eq!(chain.len(), 1);
+                assert_eq!(chain[0], faces);
+                assert_eq!(downsample_half(&faces[0], None), faces[0]);
+            }
+        }
+    }
+
+    #[test]
+    fn source_mip_even_box_filter_keeps_original_f32_arithmetic() {
+        for size in [2, 4, 6, 16, 256] {
+            let mut image = SourceImage::new(size, size);
+            for y in 0..size {
+                for x in 0..size {
+                    image.set(
+                        x,
+                        y,
+                        Vec3::new(
+                            ((x * 13 + y * 7) % 53) as f32 / 7.0,
+                            (x + y) as f32 * 0.001,
+                            ((x + 1) * (y + 1)) as f32 * 31.25,
+                        ),
+                    );
+                }
+            }
+            assert!(BoxDownsampleWeights::new(size, size).is_none());
+            let actual = downsample_half(&image, None);
+            for y in 0..actual.height {
+                for x in 0..actual.width {
+                    let expected = (image.get(x * 2, y * 2)
+                        + image.get(x * 2 + 1, y * 2)
+                        + image.get(x * 2, y * 2 + 1)
+                        + image.get(x * 2 + 1, y * 2 + 1))
+                        * 0.25;
+                    assert_eq!(
+                        actual.get(x, y).to_array().map(f32::to_bits),
+                        expected.to_array().map(f32::to_bits)
+                    );
+                }
+            }
+        }
     }
 
     #[test]

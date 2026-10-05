@@ -7,6 +7,7 @@ use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 mod bake_pipeline;
+mod cubemap;
 mod source_image;
 
 #[cfg(test)]
@@ -1665,6 +1666,96 @@ mod tests {
             bake_cubemap_to_ktx2_with_report(&input, options.clone()).unwrap();
         assert_eq!(ktx2, bake_cubemap_to_ktx2(&input, options).unwrap());
         assert_eq!(report, ktx2_report);
+        fs::remove_dir_all(&input_dir).ok();
+    }
+
+    fn assert_npot_output_geometry(
+        asset: &IblAsset,
+        ibla_report: &BakeReport,
+        ktx2: &[u8],
+        ktx2_report: &BakeReport,
+        size: u32,
+    ) {
+        let mut sizes = vec![size];
+        while *sizes.last().unwrap() > 1 {
+            sizes.push(sizes.last().unwrap() / 2);
+        }
+        let mip_count = sizes.len() as u32;
+        assert_eq!(asset.manifest.width, size);
+        assert_eq!(asset.manifest.height, size);
+        assert_eq!(asset.manifest.mip_count, mip_count);
+        assert_eq!(asset.manifest.face_count, 6);
+        assert_eq!(asset.chunk_table.len(), 6 * sizes.len());
+        assert!(validate_asset(asset).is_valid);
+        assert_eq!(ibla_report, ktx2_report);
+        assert_eq!(ibla_report.clipped_pixel_count, 0);
+        assert_eq!(
+            ibla_report.total_pixel_count,
+            sizes.iter().map(|size| u64::from(*size).pow(2) * 6).sum()
+        );
+        assert_ktx2_cubemap_header(ktx2, size, mip_count);
+
+        for (mip, &size) in sizes.iter().enumerate() {
+            for (face_index, &face) in Face::all().iter().enumerate() {
+                let index = mip * 6 + face_index;
+                let record = &asset.chunk_table[index];
+                assert_eq!(record.mip_level, mip as u32);
+                assert_eq!(record.face, Some(face));
+                assert_eq!((record.width, record.height), (size, size));
+                assert_eq!(png_dimensions(&asset.chunks[index].bytes), (size, size));
+            }
+            let index = 80 + mip * 24;
+            let offset = u64::from_le_bytes(ktx2[index..index + 8].try_into().unwrap());
+            let length = u64::from_le_bytes(ktx2[index + 8..index + 16].try_into().unwrap());
+            let uncompressed = u64::from_le_bytes(ktx2[index + 16..index + 24].try_into().unwrap());
+            let blocks = u64::from(size.div_ceil(4));
+            assert_eq!(uncompressed, blocks * blocks * 16 * 6);
+            assert!(length > 0);
+            assert!(offset + length <= ktx2.len() as u64);
+        }
+    }
+
+    #[test]
+    fn npot_specular_output_formats_preserve_geometry_and_report_counts() {
+        let input = unique_temp_path("npot-output-input").with_extension("png");
+        write_solid_png(&input, glam::Vec3::new(0.25, 0.5, 0.75));
+        for size in [3, 5, 6, 7, 255] {
+            let options = BakeOptions {
+                cube_size: size,
+                sample_count: 8,
+                quality: BakeQuality::Low,
+                ..BakeOptions::default()
+            };
+            let (asset, ibla_report) = bake_to_asset_with_report(&input, options.clone()).unwrap();
+            let (ktx2, ktx2_report) = bake_to_ktx2_with_report(&input, options).unwrap();
+            assert_npot_output_geometry(&asset, &ibla_report, &ktx2, &ktx2_report, size);
+        }
+        fs::remove_file(&input).ok();
+    }
+
+    #[test]
+    fn rotated_npot_cubemap_output_formats_exclude_source_borders_from_reports() {
+        let input_dir = unique_temp_path("npot-cubemap-input");
+        fs::create_dir_all(&input_dir).unwrap();
+        let input = CubemapInputPaths::from_face_order(std::array::from_fn(|face| {
+            let path = input_dir.join(format!("{face}.png"));
+            let image = single_color_image(5, 5, glam::Vec3::splat((face + 1) as f32 / 8.0));
+            fs::write(&path, encode_png_image(&image, EncodingKind::Srgb).unwrap()).unwrap();
+            path
+        }));
+        for size in [3, 7] {
+            let options = BakeOptions {
+                cube_size: size,
+                rotation_degrees: 27.5,
+                sample_count: 8,
+                quality: BakeQuality::Low,
+                ..BakeOptions::default()
+            };
+            let (asset, ibla_report) =
+                bake_cubemap_to_asset_with_report(&input, options.clone()).unwrap();
+            let (ktx2, ktx2_report) = bake_cubemap_to_ktx2_with_report(&input, options).unwrap();
+            assert_npot_output_geometry(&asset, &ibla_report, &ktx2, &ktx2_report, size);
+        }
         fs::remove_dir_all(&input_dir).ok();
     }
 
