@@ -100,8 +100,9 @@ differences. Its group RMS is `E`; the paired RMSE-difference envelope is `2*E`.
 These diagnostics are not rigorous error bounds.
 
 Expansion requires at least a five-percent relative RMSE reduction exceeding
-five times that difference envelope at two roughnesses under both budgets, in
-at least two nonconstant cases including an HDR. Any qualified nonconstant row
+five times that difference envelope at two GGX roughnesses in the same
+case/group/region under both budgets, in at least two nonconstant cases including
+an HDR. Any qualified nonconstant row
 whose regression exceeds five envelopes blocks expansion, even at one budget.
 Missing or uncertain required reference scopes also prevent a positive decision.
 
