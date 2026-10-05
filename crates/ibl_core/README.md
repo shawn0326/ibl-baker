@@ -20,6 +20,23 @@ The crate is responsible for:
 
 It stays independent from renderer-specific runtime upload paths.
 
+## Source Cubemap Filtering
+
+Cubemap input resampling and source mip lookups use seamless bilinear filtering.
+Each source level caches oriented neighboring edge pixels and averages the three
+incident face pixels at a corner. Trilinear lookups apply this reconstruction to
+both source levels. The internal border cache is excluded from output images and
+`BakeReport` pixel counts.
+
+Source mip dimensions continue to halve with integer division, down to one.
+Even dimensions retain the four-pixel equal-weight box filter. Odd dimensions
+use the full destination footprint, weighted by overlap in cube-face UV space,
+so the final source row and column contribute rather than being discarded.
+This is a box reconstruction policy, not solid-angle-weighted spherical reduction.
+
+These changes can alter baked pixels without changing face orientation,
+roughness-to-mip mapping, output dimensions, encoding, or file contracts.
+
 ## Bake Reports And RGB Ranges
 
 The report variants of the existing bake functions return `(output, BakeReport)`:

@@ -12,6 +12,7 @@ use image::Rgb;
 use image::{ImageFormat, ImageReader};
 use png::{BitDepth, ColorType};
 
+use crate::cubemap::{direction_to_face_uv, CubemapBorders};
 use crate::{CubemapInputPaths, EncodingKind, Face, IblError, SourceFormat};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -25,6 +26,35 @@ pub(crate) struct SourceImage {
 pub(crate) enum EnvironmentSource {
     Latlong(SourceImage),
     Cubemap([SourceImage; 6]),
+}
+
+pub(crate) struct EnvironmentSampler<'a> {
+    source: &'a EnvironmentSource,
+    borders: Option<CubemapBorders>,
+}
+
+impl<'a> EnvironmentSampler<'a> {
+    pub(crate) fn new(source: &'a EnvironmentSource) -> Self {
+        let borders = match source {
+            EnvironmentSource::Latlong(_) => None,
+            EnvironmentSource::Cubemap(faces) => Some(CubemapBorders::new(faces)),
+        };
+        Self { source, borders }
+    }
+
+    pub(crate) fn sample(&self, direction: Vec3, rotation: Rotation) -> Vec3 {
+        let rotated = rotate_direction_y(direction.normalize_or_zero(), rotation);
+        match self.source {
+            EnvironmentSource::Latlong(image) => sample_latlong(image, rotated),
+            EnvironmentSource::Cubemap(faces) => {
+                let (face, uv) = direction_to_face_uv(rotated);
+                self.borders
+                    .as_ref()
+                    .expect("cubemap input borders should exist")
+                    .sample_bilinear(faces, face, uv)
+            }
+        }
+    }
 }
 
 impl SourceImage {
@@ -198,21 +228,6 @@ pub(crate) fn load_environment_from_cubemap_paths(
     ))
 }
 
-pub(crate) fn sample_environment(
-    source: &EnvironmentSource,
-    direction: Vec3,
-    rotation: Rotation,
-) -> Vec3 {
-    let rotated = rotate_direction_y(direction.normalize_or_zero(), rotation);
-    match source {
-        EnvironmentSource::Latlong(image) => sample_latlong(image, rotated),
-        EnvironmentSource::Cubemap(faces) => {
-            let (face, uv) = direction_to_face_uv(rotated);
-            faces[face.index()].sample_bilinear(uv, false)
-        }
-    }
-}
-
 pub(crate) fn encode_png_image(
     image: &SourceImage,
     encoding: EncodingKind,
@@ -370,31 +385,6 @@ fn sample_latlong(source: &SourceImage, direction: Vec3) -> Vec3 {
     source.sample_bilinear(Vec2::new(u, v), true)
 }
 
-fn direction_to_face_uv(direction: Vec3) -> (Face, Vec2) {
-    let abs = direction.abs();
-    let (face, u, v, major_axis) = if abs.x >= abs.y && abs.x >= abs.z {
-        if direction.x >= 0.0 {
-            (Face::PositiveX, -direction.z, -direction.y, abs.x)
-        } else {
-            (Face::NegativeX, direction.z, -direction.y, abs.x)
-        }
-    } else if abs.y >= abs.x && abs.y >= abs.z {
-        if direction.y >= 0.0 {
-            (Face::PositiveY, direction.x, direction.z, abs.y)
-        } else {
-            (Face::NegativeY, direction.x, -direction.z, abs.y)
-        }
-    } else if direction.z >= 0.0 {
-        (Face::PositiveZ, direction.x, -direction.y, abs.z)
-    } else {
-        (Face::NegativeZ, -direction.x, -direction.y, abs.z)
-    };
-
-    let major_axis = major_axis.max(1.0e-8);
-    let uv = Vec2::new(0.5 * (u / major_axis + 1.0), 0.5 * (v / major_axis + 1.0));
-    (face, uv)
-}
-
 fn encode_pixels_to_rgba8(image: &SourceImage, encoding: EncodingKind) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(image.pixels.len() * 4);
 
@@ -507,6 +497,111 @@ mod tests {
     use super::*;
 
     #[test]
+    fn rotated_cubemap_sampling_matches_an_independent_direction_field() {
+        let size = 64;
+        let bases = [
+            (Vec3::X, Vec3::NEG_Z, Vec3::NEG_Y),
+            (Vec3::NEG_X, Vec3::Z, Vec3::NEG_Y),
+            (Vec3::Y, Vec3::X, Vec3::Z),
+            (Vec3::NEG_Y, Vec3::X, Vec3::NEG_Z),
+            (Vec3::Z, Vec3::X, Vec3::NEG_Y),
+            (Vec3::NEG_Z, Vec3::NEG_X, Vec3::NEG_Y),
+        ];
+        let source = EnvironmentSource::Cubemap(std::array::from_fn(|index| {
+            let (normal, right, down) = bases[index];
+            let mut image = SourceImage::new(size, size);
+            for y in 0..size {
+                for x in 0..size {
+                    let u = 2.0 * (x as f32 + 0.5) / size as f32 - 1.0;
+                    let v = 2.0 * (y as f32 + 0.5) / size as f32 - 1.0;
+                    let direction = (normal + right * u + down * v).normalize();
+                    image.set(x, y, (direction + Vec3::ONE) * 0.5);
+                }
+            }
+            image
+        }));
+        let sampler = EnvironmentSampler::new(&source);
+
+        for degrees in [0.0_f32, 37.0, 90.0, -90.0, 180.0, 360.0] {
+            // Evaluate rotation independently in f64, including the sign convention.
+            let angle = (degrees as f64).to_radians();
+            let (sin, cos) = angle.sin_cos();
+            for (normal, right, down) in bases {
+                // Endpoints include all twelve edges and eight three-face corners.
+                for u in [-1.0, -0.71, 0.0, 0.43, 1.0] {
+                    for v in [-1.0, -0.63, 0.0, 0.79, 1.0] {
+                        let direction = (normal + right * u + down * v).normalize();
+                        let expected_direction = Vec3::new(
+                            (direction.x as f64 * cos - direction.z as f64 * sin) as f32,
+                            direction.y,
+                            (direction.x as f64 * sin + direction.z as f64 * cos) as f32,
+                        );
+                        let expected = (expected_direction + Vec3::ONE) * 0.5;
+                        // A copied neighbor row reconstructs seam tangents with a
+                        // first-order texel error; face interiors are second order.
+                        let actual = sampler.sample(direction, Rotation::from_degrees(degrees));
+                        assert!(
+                            (actual - expected).abs().max_element()
+                                <= 0.25 / size as f32 + 2.0 / (size * size) as f32,
+                            "rotation {degrees}, direction {direction}, actual {actual}, expected {expected}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn quarter_turn_cubemap_rotation_preserves_exact_pixel_center_colors() {
+        let size = 64;
+        let bases = [
+            (Vec3::X, Vec3::NEG_Z, Vec3::NEG_Y),
+            (Vec3::NEG_X, Vec3::Z, Vec3::NEG_Y),
+            (Vec3::Y, Vec3::X, Vec3::Z),
+            (Vec3::NEG_Y, Vec3::X, Vec3::NEG_Z),
+            (Vec3::Z, Vec3::X, Vec3::NEG_Y),
+            (Vec3::NEG_Z, Vec3::NEG_X, Vec3::NEG_Y),
+        ];
+        let source = EnvironmentSource::Cubemap(std::array::from_fn(|index| {
+            let (normal, right, down) = bases[index];
+            let mut image = SourceImage::new(size, size);
+            for y in 0..size {
+                for x in 0..size {
+                    let u = 2.0 * (x as f32 + 0.5) / size as f32 - 1.0;
+                    let v = 2.0 * (y as f32 + 0.5) / size as f32 - 1.0;
+                    let direction = (normal + right * u + down * v).normalize();
+                    image.set(x, y, (direction + Vec3::ONE) * 0.5);
+                }
+            }
+            image
+        }));
+        let sampler = EnvironmentSampler::new(&source);
+        // Quarter-turn rotations map pixel centers onto exact centers of another
+        // face, so they do not incur seam reconstruction approximation.
+        for degrees in [90.0_f32, -90.0, 180.0] {
+            let angle = (degrees as f64).to_radians();
+            let (sin, cos) = angle.sin_cos();
+            for (normal, right, down) in bases {
+                for x in [0, 1, 31, 62, 63] {
+                    for y in [0, 1, 31, 62, 63] {
+                        let u = 2.0 * (x as f32 + 0.5) / size as f32 - 1.0;
+                        let v = 2.0 * (y as f32 + 0.5) / size as f32 - 1.0;
+                        let direction = (normal + right * u + down * v).normalize();
+                        let expected_direction = Vec3::new(
+                            (direction.x as f64 * cos - direction.z as f64 * sin) as f32,
+                            direction.y,
+                            (direction.x as f64 * sin + direction.z as f64 * cos) as f32,
+                        );
+                        let expected = (expected_direction + Vec3::ONE) * 0.5;
+                        let actual = sampler.sample(direction, Rotation::from_degrees(degrees));
+                        assert!((actual - expected).abs().max_element() <= 2.0e-6);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn cubemap_environment_sampling_hits_expected_face() {
         let cubemap = EnvironmentSource::Cubemap(std::array::from_fn(|index| {
             let mut image = SourceImage::new(2, 2);
@@ -518,11 +613,8 @@ mod tests {
             image
         }));
 
-        let color = sample_environment(
-            &cubemap,
-            Vec3::new(0.0, 0.0, 1.0),
-            Rotation::from_degrees(0.0),
-        );
+        let color = EnvironmentSampler::new(&cubemap)
+            .sample(Vec3::new(0.0, 0.0, 1.0), Rotation::from_degrees(0.0));
 
         assert_eq!(color, Vec3::splat(Face::PositiveZ.index() as f32));
     }

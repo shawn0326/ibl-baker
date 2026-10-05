@@ -115,6 +115,19 @@ BRDF LUT always outputs as `.png` regardless of `--output-format`.
 - `--irradiance-size` controls only the final irradiance cubemap face size; `--size` controls the internal source cubemap resolution used by irradiance filtering
 - Irradiance sampling is capped by quality: `low` = 256, `medium` = 1024, `high` = 2048; explicit lower `--samples` values are preserved
 
+### Source Filtering
+
+Both output formats use seamless source cubemap filtering across face edges and
+three-face corners. This also applies when resampling or rotating six-face inputs.
+Source mip levels use a box filter covering the complete input face, including
+the final row and column at odd dimensions. Their dimensions still halve with
+integer division, down to one; the filter uses cube-face UV area rather than
+spherical solid-angle weighting.
+
+Internal sampling borders are not stored in the output files or included in
+clipping reports. Baked pixels can differ from older versions while the existing
+file formats, output topology, and roughness mapping remain compatible.
+
 ### `.ibla` Output
 
 `.ibla` is a portable, renderer-agnostic archive format with PNG-encoded payloads.
