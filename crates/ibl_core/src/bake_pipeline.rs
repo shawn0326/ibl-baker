@@ -591,7 +591,7 @@ fn effective_specular_sample_count(
     let boosted_max = capped_max
         .saturating_mul(size_boost)
         .min(options.sample_count.max(1));
-    let min_budget = (capped_max / 4).max(8);
+    let min_budget = (capped_max / 4).max(8).min(boosted_max);
     let roughness_weight = roughness.clamp(0.0, 1.0).powi(2);
     let scaled = min_budget as f32 + (boosted_max - min_budget) as f32 * roughness_weight;
     scaled.round().max(1.0) as u32
@@ -1255,6 +1255,103 @@ mod tests {
                 encode_mip_chain_to_ktx2(&[faces]),
                 Err(IblError::InvalidInput(_))
             ));
+        }
+    }
+
+    #[test]
+    fn low_sample_specular_bakes_preserve_finite_constant_hdr() {
+        let color = Vec3::new(0.5, 0.25, 0.125);
+        let source = EnvironmentSource::Latlong(SourceImage::from_pixels(4, 2, vec![color; 8]));
+        for quality in [BakeQuality::Low, BakeQuality::Medium, BakeQuality::High] {
+            for sample_count in [0, 1, 7, 8] {
+                for cube_size in [1_u32, 2] {
+                    let options = BakeOptions {
+                        cube_size,
+                        sample_count,
+                        quality,
+                        ..BakeOptions::default()
+                    };
+                    let mip_count = if cube_size == 1 { 1 } else { 2 };
+                    let chain = build_specular_raw(&source, &options, mip_count);
+                    assert_eq!(chain.len(), mip_count as usize);
+                    for (mip, faces) in chain.iter().enumerate() {
+                        let mip_size = (cube_size >> mip).max(1);
+                        for face in faces {
+                            assert_eq!((face.width, face.height), (mip_size, mip_size));
+                            for pixel in &face.pixels {
+                                assert!(
+                                    pixel.is_finite(),
+                                    "quality {quality:?}, samples {sample_count}, size {cube_size}, mip {mip}: {pixel}"
+                                );
+                                assert!((*pixel - color).abs().max_element() <= 2.0e-6);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn specular_sample_budget_preserves_low_requests_at_all_mip_sizes() {
+        for quality in [BakeQuality::Low, BakeQuality::Medium, BakeQuality::High] {
+            for requested in [0_u32, 1, 7, 8] {
+                let options = BakeOptions {
+                    sample_count: requested,
+                    quality,
+                    ..BakeOptions::default()
+                };
+                for (base_size, face_size) in [
+                    (2, 1),
+                    (8, 4),
+                    (8, 2),
+                    (8, 1),
+                    (256, 128),
+                    (256, 16),
+                    (256, 1),
+                ] {
+                    for roughness in [0.0, 0.5, 1.0] {
+                        assert_eq!(
+                            effective_specular_sample_count(
+                                &options, roughness, face_size, base_size,
+                            ),
+                            requested.max(1),
+                            "quality {quality:?}, samples {requested}, roughness {roughness}, mip {face_size}/{base_size}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn specular_sample_budget_keeps_existing_caps_and_size_boosts() {
+        // Fixed expectations preserve the established budgets above the low-count boundary.
+        for (quality, requested, face_size, expected) in [
+            (BakeQuality::Low, 8, 256, [8, 8, 8]),
+            (BakeQuality::High, 9, 1, [8, 8, 9]),
+            (BakeQuality::Medium, 32, 128, [8, 14, 32]),
+            (BakeQuality::High, 64, 16, [16, 28, 64]),
+            (BakeQuality::Low, 1024, 256, [64, 112, 256]),
+            (BakeQuality::Low, 1024, 4, [64, 304, 1024]),
+            (BakeQuality::Medium, 1024, 256, [128, 224, 512]),
+            (BakeQuality::Medium, 1024, 4, [128, 352, 1024]),
+            (BakeQuality::High, 1024, 256, [256, 448, 1024]),
+            (BakeQuality::High, 1024, 4, [256, 448, 1024]),
+            (BakeQuality::High, u32::MAX, 16, [256, 1216, 4096]),
+        ] {
+            let options = BakeOptions {
+                sample_count: requested,
+                quality,
+                ..BakeOptions::default()
+            };
+            for (roughness, expected) in [0.0, 0.5, 1.0].into_iter().zip(expected) {
+                assert_eq!(
+                    effective_specular_sample_count(&options, roughness, face_size, 256),
+                    expected,
+                    "quality {quality:?}, samples {requested}, roughness {roughness}, face size {face_size}"
+                );
+            }
         }
     }
 

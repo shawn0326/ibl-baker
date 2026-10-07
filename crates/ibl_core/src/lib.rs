@@ -908,7 +908,7 @@ fn build_manifest(source_format: SourceFormat, options: &BakeOptions) -> Manifes
         face_count,
         build: BuildInfo {
             rotation_degrees: options.rotation_degrees,
-            sample_count: options.sample_count,
+            sample_count: options.sample_count.max(1),
             quality: options.quality.as_str().to_string(),
             source_format: source_format.as_str().to_string(),
         },

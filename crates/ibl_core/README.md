@@ -37,6 +37,19 @@ This is a box reconstruction policy, not solid-angle-weighted spherical reductio
 These changes can alter baked pixels without changing face orientation,
 roughness-to-mip mapping, output dimensions, encoding, or file contracts.
 
+## Sampling Budgets
+
+`BakeOptions::sample_count` is a requested budget. Zero uses one sample, recorded
+as `1` in `.ibla` build metadata, and
+positive requests below eight are preserved by specular, irradiance, and BRDF
+LUT sampling. Specular's minimum adaptive budget never exceeds the available
+budget for the mip.
+
+Specular sampling otherwise keeps its roughness and mip-size adaptation, with
+base quality caps of 256 (`Low`), 512 (`Medium`), and 1024 (`High`). Smaller mips
+can boost the capped budget up to the requested count. Irradiance and BRDF LUT
+sampling retain their own quality caps.
+
 ## Bake Reports And RGB Ranges
 
 The report variants of the existing bake functions return `(output, BakeReport)`:
