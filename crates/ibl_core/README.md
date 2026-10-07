@@ -78,6 +78,21 @@ BRDF LUT reports use the linear range `[0, 1]`.
 See the [CLI encoding and KTX2 output documentation](../ibl_cli/README.md) and
 the [`.ibla` format specification](../../docs/format-spec.md) for output contracts.
 
+## IBLA Mip Topology
+
+Reading, writing, and validation enforce the natural mip limit:
+`1 <= mip_count <= 1 + floor(log2(max(width, height)))`. Complete and truncated
+chains are supported, including non-power-of-two sizes and rectangular single-face
+textures. Cubemap dimensions must remain square. A chain cannot continue past its
+first `1x1` level.
+
+When writing an in-memory asset, chunk identities and dimensions must match this
+implicit topology. Invalid topology is rejected before serialization; offsets and
+lengths are still normalized from the paired payloads. Reading derives dimensions
+from metadata without decoding PNG payloads. Earlier versions did not reject extra
+`1x1` tail levels; those malformed chains are now rejected consistently with the
+TypeScript loader.
+
 ## Relationship To Other Packages
 
 - `crates/ibl_cli` exposes the public command-line workflow on top of this crate.

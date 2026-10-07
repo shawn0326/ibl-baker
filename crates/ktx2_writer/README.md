@@ -14,6 +14,11 @@ It writes cubemap assets with:
 - linear f32 RGB source pixels
 
 The public entry point is `write_bc6h_cubemap_ktx2`, which accepts `CubemapLevel` values and returns a serialized KTX2 byte buffer.
+Mip face sizes must follow `max(1, floor(previous_size / 2))`. Single-level,
+truncated, and non-power-of-two chains are supported, but the chain must stop
+at or before its first 1x1 level. The maximum level count is
+`1 + floor(log2(base_size))`. Invalid dimensions, skipped or repeated sizes,
+and excess levels return `Ktx2Error::InvalidInput` before compression.
 
 Finite RGB components are clamped to `[0, 65504]` before half-float conversion and BC6H compression. Negative components become zero, and components above the half-float maximum become 65504. The upper limit is also available as `BC6H_UFLOAT_MAX`. NaN and positive or negative infinity return `Ktx2Error::InvalidInput`. The writer does not emit warnings; `ibl_core` and the CLI provide bake diagnostics.
 

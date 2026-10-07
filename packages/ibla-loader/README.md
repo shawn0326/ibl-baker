@@ -140,6 +140,7 @@ export interface ParsedChunk {
 - the header is invalid
 - the manifest is missing required fields
 - the manifest contains unsupported enum values
+- `mipCount` exceeds the natural mip-chain limit for the base dimensions
 - `faceCount` is not supported by the format
 - cubemap dimensions are invalid for the format
 - the chunk table length is inconsistent with manifest-declared topology
@@ -149,11 +150,25 @@ Recommended v1 error-code mapping:
 
 - invalid header bytes or magic -> `INVALID_HEADER`
 - unsupported format version -> `UNSUPPORTED_VERSION`
-- malformed JSON, missing required fields, or unsupported manifest enums -> `INVALID_MANIFEST`
+- malformed JSON, missing required fields, unsupported manifest enums, or an excessive `mipCount` -> `INVALID_MANIFEST`
 - unsupported `faceCount` -> `UNSUPPORTED_FACE_COUNT`
 - invalid cubemap `width` / `height` relationship -> `INVALID_CUBEMAP_DIMENSIONS`
 - inconsistent chunk-table byte length or entry count -> `INVALID_CHUNK_TABLE_LENGTH`
 - payload byte ranges exceeding or not exactly covering the binary section -> `CHUNK_RANGE_OUT_OF_BOUNDS`
+
+Mip-chain topology in v1:
+
+- `width` and `height` are positive; non-power-of-two dimensions are supported
+- `mipCount` is in `1..=1 + floor(log2(max(width, height)))`
+- truncated chains are valid and need not reach `1x1`
+- `faceCount = 1` may use rectangular dimensions; the longer dimension determines the mip limit
+- `faceCount = 6` requires square dimensions
+- `1x1` allows one level; additional repeated `1x1` tail levels are rejected with `INVALID_MANIFEST`
+
+Earlier loader versions did not enforce the natural mip limit. This validation rejects
+otherwise self-consistent files with extra `1x1` tail levels; valid complete and
+truncated chains remain supported. The parser derives image dimensions from metadata
+and does not decode PNG payloads to validate their contents.
 
 Dimension derivation in v1:
 

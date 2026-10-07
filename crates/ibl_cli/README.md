@@ -154,6 +154,11 @@ KTX2 outputs are GPU-ready cubemaps using BC6H block compression with zstd super
 - BC6H stores HDR and LDR values in the `[0, 65504]` range with lossy block compression
 - Face order: +X, −X, +Y, −Y, +Z, −Z
 - KV metadata: `KTXorientation=rd`, `KTXwriter=ibl-baker v{version}`
+Specular output uses a complete floor-halved mip chain down to `1x1`; irradiance
+uses one level. The KTX2 writer and loader also accept valid truncated chains and
+non-power-of-two sizes. The writer rejects skipped dimensions; both reject levels
+beyond the natural limit `1 + floor(log2(base_face_size))`. The CLI does not expose
+a truncation option.
 
 ### Range Handling
 

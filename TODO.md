@@ -19,12 +19,12 @@
 - [x] 完成跨面无缝采样与奇数尺寸源 mip 完整覆盖；解析测试、cmgen 实际浮点产物及画面复核、逐场景性能门槛和 Windows/macOS 编译检查通过，保留轻微退化与已有粗尾层误差，见 [阶段二验收报告](docs/source-sampling-acceptance.md)。
 - [x] 完成立体角加权源 mip 的独立、小规模可行性研究；离散积分与覆盖验证通过，但收益未达到扩展门槛，并保留局部退化及 HDR 参考未裁定项。生产继续使用 box；512、完整画面与生产性能矩阵未开展，见 [可行性报告](docs/mip-weighting-feasibility.md)。
 - [x] 修复 specular 在 `--samples < 8` 时的采样预算下溢，保留低正值并将 0 按 1 使用及记录；默认预算不变，核心预算边界和两种格式的小尺寸 CLI 回归通过，契约见 [CLI README](crates/ibl_cli/README.md)。
+- [x] 补齐 KTX2 writer、Rust IBLA 读写/校验及两个 loader 的 mip 拓扑校验；保留合法截断链、非 2 幂尺寸和矩形单面纹理，提前拒绝超长尾链及错误尺寸记录，定向回归通过，契约见 [IBLA 规范](docs/format-spec.md) 与对应 README。
 
 ## 待验证
 
 - [ ] 自然发生部分生产发布失败时，记录真实恢复证据；当前恢复顺序和 checksum 防护已有模拟测试覆盖，不人为制造生产发布故障。
 - [ ] 在 .ibla loader 下一次实际版本发布时，补充该包的生产 OIDC/provenance 和 registry 消费者验收。
-
 
 ## 需要单独立项的方向
 

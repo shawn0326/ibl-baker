@@ -55,7 +55,9 @@ pub struct WriterMetadata<'a> {
 ///
 /// `levels` must be ordered **largest first** (level 0 = base mip, level N-1 = smallest mip).
 /// All six faces inside each level must have the `face_size` declared for that level, and
-/// `face_size` must halve (floor) from one level to the next.
+/// `face_size` must halve (floor, clamped to one) from one level to the next.
+/// A chain may stop early, but cannot extend beyond its first 1x1 level.
+/// Non-power-of-two base sizes and single-level chains are supported.
 ///
 /// Uses `VK_FORMAT_BC6H_UFLOAT_BLOCK` (unsigned half-float HDR). Suitable for specular
 /// and irradiance cubemaps baked from HDR or LDR source images — BC6H cleanly represents
@@ -162,13 +164,42 @@ fn validate_levels(levels: &[CubemapLevel]) -> Result<(), Ktx2Error> {
     if levels.is_empty() {
         return Err(Ktx2Error::InvalidInput("levels must not be empty".into()));
     }
+    let base_size = levels[0].face_size;
+    if base_size == 0 {
+        return Err(Ktx2Error::InvalidInput(
+            "level 0: face_size must be >= 1".into(),
+        ));
+    }
+    let max_levels = u32::BITS - base_size.leading_zeros();
+    if levels.len() > max_levels as usize {
+        return Err(Ktx2Error::InvalidInput(format!(
+            "level count {} exceeds the maximum {max_levels} for base face_size {base_size}",
+            levels.len(),
+        )));
+    }
     for (i, level) in levels.iter().enumerate() {
         if level.face_size == 0 {
             return Err(Ktx2Error::InvalidInput(format!(
                 "level {i}: face_size must be >= 1"
             )));
         }
-        let expected = (level.face_size as usize).saturating_mul(level.face_size as usize) * 3;
+        if i > 0 {
+            let expected_size = (levels[i - 1].face_size / 2).max(1);
+            if level.face_size != expected_size {
+                return Err(Ktx2Error::InvalidInput(format!(
+                    "level {i}: expected face_size {expected_size}, got {}",
+                    level.face_size,
+                )));
+            }
+        }
+        let expected = (level.face_size as usize)
+            .checked_mul(level.face_size as usize)
+            .and_then(|pixels| pixels.checked_mul(3))
+            .ok_or_else(|| {
+                Ktx2Error::InvalidInput(format!(
+                    "level {i}: pixel count exceeds addressable memory"
+                ))
+            })?;
         for (f, face) in level.face_pixels.iter().enumerate() {
             if face.len() != expected {
                 return Err(Ktx2Error::InvalidInput(format!(
@@ -366,6 +397,49 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn write_accepts_truncated_and_non_power_of_two_mip_chains() {
+        for sizes in [&[1][..], &[5], &[5, 2], &[5, 2, 1]] {
+            let levels = sizes
+                .iter()
+                .map(|&size| make_solid_level(size, 1.0, 0.5, 0.25))
+                .collect::<Vec<_>>();
+            let bytes = write_bc6h_cubemap_ktx2(&levels, &WriterMetadata { writer: "test" })
+                .expect("legal mip chain should write");
+            let reader = ktx2::Reader::new(bytes.as_slice()).expect("KTX2 should parse");
+            assert_eq!(reader.levels().count(), sizes.len());
+        }
+    }
+
+    #[test]
+    fn write_rejects_invalid_mip_topology() {
+        for sizes in [&[4, 4][..], &[4, 1], &[2, 4], &[5, 3], &[2, 1, 1], &[1, 1]] {
+            let levels = sizes
+                .iter()
+                .map(|&size| make_solid_level(size, 1.0, 0.5, 0.25))
+                .collect::<Vec<_>>();
+            assert!(
+                matches!(
+                    write_bc6h_cubemap_ktx2(&levels, &WriterMetadata { writer: "test" }),
+                    Err(Ktx2Error::InvalidInput(_)),
+                ),
+                "invalid mip chain {sizes:?} should be rejected",
+            );
+        }
+    }
+
+    #[test]
+    fn validate_rejects_unaddressable_face_dimensions() {
+        let level = CubemapLevel {
+            face_pixels: std::array::from_fn(|_| Vec::new()),
+            face_size: u32::MAX,
+        };
+        assert!(matches!(
+            validate_levels(&[level]),
+            Err(Ktx2Error::InvalidInput(_)),
+        ));
     }
 
     #[test]

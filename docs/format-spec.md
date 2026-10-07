@@ -111,6 +111,10 @@ Version 1 describes texture topology with manifest fields instead of asset-purpo
 - when `faceCount = 6`, `width` and `height` must be equal and describe the mip 0 face size
 - `mipCount` is the number of mip levels for one texture image sequence, not the total chunk count across all faces
 - total chunk count is `mipCount` for 2D textures and `mipCount * 6` for cubemaps
+- `width` and `height` must be positive; non-power-of-two dimensions are supported
+- `mipCount` must be between `1` and `1 + floor(log2(max(width, height)))`, inclusive
+- a mip chain may end before reaching `1x1`; repeated `1x1` tail levels are invalid
+- a `1x1` texture has exactly one mip level; 2D textures may be rectangular
 
 For cubemaps:
 
