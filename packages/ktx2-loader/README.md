@@ -11,7 +11,7 @@ The supported profile is the current CLI output shape:
 - `VK_FORMAT_BC6H_UFLOAT_BLOCK` (`vkFormat = 143`)
 - zstd supercompression (`supercompressionScheme = 2`)
 - non-array cubemap (`faceCount = 6`, `pixelDepth = 0`, `layerCount = 0`)
-- one or more mip levels
+- one to `1 + floor(log2(pixelWidth))` mip levels, including valid truncated chains
 - canonical face order: `px`, `nx`, `py`, `ny`, `pz`, `nz`
 - `KTXorientation = rd`
 - `KTXwriter` metadata beginning with `ibl-baker `
@@ -145,6 +145,18 @@ export interface ParsedKTX2IBLFace {
 KTX2 stores the level index in logical mip order.
 For `ibl-baker` outputs, the level payloads are packed in the file from smallest mip to largest mip.
 The parser preserves logical mip order in `levels`.
+
+Base dimensions must be positive and square; non-power-of-two sizes are supported.
+Each level has size `max(1, floor(pixelWidth / 2^mipLevel))`. A chain may end before
+reaching `1x1`, but it cannot continue beyond the first `1x1` level. A `1x1` cubemap
+therefore has exactly one level. Excessive `levelCount` values are rejected with
+`UNSUPPORTED_TOPOLOGY` before reading the level index.
+
+Earlier loader versions did not enforce this natural mip limit. Extra repeated
+`1x1` tail levels are now rejected for both standard and supported legacy files;
+valid complete and truncated chains remain compatible. Level sizes are derived from
+the header and checked against declared BC6H byte lengths, without decompressing
+payloads.
 
 Each `ParsedKTX2IBLLevel` exposes:
 

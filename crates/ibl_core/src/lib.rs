@@ -715,18 +715,8 @@ pub fn validate_asset(asset: &IblAsset) -> ValidationReport {
         issues.push(error_issue("manifest container must be png"));
     }
 
-    if asset.manifest.width == 0 || asset.manifest.height == 0 {
-        issues.push(error_issue(
-            "manifest width and height must be greater than zero",
-        ));
-    }
-
-    if asset.manifest.mip_count == 0 {
-        issues.push(error_issue("manifest mipCount must be greater than zero"));
-    }
-
-    if asset.manifest.face_count != 1 && asset.manifest.face_count != 6 {
-        issues.push(error_issue("manifest faceCount must be 1 or 6"));
+    if let Err(message) = validate_manifest_topology(&asset.manifest) {
+        issues.push(error_issue(&message));
     }
 
     if SourceFormat::from_str(&asset.manifest.build.source_format).is_err() {
@@ -908,14 +898,42 @@ fn build_manifest(source_format: SourceFormat, options: &BakeOptions) -> Manifes
         face_count,
         build: BuildInfo {
             rotation_degrees: options.rotation_degrees,
-            sample_count: options.sample_count,
+            sample_count: options.sample_count.max(1),
             quality: options.quality.as_str().to_string(),
             source_format: source_format.as_str().to_string(),
         },
     }
 }
 
+fn validate_manifest_topology(manifest: &Manifest) -> Result<(), String> {
+    if manifest.width == 0 || manifest.height == 0 {
+        return Err("manifest width and height must be greater than zero".to_string());
+    }
+    if manifest.mip_count == 0 {
+        return Err("manifest mipCount must be greater than zero".to_string());
+    }
+    let max_mip_count = estimate_mip_count(manifest.width.max(manifest.height));
+    if manifest.mip_count > max_mip_count {
+        return Err(format!(
+            "manifest mipCount {} exceeds maximum {} for dimensions {}x{}",
+            manifest.mip_count, max_mip_count, manifest.width, manifest.height
+        ));
+    }
+    if manifest.face_count != 1 && manifest.face_count != 6 {
+        return Err("manifest faceCount must be 1 or 6".to_string());
+    }
+    if manifest.face_count == 6 && manifest.width != manifest.height {
+        return Err("cubemap manifest width and height must be equal".to_string());
+    }
+    Ok(())
+}
+
 fn validate_asset_shape(asset: &IblAsset, issues: &mut Vec<ValidationIssue>) {
+    // Invalid topology is reported by the caller before any expected-record allocation.
+    if validate_manifest_topology(&asset.manifest).is_err() {
+        return;
+    }
+
     match asset.manifest.face_count {
         6 => {
             let expected_count = asset.manifest.mip_count as usize * Face::all().len();
@@ -970,6 +988,21 @@ fn validate_expected_records(
         .collect::<BTreeSet<_>>();
 
     for record in &asset.chunk_table {
+        if record.mip_level < asset.manifest.mip_count {
+            let expected_width = dimension_at_mip(asset.manifest.width, record.mip_level);
+            let expected_height = dimension_at_mip(asset.manifest.height, record.mip_level);
+            if record.width != expected_width || record.height != expected_height {
+                issues.push(error_issue(&format!(
+                    "chunk dimensions for {} must be {}x{}, got {}x{}",
+                    describe_identity(&identity_from_record(record)),
+                    expected_width,
+                    expected_height,
+                    record.width,
+                    record.height
+                )));
+            }
+        }
+
         match (expect_faces, record.face) {
             (true, None) => issues.push(error_issue("cubemap chunks must include a face")),
             (false, Some(_)) => {
@@ -1001,6 +1034,13 @@ fn dimension_at_mip(base: u32, mip_level: u32) -> u32 {
 }
 
 fn normalize_asset(asset: &IblAsset) -> Result<IblAsset, IblError> {
+    validate_manifest_topology(&asset.manifest).map_err(IblError::InvalidFormat)?;
+    let mut issues = Vec::new();
+    validate_asset_shape(asset, &mut issues);
+    if let Some(issue) = issues.first() {
+        return Err(IblError::InvalidFormat(issue.message.clone()));
+    }
+
     let mut entries = pair_entries(asset)?;
     sort_entries(&mut entries);
 
@@ -1325,6 +1365,7 @@ fn build_chunks_from_records(
 }
 
 fn expected_chunk_count(manifest: &Manifest) -> Result<usize, IblError> {
+    validate_manifest_topology(manifest).map_err(IblError::InvalidFormat)?;
     let mip_count = usize::try_from(manifest.mip_count)
         .map_err(|_| IblError::InvalidFormat("mipCount exceeds platform usize".to_string()))?;
     let face_count = usize::try_from(manifest.face_count)
@@ -2007,6 +2048,134 @@ mod tests {
     }
 
     #[test]
+    fn ibla_mip_topology_accepts_complete_and_truncated_chains() {
+        for (width, height, face_count, dimensions) in [
+            (1, 1, 1, vec![(1, 1)]),
+            (1, 1, 6, vec![(1, 1)]),
+            (5, 3, 1, vec![(5, 3), (2, 1), (1, 1)]),
+            (1, 5, 1, vec![(1, 5), (1, 2), (1, 1)]),
+            (5, 1, 1, vec![(5, 1), (2, 1), (1, 1)]),
+            (5, 5, 6, vec![(5, 5), (2, 2), (1, 1)]),
+        ] {
+            for mip_count in 1..=dimensions.len() as u32 {
+                let asset = topology_test_asset(width, height, mip_count, face_count);
+                let report = validate_asset(&asset);
+                assert!(report.is_valid, "{:?}", report.issues);
+
+                let path = unique_temp_path("ibla-valid-topology");
+                write_asset(&path, &asset).expect("valid mip chain should write");
+                let decoded = read_asset(&path).expect("valid mip chain should read");
+                fs::remove_file(&path).ok();
+                assert_eq!(decoded.manifest, asset.manifest);
+                assert_eq!(decoded.chunk_table, asset.chunk_table);
+                for record in &decoded.chunk_table {
+                    assert_eq!(
+                        (record.width, record.height),
+                        dimensions[record.mip_level as usize]
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn ibla_mip_topology_rejects_zero_and_repeated_one_by_one_tails() {
+        for (width, height, mip_count, face_count) in [
+            (1, 1, 0, 1),
+            (1, 1, 2, 1),
+            (1, 1, 2, 6),
+            (5, 3, 4, 1),
+            (1, 5, 4, 1),
+            (5, 1, 4, 1),
+            (5, 5, 4, 6),
+        ] {
+            let asset = topology_test_asset(width, height, mip_count, face_count);
+            let report = validate_asset(&asset);
+            assert!(!report.is_valid);
+            assert!(report
+                .issues
+                .iter()
+                .any(|issue| issue.message.contains("mipCount")));
+            let error = encode_asset_bytes(&asset).expect_err("invalid mip count should not write");
+            assert!(error.to_string().contains("mipCount"));
+
+            let path = write_unchecked_topology_asset(&asset);
+            let error = read_asset(&path).expect_err("invalid mip count should not read");
+            fs::remove_file(&path).ok();
+            assert!(error.to_string().contains("mipCount"));
+        }
+    }
+
+    #[test]
+    fn ibla_mip_topology_rejects_extreme_count_before_expanding_records() {
+        for face_count in [1, 6] {
+            let mut asset = topology_test_asset(1, 1, 1, face_count);
+            asset.manifest.mip_count = u32::MAX;
+            let report = validate_asset(&asset);
+            assert!(!report.is_valid);
+            assert!(report
+                .issues
+                .iter()
+                .any(|issue| issue.message.contains("exceeds maximum 1")));
+            let error =
+                parse_chunk_table(&asset.manifest, &[]).expect_err("count must be checked first");
+            assert!(error.to_string().contains("exceeds maximum 1"));
+            let error = encode_asset_bytes(&asset).expect_err("extreme count should not write");
+            assert!(error.to_string().contains("exceeds maximum 1"));
+
+            let path = write_unchecked_topology_asset(&asset);
+            let error = read_asset(&path).expect_err("extreme count should not read");
+            fs::remove_file(&path).ok();
+            assert!(error.to_string().contains("exceeds maximum 1"));
+        }
+    }
+
+    #[test]
+    fn ibla_mip_topology_rejects_dimensions_discarded_by_serialization() {
+        for (width, height, face_count) in [(5, 3, 1), (5, 5, 6)] {
+            let mut asset = topology_test_asset(width, height, 3, face_count);
+            let record = asset
+                .chunk_table
+                .iter_mut()
+                .find(|record| record.mip_level == 1)
+                .expect("mip 1 should exist");
+            record.width = width;
+            record.height = height;
+            let report = validate_asset(&asset);
+            assert!(!report.is_valid);
+            assert!(report
+                .issues
+                .iter()
+                .any(|issue| issue.message.contains("chunk dimensions")));
+            let path = unique_temp_path("ibla-invalid-record-dimensions");
+            let error =
+                write_asset(&path, &asset).expect_err("incorrect dimensions must not write");
+            assert!(error.to_string().contains("chunk dimensions"));
+            assert!(!path.exists());
+        }
+    }
+
+    #[test]
+    fn ibla_topology_normalization_preserves_offset_and_length_repair() {
+        let mut asset = topology_test_asset(5, 3, 3, 1);
+        for record in &mut asset.chunk_table {
+            record.byte_offset = u64::MAX;
+            record.byte_length = 0;
+        }
+        let bytes = encode_asset_bytes(&asset).expect("offsets and lengths should normalize");
+        let path = unique_temp_path("ibla-normalized-ranges");
+        fs::write(&path, bytes).expect("asset should be written");
+        let decoded = read_asset(&path).expect("normalized asset should read");
+        fs::remove_file(&path).ok();
+        assert!(validate_asset(&decoded).is_valid);
+        assert_eq!(decoded.chunk_table[0].byte_offset, 0);
+        assert_eq!(
+            decoded.chunk_table[1].byte_offset,
+            decoded.chunks[0].bytes.len() as u64
+        );
+    }
+
+    #[test]
     fn bake_outputs_expected_cubemap_chunk_count() {
         let input = unique_temp_path("specular-count-input").with_extension("hdr");
         write_test_hdr(&input, 16, 8);
@@ -2351,6 +2520,89 @@ mod tests {
         let (bright_rgb, bright_d) = encode_rgbd_srgb(glam::Vec3::splat(8.0));
         assert!(bright_d < dark_d);
         assert!(bright_rgb.x > 0.9);
+    }
+
+    fn topology_test_asset(width: u32, height: u32, mip_count: u32, face_count: u32) -> IblAsset {
+        let mut asset = IblAsset {
+            header: IblHeader {
+                magic: FORMAT_MAGIC,
+                version: FORMAT_VERSION,
+                flags: 0,
+                manifest_byte_length: 0,
+                chunk_table_byte_length: 0,
+            },
+            manifest: Manifest {
+                generator: "ibl-baker".to_string(),
+                generator_version: "0.2.1".to_string(),
+                encoding: "srgb".to_string(),
+                container: "png".to_string(),
+                width,
+                height,
+                mip_count,
+                face_count,
+                build: BuildInfo {
+                    rotation_degrees: 0.0,
+                    sample_count: 16,
+                    quality: "low".to_string(),
+                    source_format: "png".to_string(),
+                },
+            },
+            chunk_table: Vec::new(),
+            chunks: Vec::new(),
+        };
+        let mut offset = 0;
+        for mip_level in 0..mip_count {
+            let mip_width = dimension_at_mip(width, mip_level);
+            let mip_height = dimension_at_mip(height, mip_level);
+            let bytes = encode_png_image(
+                &single_color_image(mip_width, mip_height, glam::Vec3::splat(0.5)),
+                EncodingKind::Srgb,
+            )
+            .expect("small PNG should encode");
+            for face_index in 0..face_count {
+                let face = if face_count == 6 {
+                    Some(Face::all()[face_index as usize])
+                } else {
+                    None
+                };
+                asset.chunk_table.push(ChunkRecord {
+                    mip_level,
+                    face,
+                    byte_offset: offset,
+                    byte_length: bytes.len() as u64,
+                    width: mip_width,
+                    height: mip_height,
+                });
+                offset += bytes.len() as u64;
+                asset.chunks.push(ChunkData {
+                    mip_level,
+                    face,
+                    bytes: bytes.clone(),
+                });
+            }
+        }
+        refresh_header_lengths(&mut asset).expect("small asset lengths should fit");
+        asset
+    }
+
+    fn write_unchecked_topology_asset(asset: &IblAsset) -> PathBuf {
+        // Serialize malformed metadata directly so read-path tests do not depend on the writer.
+        let manifest = serialize_manifest(&asset.manifest);
+        let table = serialize_chunk_table(&asset.chunk_table).expect("small table should encode");
+        let header = IblHeader {
+            manifest_byte_length: manifest.len() as u32,
+            chunk_table_byte_length: table.len() as u32,
+            ..asset.header.clone()
+        };
+        let mut bytes = encode_header(&header).to_vec();
+        bytes.extend_from_slice(manifest.as_bytes());
+        bytes.extend_from_slice(&table);
+        for chunk in &asset.chunks {
+            bytes.extend_from_slice(&chunk.bytes);
+        }
+        let path = unique_temp_path("ibla-unchecked-topology");
+        fs::write(&path, bytes).expect("small malformed asset should be written");
+        path
     }
 
     fn png_dimensions(bytes: &[u8]) -> (u32, u32) {

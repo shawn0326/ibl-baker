@@ -316,6 +316,14 @@ function validateHeaderProfile(header: {
     throw new KTX2IBLParseError("UNSUPPORTED_TOPOLOGY", "KTX2 IBL assets must contain at least one mip level.");
   }
 
+  const maxMipCount = maximumMipCount(header.pixelWidth);
+  if (header.levelCount > maxMipCount) {
+    throw new KTX2IBLParseError(
+      "UNSUPPORTED_TOPOLOGY",
+      `KTX2 levelCount ${header.levelCount} exceeds the maximum ${maxMipCount} for ${header.pixelWidth}x${header.pixelHeight}.`,
+    );
+  }
+
   return header.vkFormat;
 }
 
@@ -515,6 +523,16 @@ function checkedMultiply(left: number, right: number, code: KTX2IBLParseErrorCod
   }
 
   return value;
+}
+
+function maximumMipCount(base: number): number {
+  let size = base;
+  let mipCount = 1;
+  while (size > 1) {
+    size = Math.floor(size / 2);
+    mipCount += 1;
+  }
+  return mipCount;
 }
 
 function dimensionAtMip(base: number, mipLevel: number): number {

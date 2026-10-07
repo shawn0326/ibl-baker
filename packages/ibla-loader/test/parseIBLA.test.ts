@@ -62,6 +62,86 @@ test("parseIBLA parses a synthetic 2D asset with derived mip metadata", () => {
   assert.deepEqual([...secondChunk.encodedBytes], [5, 6]);
 });
 
+test("parseIBLA accepts truncated and complete non-power-of-two mip chains", () => {
+  for (const [width, height, faceCount] of [
+    [5, 3, 1],
+    [1, 5, 1],
+    [5, 1, 1],
+    [5, 5, 6],
+  ] as const) {
+    for (const mipCount of [1, 2, 3]) {
+      const bytes = createIblaBytes({
+        manifest: { ...baseManifest(), width, height, faceCount, mipCount },
+        chunkPayloads: Array.from({ length: mipCount * faceCount }, () => Uint8Array.of(1)),
+      });
+
+      const parsed = parseIBLA(bytes);
+      assert.equal(parsed.chunks.length, mipCount * faceCount);
+      for (const chunk of parsed.chunks) {
+        assert.equal(chunk.width, Math.max(1, Math.floor(width / 2 ** chunk.mipLevel)));
+        assert.equal(chunk.height, Math.max(1, Math.floor(height / 2 ** chunk.mipLevel)));
+      }
+    }
+  }
+});
+
+test("parseIBLA accepts a single 1x1 mip for 2D textures and cubemaps", () => {
+  for (const faceCount of [1, 6]) {
+    const parsed = parseIBLA(createIblaBytes({
+      manifest: { ...baseManifest(), width: 1, height: 1, faceCount },
+      chunkPayloads: Array.from({ length: faceCount }, () => Uint8Array.of(1)),
+    }));
+
+    assert.equal(parsed.chunks.length, faceCount);
+    assert.ok(parsed.chunks.every((chunk) => chunk.width === 1 && chunk.height === 1));
+  }
+});
+
+test("parseIBLA rejects mip levels beyond the first 1x1 image", () => {
+  for (const [width, height, faceCount, mipCount] of [
+    [1, 1, 1, 2],
+    [1, 1, 6, 2],
+    [5, 3, 1, 4],
+    [1, 5, 1, 4],
+    [5, 1, 1, 4],
+    [5, 5, 6, 4],
+    [8, 8, 6, 5],
+  ] as const) {
+    const bytes = createIblaBytes({
+      manifest: { ...baseManifest(), width, height, faceCount, mipCount },
+      chunkPayloads: Array.from({ length: mipCount * faceCount }, () => Uint8Array.of(1)),
+    });
+
+    assertParseError(() => parseIBLA(bytes), "INVALID_MANIFEST");
+  }
+});
+
+test("parseIBLA rejects excessive mip counts before checking the chunk table", () => {
+  const bytes = createIblaBytes({
+    manifest: { ...baseManifest(), mipCount: 0xffffffff },
+    chunkPayloads: [],
+  });
+
+  assertParseError(() => parseIBLA(bytes), "INVALID_MANIFEST");
+});
+
+test("parseIBLA derives the natural mip limit without logarithm rounding", () => {
+  const width = Number.MAX_SAFE_INTEGER;
+  const mipCount = 53;
+  const bytes = createIblaBytes({
+    manifest: { ...baseManifest(), width, height: 1, mipCount },
+    chunkPayloads: Array.from({ length: mipCount }, () => Uint8Array.of(1)),
+  });
+  const parsed = parseIBLA(bytes);
+  assert.equal(expectDefined(parsed.chunks.at(-1)).width, 1);
+
+  const excessive = createIblaBytes({
+    manifest: { ...baseManifest(), width, height: 1, mipCount: mipCount + 1 },
+    chunkPayloads: Array.from({ length: mipCount + 1 }, () => Uint8Array.of(1)),
+  });
+  assertParseError(() => parseIBLA(excessive), "INVALID_MANIFEST");
+});
+
 test("parseIBLA parses HDR specular cubemap fixtures", () => {
   for (const fixtureName of HDR_FIXTURE_NAMES) {
     const parsed = parseIBLA(loadFixture(fixtureName, "specular"));

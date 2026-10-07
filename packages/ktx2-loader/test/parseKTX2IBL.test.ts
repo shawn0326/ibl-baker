@@ -149,6 +149,61 @@ test("parseKTX2IBL parses legacy ibl-baker files with vkFormat 131", () => {
   assert.equal(parsed.format.vkFormatName, "VK_FORMAT_BC6H_UFLOAT_BLOCK");
 });
 
+test("parseKTX2IBL accepts truncated and complete non-power-of-two mip chains", () => {
+  for (const levelCount of [1, 2, 3]) {
+    const parsed = parseKTX2IBL(createKtx2Bytes({
+      pixelWidth: 5,
+      levelPayloads: Array.from({ length: levelCount }, () => Uint8Array.of(1)),
+    }));
+
+    assert.deepEqual(parsed.levels.map((level) => level.width), [5, 2, 1].slice(0, levelCount));
+    assert.ok(parsed.levels.every((level) => level.height === level.width));
+  }
+});
+
+test("parseKTX2IBL accepts a single 1x1 mip", () => {
+  const parsed = parseKTX2IBL(createKtx2Bytes({
+    pixelWidth: 1,
+    levelPayloads: [Uint8Array.of(1)],
+  }));
+
+  assert.equal(parsed.levels.length, 1);
+  assert.equal(expectDefined(parsed.levels[0]).width, 1);
+  assert.equal(expectDefined(parsed.levels[0]).uncompressedByteLength, 96);
+});
+
+test("parseKTX2IBL rejects mip levels beyond the first 1x1 image", () => {
+  for (const [pixelWidth, levelCount] of [[1, 2], [5, 4], [8, 5]] as const) {
+    for (const legacy of [false, true]) {
+      const bytes = createKtx2Bytes({
+        pixelWidth,
+        levelPayloads: Array.from({ length: levelCount }, () => Uint8Array.of(1)),
+        ...(legacy ? {
+          vkFormat: 131,
+          dfd: LEGACY_BC6H_UFLOAT_DFD,
+          keyValues: { KTXorientation: "rd", KTXwriter: "ibl-baker v0.2.2" },
+        } : {}),
+      });
+
+      assertParseError(() => parseKTX2IBL(bytes), "UNSUPPORTED_TOPOLOGY");
+    }
+  }
+});
+
+test("parseKTX2IBL rejects excessive mip counts before reading the level index", () => {
+  const bytes = createKtx2Bytes({ pixelWidth: 4, levelPayloads: [Uint8Array.of(1)] });
+  new DataView(bytes.buffer).setUint32(40, 0xffffffff, true);
+
+  assertParseError(() => parseKTX2IBL(bytes), "UNSUPPORTED_TOPOLOGY");
+});
+
+test("parseKTX2IBL rejects zero mip levels", () => {
+  const bytes = createKtx2Bytes({ pixelWidth: 4, levelPayloads: [Uint8Array.of(1)] });
+  new DataView(bytes.buffer).setUint32(40, 0, true);
+
+  assertParseError(() => parseKTX2IBL(bytes), "UNSUPPORTED_TOPOLOGY");
+});
+
 test("parseKTX2IBL parses specular fixtures", () => {
   for (const fixtureName of KTX2_FIXTURE_NAMES) {
     const parsed = parseKTX2IBL(loadFixture(fixtureName, "specular"));

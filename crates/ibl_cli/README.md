@@ -83,7 +83,7 @@ ibl-baker validate ./out/specular.ibla
 | `--encoding` | `auto`, `rgbd-srgb`, `srgb`, `linear` | `auto` | `.ibla` payload encoding (ignored for KTX2) |
 | `--faces` | comma-separated filenames | *(auto-detect)* | Face order for directory inputs |
 | `--rotation` | float | `0` | Y-axis rotation in radians |
-| `--samples` | integer | `1024` | Requested sample count for convolution |
+| `--samples` | non-negative integer | `1024` | Requested sample budget; `0` uses one sample |
 | `--quality` | `low`, `medium`, `high` | `medium` | Bake quality preset |
 
 ### Output Files
@@ -113,6 +113,8 @@ BRDF LUT always outputs as `.png` regardless of `--output-format`.
 - `linear` is only selected via explicit `--encoding linear`
 - BRDF LUT output is always `256×256`
 - `--irradiance-size` controls only the final irradiance cubemap face size; `--size` controls the internal source cubemap resolution used by irradiance filtering
+- `--samples 0` uses one sample and records `1` in `.ibla` build metadata. Positive values below eight are preserved for specular, irradiance, and BRDF LUT sampling.
+- Specular sampling adapts to roughness and mip size. Its base quality caps are `low` = 256, `medium` = 512, `high` = 1024; smaller mips may use more samples, up to the requested budget.
 - Irradiance sampling is capped by quality: `low` = 256, `medium` = 1024, `high` = 2048; explicit lower `--samples` values are preserved
 
 ### Source Filtering
@@ -152,6 +154,11 @@ KTX2 outputs are GPU-ready cubemaps using BC6H block compression with zstd super
 - BC6H stores HDR and LDR values in the `[0, 65504]` range with lossy block compression
 - Face order: +X, −X, +Y, −Y, +Z, −Z
 - KV metadata: `KTXorientation=rd`, `KTXwriter=ibl-baker v{version}`
+Specular output uses a complete floor-halved mip chain down to `1x1`; irradiance
+uses one level. The KTX2 writer and loader also accept valid truncated chains and
+non-power-of-two sizes. The writer rejects skipped dimensions; both reject levels
+beyond the natural limit `1 + floor(log2(base_face_size))`. The CLI does not expose
+a truncation option.
 
 ### Range Handling
 

@@ -37,6 +37,19 @@ This is a box reconstruction policy, not solid-angle-weighted spherical reductio
 These changes can alter baked pixels without changing face orientation,
 roughness-to-mip mapping, output dimensions, encoding, or file contracts.
 
+## Sampling Budgets
+
+`BakeOptions::sample_count` is a requested budget. Zero uses one sample, recorded
+as `1` in `.ibla` build metadata, and
+positive requests below eight are preserved by specular, irradiance, and BRDF
+LUT sampling. Specular's minimum adaptive budget never exceeds the available
+budget for the mip.
+
+Specular sampling otherwise keeps its roughness and mip-size adaptation, with
+base quality caps of 256 (`Low`), 512 (`Medium`), and 1024 (`High`). Smaller mips
+can boost the capped budget up to the requested count. Irradiance and BRDF LUT
+sampling retain their own quality caps.
+
 ## Bake Reports And RGB Ranges
 
 The report variants of the existing bake functions return `(output, BakeReport)`:
@@ -64,6 +77,21 @@ BRDF LUT reports use the linear range `[0, 1]`.
 
 See the [CLI encoding and KTX2 output documentation](../ibl_cli/README.md) and
 the [`.ibla` format specification](../../docs/format-spec.md) for output contracts.
+
+## IBLA Mip Topology
+
+Reading, writing, and validation enforce the natural mip limit:
+`1 <= mip_count <= 1 + floor(log2(max(width, height)))`. Complete and truncated
+chains are supported, including non-power-of-two sizes and rectangular single-face
+textures. Cubemap dimensions must remain square. A chain cannot continue past its
+first `1x1` level.
+
+When writing an in-memory asset, chunk identities and dimensions must match this
+implicit topology. Invalid topology is rejected before serialization; offsets and
+lengths are still normalized from the paired payloads. Reading derives dimensions
+from metadata without decoding PNG payloads. Earlier versions did not reject extra
+`1x1` tail levels; those malformed chains are now rejected consistently with the
+TypeScript loader.
 
 ## Relationship To Other Packages
 

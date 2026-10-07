@@ -239,6 +239,14 @@ function parseManifest(text: string): ParsedIBLA["manifest"] {
     );
   }
 
+  const maxMipCount = maximumMipCount(Math.max(width, height));
+  if (mipCount > maxMipCount) {
+    throw new IBLAParseError(
+      "INVALID_MANIFEST",
+      `Manifest mipCount ${mipCount} exceeds the maximum ${maxMipCount} for ${width}x${height}.`,
+    );
+  }
+
   return {
     generator: readString(manifest, "generator"),
     generatorVersion: readString(manifest, "generatorVersion"),
@@ -285,6 +293,16 @@ function deriveChunkMetadata(
     width: size,
     height: size,
   };
+}
+
+function maximumMipCount(base: number): number {
+  let size = base;
+  let mipCount = 1;
+  while (size > 1) {
+    size = Math.floor(size / 2);
+    mipCount += 1;
+  }
+  return mipCount;
 }
 
 function dimensionAtMip(base: number, mipLevel: number): number {
