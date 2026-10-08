@@ -15,7 +15,7 @@ BRDF LUT always outputs as standalone `.png` regardless of format choice.
 
 ## Installation
 
-The npm distribution is prepared as `@ibltools/cli` (initial publication pending). After publication:
+The npm distribution is available as `@ibltools/cli`:
 
 ```bash
 npx @ibltools/cli --version
