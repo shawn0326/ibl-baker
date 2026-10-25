@@ -26,6 +26,12 @@ def main():
                 decoded=a.decode(directory,encoding)
                 clipped=[s.quality.Cubemap(np.clip(c.faces,0,limit)) for c in raw]
                 count=sum(int(np.any((c.faces<0)|(c.faces>limit),axis=-1).sum()) for c in raw)
+                components=sum(c.faces.size for c in raw)
+                # Sparse directional probes can miss the sun entirely. Preserve
+                # whole-output texel losses as well, without padding or weighting.
+                clipping_squares=sum(float(np.sum((c.faces-b.faces)**2)) for c,b in zip(raw,clipped))
+                encoding_squares=sum(float(np.sum((d.faces-b.faces)**2)) for d,b in zip(decoded,clipped))
+                maximum_clip=max(float(np.max(np.abs(c.faces-b.faces))) for c,b in zip(raw,clipped))
                 samples=[]
                 for r in [i/20 for i in range(21)]:
                     original=s.sample(raw,probes,r);bounded=s.sample(clipped,probes,r);actual=s.sample(decoded,probes,r)
@@ -36,9 +42,12 @@ def main():
                         original_rms=float(np.sqrt(np.mean(original**2)))))
                 rows.append(dict(case=case,variant=variant,encoding=encoding,clipped_pixels=count,
                     total_pixels=sum(6*c.size*c.size for c in raw),samples=samples,
+                    whole_output_clipping_rmse=(clipping_squares/components)**.5,
+                    whole_output_encoding_rmse=(encoding_squares/components)**.5,
+                    maximum_clipped_component=maximum_clip,
                     generation_sha256=s.digest(directory/"generation.json")))
     s.save(s.OUT/"encoding.json",dict(rows=rows,size=128,
-        interpretation="Decode texels before interpolation. Compare decoded output to clipped raw reconstruction separately from clipping loss. RMSE components are not additive; no claim of prefilter reference convergence."))
+        interpretation="Decode texels before interpolation. Compare decoded output to clipped raw reconstruction separately from clipping loss. Whole-output metrics weight stored texels equally; sparse directional probes may miss clipped highlights. RMSE components are not additive; no claim of prefilter reference convergence."))
     print("Separated clipping/encoding diagnostics written")
 
 if __name__=="__main__":main()

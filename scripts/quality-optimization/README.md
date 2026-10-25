@@ -28,6 +28,7 @@ python scripts/quality-optimization/acceptance.py benchmark
 python scripts/quality-optimization/views.py
 python scripts/quality-optimization/encoding.py
 python scripts/quality-optimization/history.py
+python scripts/quality-optimization/evidence.py
 ```
 
 `prepare` copies the current tracked Rust files into an isolated source snapshot,
@@ -100,3 +101,10 @@ the constant environment and all three HDRs. `history` verifies the local 0.2.3
 release archive against `target/binaries/windows-x64.json` and compares decoded
 mip-zero resampling against the optimization baseline; historical gains do not
 count as improvements made by this work.
+
+`evidence` requires the complete 27-cell production benchmark, verifies every
+default output byte against the frozen baseline, and bundles compact measurements,
+actual level budgets, input/binary/source hashes and generation-record hashes into
+`target/quality-optimization/evidence.json`. Large raw assets and reference arrays
+remain local. Copy the reviewed evidence and selected contact sheets into `docs`
+when updating the acceptance report.

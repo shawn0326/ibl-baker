@@ -255,3 +255,27 @@ fn failed_output_write_does_not_emit_a_clamping_warning() {
     assert!(!stderr.contains("Warning:"), "stderr: {stderr}");
     assert!(blocked_output.is_dir());
 }
+
+#[test]
+fn both_keeps_written_ibla_and_its_warning_when_ktx2_write_fails() {
+    let workspace = Workspace::new();
+    let input = workspace.hdr([131_072.0, 131_072.0, 131_072.0]);
+    let directory = workspace.path.join("outputs");
+    fs::create_dir_all(directory.join("specular.ktx2")).unwrap();
+
+    let output = workspace.run_bake(&input, &["--target", "specular", "--output-format", "both"]);
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert_eq!(output.status.code(), Some(1), "{stderr}");
+    assert!(directory.join("specular.ibla").is_file());
+    assert!(directory.join("specular.ktx2").is_dir());
+    let warnings: Vec<_> = stderr
+        .lines()
+        .filter(|line| line.starts_with("Warning:"))
+        .collect();
+    assert_eq!(warnings.len(), 1, "{stderr}");
+    assert!(warnings[0].contains("specular.ibla"), "{stderr}");
+    assert!(
+        stderr.lines().any(|line| line.starts_with("Error:")),
+        "{stderr}"
+    );
+}
