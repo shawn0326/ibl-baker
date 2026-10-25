@@ -25,6 +25,9 @@ python scripts/quality-optimization/analyze.py --size 512
 python scripts/quality-optimization/decision.py
 python scripts/quality-optimization/acceptance.py parity
 python scripts/quality-optimization/acceptance.py benchmark
+python scripts/quality-optimization/views.py
+python scripts/quality-optimization/encoding.py
+python scripts/quality-optimization/history.py
 ```
 
 `prepare` copies the current tracked Rust files into an isolated source snapshot,
@@ -80,9 +83,20 @@ from a surviving subset.
 `parity` checks all three production output modes against the frozen CLI and
 feeds NPOT/truncated assets to both real TypeScript parsers. `benchmark` uses
 two warmups and seven alternating pairs per HDR, size and format with four Rayon
-threads. Windows Job Objects measure elapsed process time and peak committed
+threads and all default output targets (including irradiance and LUT). Windows Job Objects measure elapsed process time and peak committed
 memory. It records file sizes, binary/input hashes and machine metadata. Run it
 without competing bake/build/reference jobs. A bootstrap interval crossing 2x
 requires `--rounds 15`; a still-ambiguous result remains uncertain. Memory is
 reported, not assigned an invented acceptance threshold. These process timings
 must not be replaced by the exporter's filter-only timer.
+
+`views` stores fixed-exposure reflection, metal and dielectric sheets plus linear
+RGB arrays. Both candidates share the baseline LUT and diffuse bake; this is a
+material comparison, not a physical-reference renderer. It also separates
+direct rough-tail texel error from the reconstruction of an ideal analytic tail
+grid and final sampled error. Those RMSE values are not additive. `encoding`
+separately measures clipping loss and decoded compression/quantization loss for
+the constant environment and all three HDRs. `history` verifies the local 0.2.3
+release archive against `target/binaries/windows-x64.json` and compares decoded
+mip-zero resampling against the optimization baseline; historical gains do not
+count as improvements made by this work.

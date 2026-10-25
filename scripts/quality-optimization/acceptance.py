@@ -13,9 +13,10 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 import study as s
 
 
-def command(binary, source, output, size, fmt, minimum=None):
+def command(binary, source, output, size, fmt, minimum=None, all_targets=False):
     args=[str(binary),"bake",str(source),"--out-dir",str(output),"--size",str(size),
-          "--target","specular","--samples","1024","--quality","medium","--output-format",fmt]
+          "--samples","1024","--quality","medium","--output-format",fmt]
+    if not all_targets: args += ["--target","specular"]
     if minimum is not None: args += ["--specular-min-size",str(minimum)]
     return args
 
@@ -74,7 +75,7 @@ def benchmark(sizes,rounds):
                 for iteration in range(-2,rounds):
                     order=list(binaries) if iteration%2==0 else list(reversed(binaries))
                     for name in order:
-                        record=bench.run_process(command(binaries[name],source,root/name,size,fmt),root/f"{iteration}-{name}.log",s.ROOT,4)
+                        record=bench.run_process(command(binaries[name],source,root/name,size,fmt,all_targets=True),root/f"{iteration}-{name}.log",s.ROOT,4)
                         if iteration>=0: runs[name].append(record)
                 medians={name:statistics.median(r["seconds"] for r in values) for name,values in runs.items()}
                 diagnostics=bench.summarize_runs(runs,rounds)
@@ -84,9 +85,9 @@ def benchmark(sizes,rounds):
                 row=dict(case=case,size=size,format=fmt,runs=runs,medians=medians,
                          ratio=medians["candidate"]/medians["baseline"],noise=diagnostics,
                          time_limit=2.,time_gate="needs_15_rounds" if interval[0]<=2.<interval[1] and rounds<15 else "uncertain" if interval[0]<=2.<interval[1] else "pass" if medians["candidate"]<=2*medians["baseline"] else "fail",
-                         input_sha256=s.digest(source),output_bytes={name:sum(p.stat().st_size for p in (root/name).glob("specular.*")) for name in runs})
+                         input_sha256=s.digest(source),output_bytes={name:sum(p.stat().st_size for p in (root/name).iterdir() if p.suffix in (".ibla",".ktx2",".png")) for name in runs})
                 results.append(row)
-                s.save(s.OUT/"benchmark.json",dict(binaries=identities,machine=bench.machine_metadata(),rounds=rounds,warmups=2,threads=4,rows=results))
+                s.save(s.OUT/"benchmark.json",dict(binaries=identities,machine=bench.machine_metadata(),rounds=rounds,warmups=2,threads=4,targets="all",quality="medium",samples=1024,rows=results))
                 print(f"{case} {size} {fmt}: {row['ratio']:.3f}x",flush=True)
     if identities!={k:s.digest(v) for k,v in binaries.items()}: raise ValueError("Binaries changed during benchmark")
 
