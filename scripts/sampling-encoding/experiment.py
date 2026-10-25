@@ -21,18 +21,18 @@ module=previous.module
 run=previous.run
 FACES=previous.FACES
 POLICIES={"quadratic":(0,0),"linear":(1,1),"sample-only":(1,0),"footprint-only":(0,1)}
+POLICIES.update({"linear-footprint-25":(1,.25),"linear-footprint-50":(1,.5),"linear-footprint-75":(1,.75)})
 CODECS={"basic-black":(0,0),"basic-edge":(0,1),"slow-black":(1,0),"slow-edge":(1,1),"very-slow-edge":(2,1),"hybrid-edge":(3,1),
     "refine8-edge":(4,1),"refine32-edge":(5,1),"basic-refine8-edge":(6,1),"fast-edge":(7,1)}
 
 
 def prepare():
     snapshot=OUT/"snapshot"; hashes={}
-    names=subprocess.check_output(["git","ls-files","crates","Cargo.toml","Cargo.lock","rust-toolchain.toml"],cwd=ROOT,text=True).splitlines()
+    names=subprocess.check_output(["git","ls-tree","-r","--name-only",BASELINE,"--","crates","Cargo.toml","Cargo.lock","rust-toolchain.toml"],cwd=ROOT,text=True).splitlines()
     for name in names:
-        source=ROOT/name
-        if source.is_file():
-            destination=snapshot/name;destination.parent.mkdir(parents=True,exist_ok=True)
-            shutil.copyfile(source,destination);hashes[name]=digest(source)
+        destination=snapshot/name;destination.parent.mkdir(parents=True,exist_ok=True)
+        destination.write_bytes(subprocess.check_output(["git","show",f"{BASELINE}:{name}"],cwd=ROOT))
+        hashes[name]=digest(destination)
     pipeline=snapshot/"crates/ibl_core/src/bake_pipeline.rs"
     text=pipeline.read_text(encoding="utf-8")
     start=text.index("fn effective_specular_sample_count(")
@@ -47,13 +47,13 @@ def prepare():
     first=text.index(hook);second=text.index(hook,first+len(hook))
     text=text[:second]+"compute_cubemap_lod(sample.pdf, experiment_footprint_samples(roughness, base_width), base_width, cubemap_mips)"+text[second+len(hook):]
     text+='''
-fn experiment_curves() -> [bool; 2] {
-    static CURVES: std::sync::OnceLock<[bool; 2]> = std::sync::OnceLock::new();
-    *CURVES.get_or_init(|| [std::env::var("IBL_SAMPLE_LINEAR").unwrap() == "1",
-        std::env::var("IBL_FOOTPRINT_LINEAR").unwrap() == "1"])
+fn experiment_curves() -> [f32; 2] {
+    static CURVES: std::sync::OnceLock<[f32; 2]> = std::sync::OnceLock::new();
+    *CURVES.get_or_init(|| [std::env::var("IBL_SAMPLE_LINEAR").unwrap().parse().unwrap(),
+        std::env::var("IBL_FOOTPRINT_LINEAR").unwrap().parse().unwrap()])
 }
 pub(crate) fn effective_specular_sample_count(options: &BakeOptions, r: f32, size: u32, base: u32) -> u32 {
-    if experiment_curves()[0] { linear_specular_sample_count(options,r,size,base) }
+    if experiment_curves()[0] >= 1.0 { linear_specular_sample_count(options,r,size,base) }
     else { baseline_specular_sample_count(options,r,size,base) }
 }
 pub(crate) fn experiment_footprint_samples(r: f32, base: u32) -> u32 {
@@ -61,8 +61,9 @@ pub(crate) fn experiment_footprint_samples(r: f32, base: u32) -> u32 {
     let mip=(r*(31-base.max(1).leading_zeros()) as f32).round() as u32;
     let size=(base>>mip).max(1);
     let options=BakeOptions { quality:BakeQuality::Medium,sample_count:1024,..Default::default() };
-    if experiment_curves()[1] { linear_specular_sample_count(&options,r,size,base) }
-    else { baseline_specular_sample_count(&options,r,size,base) }
+    let low=baseline_specular_sample_count(&options,r,size,base);
+    let high=linear_specular_sample_count(&options,r,size,base);
+    (low as f32+(high-low) as f32*experiment_curves()[1]).round() as u32
 }
 '''
     pipeline.write_text(text,encoding="utf-8")
@@ -90,13 +91,37 @@ pub(crate) fn experiment_footprint_samples(r: f32, base: u32) -> u32 {
         executables={name:digest(OUT/f"build/release/examples/{name}.exe") for name in ("export","reencode")},tool=digest(__file__)))
 
 
+def prepare_timing():
+    # A static coupled-linear candidate has no per-sample experiment hooks.
+    snapshot=OUT/"timing-snapshot";hashes={}
+    names=subprocess.check_output(["git","ls-tree","-r","--name-only",BASELINE,"--","crates","Cargo.toml","Cargo.lock","rust-toolchain.toml"],cwd=ROOT,text=True).splitlines()
+    for name in names:
+        path=snapshot/name;path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_bytes(subprocess.check_output(["git","show",f"{BASELINE}:{name}"],cwd=ROOT));hashes[name]=digest(path)
+    pipeline=snapshot/"crates/ibl_core/src/bake_pipeline.rs";text=pipeline.read_text()
+    old="roughness.clamp(0.0, 1.0).powi(2)"
+    if text.count(old)!=1:raise ValueError("Unexpected budget injection point")
+    pipeline.write_text(text.replace(old,"roughness.clamp(0.0, 1.0)"),encoding="utf-8")
+    encoder=snapshot/"crates/ktx2_writer/src/compress.rs"
+    shutil.copyfile(ROOT/"crates/ktx2_writer/src/compress.rs",encoder)
+    config=snapshot/".cargo/config.toml";config.parent.mkdir(exist_ok=True)
+    config.write_text('[source.crates-io]\nreplace-with="pnpm-crates-io"\n[source.pnpm-crates-io]\ndirectory='+json.dumps(str(ROOT/".pnpm/crates/crates-io"))+'\n',encoding="utf-8")
+    env=dict(os.environ,CARGO_TARGET_DIR=str(OUT/"timing-build"))
+    run(["cargo","build","--locked","--offline","--release","--manifest-path",snapshot/"Cargo.toml","-p","ibl_cli","--bins"],OUT/"prepare-timing.log",env,snapshot)
+    save(OUT/"timing-preparation.json",dict(baseline=BASELINE,sources=hashes,pipeline=digest(pipeline),encoder=digest(encoder),
+        binary=digest(OUT/"timing-build/release/ibl-baker.exe"),method="Static linear actual budget, coupled original FIS, current production encoder; no experiment hooks"))
+
+
 def raw(case,size,policy,paths):
     directory=OUT/"raw"/str(size)/case/policy
     binary=OUT/"build/release/examples/export.exe"
     source=paths[case];files=sorted(source.glob("*.exr")) if source.is_dir() else [source]
     identity=dict(source={str(p):digest(p) for p in files},binary=digest(binary),size=size,policy=policy)
     cache=directory/"generation.json"
-    if cache.exists() and json.loads(cache.read_text())["identity"]==identity: return directory
+    if cache.exists():
+        cached=json.loads(cache.read_text())
+        if cached["identity"]==identity and cached.get("outputs") and all(
+            (directory/name).is_file() and digest(directory/name)==sha for name,sha in cached["outputs"].items()):return directory
     sample,footprint=POLICIES[policy]
     env=dict(os.environ,RAYON_NUM_THREADS="4",IBL_SAMPLE_LINEAR=str(sample),IBL_FOOTPRINT_LINEAR=str(footprint))
     run([binary,source,directory,size],directory/"run.log",env)
@@ -110,7 +135,9 @@ def encode(source,size,codec):
     binary=OUT/"build/release/examples/reencode.exe"
     identity=dict(raw=digest(source/"generation.json"),binary=digest(binary),codec=codec)
     cache=directory/"generation.json"
-    if cache.exists() and json.loads(cache.read_text())["identity"]==identity: return directory
+    if cache.exists():
+        cached=json.loads(cache.read_text());payload=directory/"specular.ktx2"
+        if cached["identity"]==identity and payload.is_file() and cached["sha256"]==digest(payload):return directory
     mode,edge=CODECS[codec];env=dict(os.environ,IBL_CODEC=str(mode),IBL_CODEC_EDGE=str(edge))
     run([binary,source,directory/"specular.ktx2",size],directory/"run.log",env)
     save(cache,dict(identity=identity,sha256=digest(directory/"specular.ktx2"),bytes=(directory/"specular.ktx2").stat().st_size,
@@ -128,7 +155,7 @@ def initialize(packages):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command",choices=["prepare","generate"])
+    parser.add_argument("command",choices=["prepare","prepare-timing","generate"])
     parser.add_argument("--python-packages",type=Path,action="append",default=[])
     parser.add_argument("--sizes",default="128")
     parser.add_argument("--cases",default="hemisphere-0,hemisphere-1,hemisphere-2")
@@ -136,6 +163,7 @@ def main():
     parser.add_argument("--codecs",default=",".join(CODECS))
     args=parser.parse_args()
     if args.command=="prepare":prepare();return
+    if args.command=="prepare-timing":prepare_timing();return
     paths,_,_=initialize(args.python_packages)
     for size in map(int,args.sizes.split(",")):
         for case in args.cases.split(","):

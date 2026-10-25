@@ -97,16 +97,81 @@ def evaluate(case,size,roughnesses):
         limitation="Observed convergence and analytic normalizer checks, not rigorous error bounds; no source mips, FIS or production sample sequence"))
 
 
+def repair(case,size):
+    destination=e.OUT/"reference"/str(size)/f"{case}.json"
+    data=json.loads(destination.read_text());raw=e.OUT/"raw"/str(size)/case/"quadratic"
+    if data["identity"]["source"]!={f:e.digest(raw/f"m0_{f}.f32") for f in e.FACES}:raise ValueError("Reference source changed")
+    cube=e.previous.levels(raw)[0];directions=np.asarray(data["identity"]["probes"])
+    for row in data["rows"]:
+        indices=np.flatnonzero(~np.asarray(row["converged"]))
+        if not len(indices):continue
+        r=row["roughness"];ladder=[integrate(cube,directions[indices],[r],order)[0] for order in (4,6,8)]
+        values=ladder[-1][:,:3];scale=np.maximum(np.sqrt(np.mean(values**2,axis=-1)),1e-6)
+        spread=np.maximum(np.max(np.abs(ladder[2][:,:3]-ladder[1][:,:3]),axis=-1),np.max(np.abs(ladder[1][:,:3]-ladder[0][:,:3]),axis=-1))
+        norm_error=np.max(np.abs(np.asarray([v[:,3] for v in ladder])-1),axis=0)
+        converged=(spread<=1e-4*scale)&(norm_error<=1e-4)
+        before={k:[row[k][i] for i in indices] for k in ("rgb","spread","converged","normalizer_error")}
+        for j,index in enumerate(indices):
+            row["rgb"][index]=values[j].tolist();row["spread"][index]=float(spread[j])
+            row["normalizer_error"][index]=float(norm_error[j]);row["converged"][index]=bool(converged[j])
+        data.setdefault("repairs",[]).append(dict(roughness=r,indices=indices.tolist(),orders=[4,6,8],
+            method=e.digest(__file__),before=before,levels=[v.tolist() for v in ladder]))
+        e.save(destination,data)
+        print("repaired",case,r,int(converged.sum()),"/",len(indices),flush=True)
+
+
+def extend_tail(case,size):
+    destination=e.OUT/"reference"/str(size)/f"{case}.json"
+    data=json.loads(destination.read_text());raw=e.OUT/"raw"/str(size)/case/"quadratic"
+    if data["identity"]["source"]!={f:e.digest(raw/f"m0_{f}.f32") for f in e.FACES}:raise ValueError("Reference source changed")
+    # Complete power-of-two chains first interpolate into a partial BC6H block
+    # after the 4x4 level. Query every affected 0.05 step and adjacent-level midpoint.
+    last=size.bit_length()-1;first=(last-2)/last
+    requested={i/20 for i in range(21) if i/20>first}
+    requested.update((i+.5)/last for i in range(last) if (i+.5)/last>first)
+    requested.update(i/last for i in range(last+1) if i/last>first)
+    roughnesses=sorted(requested-{r["roughness"] for r in data["rows"]})
+    if not roughnesses:return
+    cube=e.previous.levels(raw)[0];directions=np.asarray(data["identity"]["probes"])
+    ladder=[integrate(cube,directions,roughnesses,order) for order in (2,4,6)]
+    for i,r in enumerate(roughnesses):
+        values=ladder[-1][i,:,:3];scale=np.maximum(np.sqrt(np.mean(values**2,axis=-1)),1e-6)
+        spread=np.maximum(np.max(np.abs(ladder[2][i,:,:3]-ladder[1][i,:,:3]),axis=-1),np.max(np.abs(ladder[1][i,:,:3]-ladder[0][i,:,:3]),axis=-1))
+        norm_error=np.max(np.abs(np.asarray([v[i,:,3] for v in ladder])-1),axis=0)
+        converged=(spread<=1e-4*scale)&(norm_error<=1e-4)
+        data["rows"].append(dict(roughness=r,rgb=values.tolist(),spread=spread.tolist(),converged=converged.tolist(),normalizer_error=norm_error.tolist()))
+        print("tail reference",case,r,int(converged.sum()),"/",len(directions),flush=True)
+    data["rows"].sort(key=lambda r:r["roughness"])
+    data.setdefault("extensions",[]).append(dict(roughnesses=roughnesses,orders=[2,4,6],method=e.digest(__file__)))
+    e.save(destination,data)
+
+
+def self_check():
+    cube=e.previous.quality.Cubemap(np.broadcast_to([.25,1.,4.],(6,64,64,3)))
+    directions=np.array([[0.,1.,0.],[1.,2.,3.]]);directions/=np.linalg.norm(directions,axis=-1,keepdims=True)
+    values=integrate(cube,directions,[.5,1.],6)
+    if np.max(np.abs(values[:,:,3]-1))>1e-5:raise AssertionError("Constant integral normalization failed")
+    if np.max(np.abs(values[:,:,:3]/np.array([.25,1.,4.])-1))>1e-5:raise AssertionError("Constant HDR preservation failed")
+    print("Independent UV constant/normalizer checks passed",flush=True)
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--python-packages",type=Path,action="append",default=[])
     parser.add_argument("--size",type=int,default=128)
     parser.add_argument("--cases",default="pisa,footprint,qwantani")
     parser.add_argument("--roughnesses",default="0.05,0.1,0.2,0.35,0.5,0.7,1")
+    parser.add_argument("--repair",action="store_true")
+    parser.add_argument("--extend-tail",action="store_true")
+    parser.add_argument("--self-check",action="store_true")
     args=parser.parse_args();e.initialize(args.python_packages)
     global np,independent
     import numpy as np
     independent=e.module("cube_reference_kernel",e.ROOT/"scripts/mip-weighting/reference.py")
-    for case in args.cases.split(","):evaluate(case,args.size,list(map(float,args.roughnesses.split(","))))
+    if args.self_check:self_check();return
+    for case in args.cases.split(","):
+        if args.extend_tail:extend_tail(case,args.size)
+        elif args.repair:repair(case,args.size)
+        else:evaluate(case,args.size,list(map(float,args.roughnesses.split(","))))
 
 if __name__=="__main__":main()

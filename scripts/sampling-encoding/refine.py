@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
 import struct
 from pathlib import Path
 import sys
@@ -14,12 +13,9 @@ import experiment as e
 
 
 def anchors():
-    source=(e.OUT/"bcdec.h").read_text(encoding="utf-8-sig")
-    table=source.split("partition_sets[32][4][4] = {",1)[1].split("};",1)[0]
-    table=re.sub(r"/\*.*?\*/","",table,flags=re.S)
-    numbers=list(map(int,re.findall(r"\d+",table)))
-    if len(numbers)!=512:raise ValueError("Unexpected BC6H partition table")
-    return [next(i for i,n in enumerate(numbers[p*16:(p+1)*16]) if n==129) for p in range(32)]
+    # BC6H's standard second-subset fixup positions. Checked against bcdec.h,
+    # SHA256 134520764d96f70a27db814173616c89ad85db95fbd3328417c7a8c77e7ca189.
+    return [15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,2,8,2,2,8,8,15,2,8,2,2,8,8,2,2]
 
 
 def layout(block,fixups):
@@ -91,7 +87,7 @@ def refine(case,size,policy,limit=64):
         directory=e.OUT/"encoded"/str(size)/case/policy/label;directory.mkdir(parents=True,exist_ok=True)
         file=directory/"specular.ktx2";file.write_bytes(bytes(header)+b"".join(reversed(blobs)))
         e.save(directory/"generation.json",dict(raw=e.digest(rawdir/"generation.json"),inputs={str(p):e.digest(p/"specular.ktx2") for p in sources},
-            method=e.digest(__file__),reference=e.digest(e.OUT/"bcdec.h"),sha256=e.digest(file),seconds=time.perf_counter()-start,limit=limit))
+            method=e.digest(__file__),reference="BC6H standard fixup table",sha256=e.digest(file),seconds=time.perf_counter()-start,limit=limit))
     print("refined",size,case,policy,flush=True)
 
 

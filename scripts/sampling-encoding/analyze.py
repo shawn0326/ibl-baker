@@ -13,15 +13,21 @@ import experiment as e
 def reference(case,size,probes):
     if case=="constant":
         roughnesses=sorted({i/20 for i in range(21)}|{(i+.5)/(size.bit_length()-1) for i in range(size.bit_length()-1)})
-        return [dict(roughness=r,rgb=np.broadcast_to([.25,1.,4.],probes.shape).tolist(),spread=[0.]*len(probes),converged=[True]*len(probes)) for r in roughnesses]
+        return probes,[dict(roughness=r,rgb=np.broadcast_to([.25,1.,4.],probes.shape).tolist(),spread=[0.]*len(probes),converged=[True]*len(probes)) for r in roughnesses]
+    full_source=e.OUT/"reference"/str(size)/f"{case}.json"
+    if full_source.exists():
+        data=json.loads(full_source.read_text())
+        raw=e.OUT/"raw"/str(size)/case/"quadratic"
+        if data["identity"]["source"]!={f:e.digest(raw/f"m0_{f}.f32") for f in e.FACES}:raise ValueError("HDR reference source changed")
+        return np.asarray(data["identity"]["probes"]),data["rows"]
     path=e.previous.OUT/"reference"/str(size)/f"{case}.json"
     data=json.loads(path.read_text())
     if not np.array_equal(probes,np.asarray(data["identity"]["probes"])): raise ValueError("Reference probe set changed")
-    return data["rows"]
+    return probes,data["rows"]
 
 
 def metrics(case,size,policies,codecs):
-    probes=e.previous.directions();references=reference(case,size,probes);rows=[];encoding=[]
+    probes,references=reference(case,size,e.previous.directions());rows=[];encoding=[]
     for policy in policies:
         rawdir=e.OUT/"raw"/str(size)/case/policy
         raw=e.previous.levels(rawdir)
@@ -78,7 +84,7 @@ def summarize(rows,encoding):
         summaries.append(dict(policy=policy,codec=label,qualified_regressions=len(regressions),
             worst=max(regressions,key=lambda r:r["relative_rmse"]-r["baseline"]-r["tolerance"],default=None),
             unqualified_rows=sum(not r["qualified"] for r in selected),scene_means=means,
-            interpretation="Scene means include uncertain rows as descriptive data; not an adoption claim"))
+            interpretation="Unweighted means of the queried roughnesses, including uncertain rows; nonuniform tail coverage is not a global-average or adoption claim"))
     return summaries
 
 
@@ -89,6 +95,7 @@ def main():
     parser.add_argument("--cases",default="constant,hemisphere-0,hemisphere-1,hemisphere-2")
     parser.add_argument("--policies",default=",".join(e.POLICIES))
     parser.add_argument("--codecs",default=",".join(e.CODECS))
+    parser.add_argument("--tag",default="")
     args=parser.parse_args();e.initialize(args.python_packages)
     global np,a
     import numpy as np
@@ -97,7 +104,10 @@ def main():
     for case in args.cases.split(","):
         r,c=metrics(case,args.size,args.policies.split(","),args.codecs.split(","));rows.extend(r);encoding.extend(c)
     summary=summarize(rows,encoding)
-    e.save(e.OUT/f"analysis-{args.size}.json",dict(metrics=rows,encoding=encoding,summary=summary,
+    suffix="hdr" if any(c in args.cases.split(",") for c in ("pisa","footprint","qwantani")) else "analytic"
+    tag="-"+args.tag if args.tag else ""
+    e.save(e.OUT/f"analysis-{args.size}-{suffix}{tag}.json",dict(metrics=rows,encoding=encoding,summary=summary,
+        method=e.digest(__file__),cases=args.cases.split(","),policies=args.policies.split(","),codecs=args.codecs.split(","),
         scope="Incremental full-chain experiment; legacy 1x1 endpoint limitation is retained",baseline=e.BASELINE))
     for r in summary:print(r["policy"],r["codec"],r["qualified_regressions"],r["scene_means"],flush=True)
 
