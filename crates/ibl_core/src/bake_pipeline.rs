@@ -27,7 +27,7 @@ const DEFAULT_BRDF_SAMPLES_HIGH: u32 = 128;
 const MIN_ROUGHNESS: f32 = 1.0e-4;
 const MIN_PDF: f32 = 1.0e-7;
 
-type CubemapFaces = [SourceImage; 6];
+pub(crate) type CubemapFaces = [SourceImage; 6];
 type DirectionCache = [Vec<Vec3>; 6];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -132,6 +132,7 @@ impl<'a> BakeContext<'a> {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn build_specular_chunk_entries(
     source: &EnvironmentSource,
     options: &BakeOptions,
@@ -141,6 +142,7 @@ pub(crate) fn build_specular_chunk_entries(
     encode_cubemap_mips(&mip_chain, options.output_encoding)
 }
 
+#[cfg(test)]
 pub(crate) fn build_irradiance_chunk_entries(
     source: &EnvironmentSource,
     options: &BakeOptions,
@@ -606,7 +608,7 @@ fn effective_irradiance_sample_count(options: &BakeOptions) -> u32 {
     options.sample_count.max(1).min(cap)
 }
 
-fn encode_cubemap_mips(
+pub(crate) fn encode_cubemap_mips(
     mip_chain: &[CubemapFaces],
     encoding: EncodingKind,
 ) -> Result<(Vec<ChunkEntry>, BakeReport), IblError> {
@@ -801,6 +803,61 @@ fn vec_into_cubemap_faces(faces: Vec<SourceImage>) -> CubemapFaces {
 mod tests {
     use super::*;
     use crate::source_image::EnvironmentSource;
+
+    #[test]
+    fn truncated_specular_tail_is_rebaked_at_full_roughness() {
+        let size = 32;
+        let faces = array::from_fn(|face| {
+            SourceImage::from_pixels(
+                size,
+                size,
+                (0..size)
+                    .flat_map(|y| {
+                        (0..size).map(move |x| {
+                            let uv = Vec2::new(
+                                2.0 * (x as f32 + 0.5) / size as f32 - 1.0,
+                                2.0 * (y as f32 + 0.5) / size as f32 - 1.0,
+                            );
+                            let d = cubemap_direction(Face::all()[face], uv);
+                            Vec3::splat(0.5 + 0.5 * d.y)
+                        })
+                    })
+                    .collect(),
+            )
+        });
+        let source = EnvironmentSource::Cubemap(faces);
+        let options = BakeOptions {
+            cube_size: size,
+            sample_count: 4096,
+            quality: BakeQuality::High,
+            specular_min_size: Some(8),
+            ..Default::default()
+        };
+        let chain = build_specular_raw(
+            &source,
+            &options,
+            crate::specular_mip_count(&options).unwrap(),
+        );
+        assert_eq!(
+            chain.iter().map(|f| f[0].width).collect::<Vec<_>>(),
+            [32, 16, 8]
+        );
+        // At r=1 normalized GGX equals cosine convolution. A linear directional
+        // environment has the independent analytic result 1/2 + normal.y/3.
+        for (face, image) in Face::all().iter().zip(chain.last().unwrap()) {
+            for y in 0..8 {
+                for x in 0..8 {
+                    let uv = Vec2::new(
+                        2.0 * (x as f32 + 0.5) / 8.0 - 1.0,
+                        2.0 * (y as f32 + 0.5) / 8.0 - 1.0,
+                    );
+                    let expected = 0.5 + cubemap_direction(*face, uv).y / 3.0;
+                    let actual = image.pixels[(y * 8 + x) as usize].x;
+                    assert!((actual - expected).abs() < 0.015, "{actual} != {expected}");
+                }
+            }
+        }
+    }
 
     fn constant_cube(size: u32, color: Vec3) -> CubemapFaces {
         array::from_fn(|_| {
@@ -1534,6 +1591,53 @@ mod tests {
         let expected = expected.clamp(0.0, (cubemap_mips.len() - 1) as f32);
 
         assert!((lod - expected).abs() < 1.0e-5);
+    }
+
+    #[test]
+    fn brdf_lut_matches_independent_light_hemisphere_quadrature() {
+        // Integrate D(H) * V(L,V) * NoL directly in light solid angle in f64.
+        // This reference uses neither the production Hammersley sequence nor
+        // its half-vector importance sampling and visibility helper.
+        fn reference(nv: f64, r: f64, steps: u32) -> [f64; 2] {
+            let mut result = [0.0; 2];
+            let vx = (1.0 - nv * nv).sqrt();
+            let a2 = r.powi(4);
+            for y in 0..steps {
+                let nl = (y as f64 + 0.5) / steps as f64;
+                let radial = (1.0 - nl * nl).sqrt();
+                for x in 0..2 * steps {
+                    let phi = std::f64::consts::TAU * (x as f64 + 0.5) / (2 * steps) as f64;
+                    let lx = radial * phi.cos();
+                    let ly = radial * phi.sin();
+                    let length = ((lx + vx).powi(2) + ly * ly + (nl + nv).powi(2)).sqrt();
+                    let nh = (nl + nv) / length;
+                    let vh = (vx * (lx + vx) + nv * (nl + nv)) / length;
+                    let d = a2 / (std::f64::consts::PI * (1.0 + (a2 - 1.0) * nh * nh).powi(2));
+                    let visibility = 0.5
+                        / (nl * (nv * nv + a2 * (1.0 - nv * nv)).sqrt()
+                            + nv * (nl * nl + a2 * (1.0 - nl * nl)).sqrt());
+                    let fresnel = (1.0 - vh).powi(5);
+                    result[0] += d * visibility * nl * (1.0 - fresnel);
+                    result[1] += d * visibility * nl * fresnel;
+                }
+            }
+            result.map(|v| v * std::f64::consts::TAU / (2 * steps * steps) as f64)
+        }
+        for (nv, r) in [(0.2, 0.6), (0.6, 0.4), (1.0, 1.0)] {
+            let coarse = reference(nv, r, 128);
+            let fine = reference(nv, r, 256);
+            let sample = integrate_brdf(nv as f32, r as f32, &build_ggx_kernel(r as f32, 32768));
+            for (channel, actual) in [sample.scale, sample.bias].into_iter().enumerate() {
+                assert!(
+                    (coarse[channel] - fine[channel]).abs() < 1e-4,
+                    "reference did not converge"
+                );
+                assert!(
+                    (actual as f64 - fine[channel]).abs() < 0.002,
+                    "LUT disagrees with independent reference"
+                );
+            }
+        }
     }
 
     #[test]

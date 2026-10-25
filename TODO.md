@@ -12,6 +12,16 @@
 
 ## 本轮收尾
 
+- [x] 分离浮点 cubemap 烘焙与格式编码，CLI `both` 每个资产只烘焙一次；各格式独立截断告警及部分成功语义保持不变，见[核心库说明](crates/ibl_core/README.md)。
+- [x] 增加 `--specular-min-size` 与 `BakeOptions::specular_min_size`，覆盖 NPOT、极小尺寸、完整 roughness 重烘焙及两个真实 loader；补充消费方实际级数和禁用自动 mip 的约定，见[CLI 说明](crates/ibl_cli/README.md#specular-levels)。
+- [x] 加入独立 BRDF LUT 数值参考回归及隔离的画质/编码/交替性能实验工具；生产源 LOD、采样曲线和默认完整链暂时保持不变。
+- [ ] 完成优化候选结论与共享烘焙性能报告，记录跨平台验证状态及未通过/未裁定项。
+
+- [x] 分离浮点 cubemap 烘焙与格式编码，CLI `both` 每个资产只烘焙一次；各格式独立截断告警及部分成功语义保持不变，见[核心库说明](crates/ibl_core/README.md)。
+- [x] 增加 `--specular-min-size` 与 `BakeOptions::specular_min_size`，覆盖 NPOT、极小尺寸、完整 roughness 重烘焙及两个真实 loader；补充消费方实际级数和禁用自动 mip 的约定，见[CLI 说明](crates/ibl_cli/README.md#specular-levels)。
+- [x] 加入独立 BRDF LUT 数值参考回归及隔离的画质/编码/交替性能实验工具；生产源 LOD、采样曲线和默认完整链暂时保持不变。
+- [ ] 完成优化候选结论与共享烘焙性能报告，记录跨平台验证状态及未通过/未裁定项。
+
 - [x] 完成 HDR 编码范围截断防护、核心库 BakeReport 与 CLI 按实际输出汇总的 stderr 告警；范围边界、跨面/mip 计数、两种格式独立告警、写入失败无告警和正常载荷兼容性已通过验收，契约见 [CLI README](crates/ibl_cli/README.md) 与 [核心库 README](crates/ibl_core/README.md)。
 - [x] 实现固定名称 CI Gate，汇总 Linux Quality 与 Windows/macOS Cargo 检查，仅 success 结果通过。
 - [x] 修正 bootstrap 当前状态，归档历史发布证据并精简执行清单。

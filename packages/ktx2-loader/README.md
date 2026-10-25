@@ -142,6 +142,15 @@ export interface ParsedKTX2IBLFace {
 
 ## Level Semantics
 
+For specular assets, upload all supplied faces and levels and sample using
+`LOD = clamp(perceptualRoughness, 0, 1) * (header.levelCount - 1)`, with interpolation
+between adjacent levels. A single level uses LOD zero and has no roughness
+variation. Disable automatic mip generation and restrict the runtime's accessible
+mip range to the supplied levels. Do not infer the level count from `pixelWidth`:
+`--specular-min-size` can produce a freshly filtered truncated chain. Cropping an
+existing chain does not preserve its roughness mapping. These integration
+requirements do not add decompression, decoding or GPU upload to this parser.
+
 KTX2 stores the level index in logical mip order.
 For `ibl-baker` outputs, the level payloads are packed in the file from smallest mip to largest mip.
 The parser preserves logical mip order in `levels`.

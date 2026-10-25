@@ -7,9 +7,10 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use ibl_core::{
-    bake_cubemap_to_asset_with_report, bake_cubemap_to_ktx2_with_report, bake_to_asset_with_report,
-    bake_to_ktx2_with_report, inspect_asset, read_asset, validate_asset, write_asset, AssetKind,
-    BakeOptions, BakeQuality, BakeReport, CubemapInputPaths, EncodingKind, IblError, SourceFormat,
+    bake_cubemap_to_asset_with_report, bake_cubemap_to_cubemap, bake_to_asset_with_report,
+    bake_to_cubemap, inspect_asset, read_asset, validate_asset, write_asset, AssetKind,
+    BakeOptions, BakeQuality, BakeReport, BakedCubemap, CubemapInputPaths, EncodingKind, IblError,
+    SourceFormat,
 };
 
 fn main() {
@@ -69,6 +70,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
         match flag.as_str() {
             "--target" => target_selection.include(parse_bake_target(value)?),
             "--size" => requested_size = parse_size(value)?,
+            "--specular-min-size" => options.specular_min_size = parse_specular_min_size(value)?,
             "--irradiance-size" => options.irradiance_size = parse_u32(value, "--irradiance-size")?,
             "--encoding" => requested_encoding = parse_encoding(value)?,
             "--out-dir" => output_dir = Some(PathBuf::from(value)),
@@ -94,41 +96,31 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
     let mut outputs = Vec::new();
     for target in target_selection.resolved_targets() {
         match target {
-            BakeTarget::Specular => {
+            BakeTarget::Specular | BakeTarget::Irradiance => {
                 let mut target_options = options.clone();
-                target_options.asset_kind = AssetKind::SpecularCubemap;
+                let name = match target {
+                    BakeTarget::Specular => {
+                        target_options.asset_kind = AssetKind::SpecularCubemap;
+                        "specular"
+                    }
+                    _ => {
+                        target_options.asset_kind = AssetKind::IrradianceCubemap;
+                        "irradiance"
+                    }
+                };
                 let emit_ibla = matches!(output_format, OutputFormat::Ibla | OutputFormat::Both);
                 let emit_ktx2 = matches!(output_format, OutputFormat::Ktx2 | OutputFormat::Both);
+                let baked = bake_input_to_cubemap(&input, target_options)?;
                 if emit_ibla {
-                    let (asset, report) = bake_input_to_asset(&input, target_options.clone())?;
-                    let output = output_dir.join("specular.ibla");
+                    let (asset, report) = baked.to_asset_with_report()?;
+                    let output = output_dir.join(format!("{name}.ibla"));
                     write_asset(&output, &asset)?;
                     warn_if_clipped(&output, &report, asset.manifest.encoding.as_str());
                     outputs.push(output);
                 }
                 if emit_ktx2 {
-                    let (ktx2_bytes, report) = bake_input_to_ktx2(&input, target_options)?;
-                    let output = output_dir.join("specular.ktx2");
-                    fs::write(&output, ktx2_bytes).map_err(IblError::from)?;
-                    warn_if_clipped(&output, &report, "bc6h-ufloat");
-                    outputs.push(output);
-                }
-            }
-            BakeTarget::Irradiance => {
-                let mut target_options = options.clone();
-                target_options.asset_kind = AssetKind::IrradianceCubemap;
-                let emit_ibla = matches!(output_format, OutputFormat::Ibla | OutputFormat::Both);
-                let emit_ktx2 = matches!(output_format, OutputFormat::Ktx2 | OutputFormat::Both);
-                if emit_ibla {
-                    let (asset, report) = bake_input_to_asset(&input, target_options.clone())?;
-                    let output = output_dir.join("irradiance.ibla");
-                    write_asset(&output, &asset)?;
-                    warn_if_clipped(&output, &report, asset.manifest.encoding.as_str());
-                    outputs.push(output);
-                }
-                if emit_ktx2 {
-                    let (ktx2_bytes, report) = bake_input_to_ktx2(&input, target_options)?;
-                    let output = output_dir.join("irradiance.ktx2");
+                    let (ktx2_bytes, report) = baked.to_ktx2_with_report()?;
+                    let output = output_dir.join(format!("{name}.ktx2"));
                     fs::write(&output, ktx2_bytes).map_err(IblError::from)?;
                     warn_if_clipped(&output, &report, "bc6h-ufloat");
                     outputs.push(output);
@@ -222,6 +214,19 @@ fn parse_size(value: &str) -> Result<RequestedSize, CliError> {
     }
 
     Ok(RequestedSize::Exact(parse_u32(value, "--size")?))
+}
+
+fn parse_specular_min_size(value: &str) -> Result<Option<u32>, CliError> {
+    if value == "auto" {
+        return Ok(None);
+    }
+    let size = parse_u32(value, "--specular-min-size")?;
+    if size == 0 {
+        return Err(CliError::Usage(
+            "--specular-min-size must be auto or a positive integer".to_string(),
+        ));
+    }
+    Ok(Some(size))
 }
 
 fn parse_encoding(value: &str) -> Result<RequestedEncoding, CliError> {
@@ -331,14 +336,14 @@ fn bake_input_to_asset(
     }
 }
 
-fn bake_input_to_ktx2(
+fn bake_input_to_cubemap(
     input: &BakeInput,
     options: BakeOptions,
-) -> Result<(Vec<u8>, BakeReport), CliError> {
+) -> Result<BakedCubemap, CliError> {
     match input {
-        BakeInput::File { path } => bake_to_ktx2_with_report(path, options).map_err(CliError::from),
+        BakeInput::File { path } => bake_to_cubemap(path, options).map_err(CliError::from),
         BakeInput::Cubemap { faces, .. } => {
-            bake_cubemap_to_ktx2_with_report(faces, options).map_err(CliError::from)
+            bake_cubemap_to_cubemap(faces, options).map_err(CliError::from)
         }
     }
 }
@@ -761,6 +766,7 @@ fn help_text() -> String {
         "  --out-dir",
         "  --target <specular|irradiance|lut>",
         "  --size <auto|n>",
+        "  --specular-min-size <auto|n>",
         "  --irradiance-size <n>",
         "  --encoding <auto|rgbd-srgb|srgb|linear>",
         "  --output-format <ibla|ktx2|both>",
@@ -774,6 +780,7 @@ fn help_text() -> String {
         "  file input derives an equivalent cubemap face size from input dimensions before bucketing",
         "  directory input uses the cubemap face size before bucketing",
         "  --irradiance-size -> 32",
+        "  --specular-min-size auto -> 1 (complete specular chain)",
         "  --output-format -> ibla (backward compatible)",
         "  directory auto-detect names -> px/nx/py/ny/pz/nz or posx/negx/posy/negy/posz/negz",
         "  --faces order -> px, nx, py, ny, pz, nz",
@@ -934,6 +941,68 @@ mod tests {
             image::Rgb([r, g, 128])
         });
         image.save(path).expect("png fixture should be written");
+    }
+
+    #[test]
+    fn specular_minimum_size_parsing_rejects_invalid_values() {
+        assert_eq!(parse_specular_min_size("auto").unwrap(), None);
+        assert_eq!(parse_specular_min_size("8").unwrap(), Some(8));
+        for value in ["0", "-1", "1.5", "", "4294967296"] {
+            assert!(parse_specular_min_size(value).is_err());
+        }
+    }
+
+    #[test]
+    fn truncated_outputs_match_separate_encodes_and_preserve_other_targets() {
+        let root = unique_temp_path("truncated-output");
+        fs::create_dir_all(&root).unwrap();
+        let input = root.join("source.png");
+        write_test_png(&input, 32, 16);
+        for format in ["ibla", "ktx2", "both"] {
+            let out = root.join(format);
+            run(vec![
+                "ibl-baker".into(),
+                "bake".into(),
+                input.to_string_lossy().into_owned(),
+                "--out-dir".into(),
+                out.to_string_lossy().into_owned(),
+                "--size".into(),
+                "31".into(),
+                "--irradiance-size".into(),
+                "2".into(),
+                "--samples".into(),
+                "8".into(),
+                "--specular-min-size".into(),
+                "8".into(),
+                "--output-format".into(),
+                format.into(),
+            ])
+            .unwrap();
+        }
+        for name in ["specular", "irradiance"] {
+            for extension in ["ibla", "ktx2"] {
+                let file = format!("{name}.{extension}");
+                assert_eq!(
+                    fs::read(root.join(extension).join(&file)).unwrap(),
+                    fs::read(root.join("both").join(file)).unwrap()
+                );
+            }
+        }
+        let specular = read_asset(root.join("both/specular.ibla")).unwrap();
+        assert_eq!(specular.manifest.mip_count, 2);
+        assert_eq!(specular.chunk_table[6].width, 15);
+        assert_eq!(
+            read_asset(root.join("both/irradiance.ibla"))
+                .unwrap()
+                .manifest
+                .mip_count,
+            1
+        );
+        assert_eq!(
+            fs::read(root.join("ibla/brdf-lut.png")).unwrap(),
+            fs::read(root.join("both/brdf-lut.png")).unwrap()
+        );
+        fs::remove_dir_all(root).unwrap();
     }
 
     fn write_test_hdr(path: &Path, width: u32, height: u32) {

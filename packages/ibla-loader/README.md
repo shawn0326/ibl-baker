@@ -193,6 +193,16 @@ dimensionAtMip(base, mipLevel) = max(1, base >> mipLevel)
 
 ## Parser Output Contract
 
+For specular assets, upload every supplied face and mip and use
+`manifest.mipCount` for `LOD = clamp(perceptualRoughness, 0, 1) * (mipCount - 1)`.
+Interpolate adjacent levels. One level always uses LOD zero and cannot represent
+roughness variation. Disable automatic mip generation and configure the runtime's
+accessible level range to the uploaded images. Do not derive the count from base
+width: the baker can emit a freshly filtered truncated chain with
+`--specular-min-size`. Cropping an existing chain does not preserve its roughness
+mapping. These are renderer integration responsibilities; the parser API and
+IBLA v1 container remain unchanged.
+
 The parser output is intentionally still encoded.
 
 That means:
