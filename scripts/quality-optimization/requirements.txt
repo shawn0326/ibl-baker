@@ -1,0 +1,5 @@
+numpy==2.3.5
+OpenEXR==3.5.1
+Pillow==12.3.0
+imagecodecs==2026.8.16
+zstandard==0.25.0
