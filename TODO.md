@@ -15,7 +15,7 @@
 - [x] 分离浮点 cubemap 烘焙与格式编码，CLI `both` 每个资产只烘焙一次；各格式独立截断告警及部分成功语义保持不变，见[核心库说明](crates/ibl_core/README.md)。
 - [x] 增加 `--specular-min-size` 与 `BakeOptions::specular_min_size`，覆盖 NPOT、极小尺寸、完整 roughness 重烘焙及两个真实 loader；补充消费方实际级数和禁用自动 mip 的约定，见[CLI 说明](crates/ibl_cli/README.md#specular-levels)。
 - [x] 加入独立 BRDF LUT 数值参考回归及隔离的画质/编码/交替性能实验工具；生产源 LOD、采样曲线和默认完整链暂时保持不变。
-- [ ] 完成优化候选结论与共享烘焙性能报告，记录跨平台验证状态及未通过/未裁定项。
+- [x] 完成优化候选筛选、编码/截断分离、历史版本对照、固定材质画面和 27 组端到端性能验收；所有候选均触发必要质量门槛失败，保留 `auto=1` 及原算法。`both` 耗时降至基线的 56.4%–58.8%；实际 site 五层预览通过，详见[优化验收报告](docs/quality-optimization-acceptance.md)。
 
 - [x] 分离浮点 cubemap 烘焙与格式编码，CLI `both` 每个资产只烘焙一次；各格式独立截断告警及部分成功语义保持不变，见[核心库说明](crates/ibl_core/README.md)。
 - [x] 增加 `--specular-min-size` 与 `BakeOptions::specular_min_size`，覆盖 NPOT、极小尺寸、完整 roughness 重烘焙及两个真实 loader；补充消费方实际级数和禁用自动 mip 的约定，见[CLI 说明](crates/ibl_cli/README.md#specular-levels)。
@@ -33,6 +33,8 @@
 
 ## 待验证
 
+- [ ] 本轮分支合入/发布前取得新的 Linux Quality 和 macOS Cargo CI 结果；本地 Windows Rust、两个 loader、site 和 npm CLI 验收通过，远端平台结果不得以历史绿灯替代。
+
 - [ ] 自然发生部分生产发布失败时，记录真实恢复证据；当前恢复顺序和 checksum 防护已有模拟测试覆盖，不人为制造生产发布故障。
 - [ ] 在 .ibla loader 下一次实际版本发布时，补充该包的生产 OIDC/provenance 和 registry 消费者验收。
 
@@ -42,6 +44,7 @@
 - [ ] 评估 LDR 输入的其它 KTX2 编码路径；以收益、兼容性和复杂度的明确权衡为前提。
 - [ ] 将参考实现对比升级为长期质量基线，单独定义基线产物、指标和回归策略。
 - [ ] 仅在出现新的可复现收益证据后，单独研究源 mip 足迹与 FIS 重建的联合策略；当前加权候选不进入生产，未来仍需完整画质与逐场景性能验收。
+- [ ] 若继续推进画质默认值，先消除较少粗糙度节点导致的插值退化和强太阳采样纹理，再完成所有真实 HDR 的收敛参考与 15%/10% 采用门槛；本轮已拒绝候选的后续门槛保留为未开展，不视为通过。
 
 ## 暂不纳入当前范围
 

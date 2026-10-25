@@ -4,6 +4,11 @@ This is the operational guide for CI, release preparation, publishing and recove
 Ordinary commits and pull requests never publish packages. The workflow does not
 change versions or refresh local fixtures.
 
+The pending [quality optimization release notes](quality-optimization-release-notes.md)
+include a `BakeOptions` source compatibility change and the new specular tail
+option. Review these migration notes when preparing the next coordinated Rust/CLI
+version; this work does not change versions or publish assets.
+
 ## Verified release status
 
 The [2026-09-29 production release](release-history.md#production-release-2026-09-29)

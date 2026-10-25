@@ -27,6 +27,7 @@ assets locally in the browser. Files are processed locally and are not uploaded.
 | [`packages/ibla-loader/README.md`](packages/ibla-loader/README.md) | TypeScript `.ibla` parser API |
 | [`packages/ktx2-loader/README.md`](packages/ktx2-loader/README.md) | Narrow TypeScript parser API for `ibl-baker` KTX2 cubemaps |
 | [`packages/site/README.md`](packages/site/README.md) | Private GitHub Pages browser validation app |
+| [Quality optimization acceptance](docs/quality-optimization-acceptance.md) | Shared baking, optional specular tails, quality decisions and measured limits |
 
 ## Status
 
