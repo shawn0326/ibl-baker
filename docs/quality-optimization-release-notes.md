@@ -11,6 +11,11 @@ Rust source compatibility change below when choosing its version.
 - `--output-format both` shares one cubemap bake per asset across IBLA and KTX2
   encoding. Clipping reports remain independent. Successful earlier writes are
   retained if a later format fails.
+- BC6H 1x1 faces use uniform input blocks instead of introducing black padding.
+  Regenerated 1x1 KTX2 payloads may change; other levels, dimensions, clipping
+  counts, block lengths and consumer APIs retain their existing contracts. The
+  complete-chain follow-up keeps quadratic sampling after rejecting linear
+  candidates with measured subgroup regressions.
 - Rust gains opaque reusable `BakedCubemap` output from `bake_to_cubemap` and
   `bake_cubemap_to_cubemap`. Existing bake function signatures remain available.
 - Complete Rust `BakeOptions` literals must add `specular_min_size: None`.

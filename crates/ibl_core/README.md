@@ -50,6 +50,11 @@ base quality caps of 256 (`Low`), 512 (`Medium`), and 1024 (`High`). Smaller mip
 can boost the capped budget up to the requested count. Irradiance and BRDF LUT
 sampling retain their own quality caps.
 
+The [full-chain follow-up](../../docs/sampling-encoding-acceptance.md) isolates
+actual sample count from the source-LOD footprint. Linear-budget candidates stay
+experimental because of converged HDR and encoded subgroup regressions.
+Production keeps the existing r-squared budget and coupled source footprint.
+
 ## Bake Reports And RGB Ranges
 
 `bake_to_cubemap(path, options)` and

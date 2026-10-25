@@ -1,5 +1,9 @@
 # IBL quality and bake efficiency acceptance
 
+The subsequent [full-chain follow-up](sampling-encoding-acceptance.md) improves
+BC6H single-texel encoding. Byte-parity claims below refer to the implementation
+and binaries recorded in this report, before that later encoding repair.
+
 ## Decision
 
 Ship reusable cubemap baking and the explicit specular minimum-size option.

@@ -28,6 +28,7 @@ assets locally in the browser. Files are processed locally and are not uploaded.
 | [`packages/ktx2-loader/README.md`](packages/ktx2-loader/README.md) | Narrow TypeScript parser API for `ibl-baker` KTX2 cubemaps |
 | [`packages/site/README.md`](packages/site/README.md) | Private GitHub Pages browser validation app |
 | [Quality optimization acceptance](docs/quality-optimization-acceptance.md) | Shared baking, optional specular tails, quality decisions and measured limits |
+| [Full-chain sampling and encoding](docs/sampling-encoding-acceptance.md) | Decoupled sampling experiments, BC6H single-texel repair and incremental acceptance |
 
 ## Status
 

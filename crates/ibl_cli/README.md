@@ -186,15 +186,24 @@ KTX2 outputs are GPU-ready cubemaps using BC6H block compression with zstd super
 - Vulkan format: `VK_FORMAT_BC6H_UFLOAT_BLOCK` (`vkFormat = 143`)
 - Data format descriptor: Khronos BC6H UFLOAT with normalized sample range `[0, 1]`
 - Compression: BC6H unsigned half-float, 4×4 blocks
+- A 1x1 face fills its entire BC6H block with its sole valid texel before compression; logical dimensions and clipping counts exclude padding
 - Supercompression: zstd per-level (scheme 2)
 - Input: finite linear f32 RGB clamped to `[0, 65504]` before conversion to f16 → BC6H (the `--encoding` option has no effect)
 - BC6H stores HDR and LDR values in the `[0, 65504]` range with lossy block compression
 - Face order: +X, −X, +Y, −Y, +Z, −Z
 - KV metadata: `KTXorientation=rd`, `KTXwriter=ibl-baker v{version}`
+
 Specular output follows [Specular Levels](#specular-levels), with a complete chain
 by default; irradiance uses one level. The KTX2 writer and loader accept valid truncated chains and
 non-power-of-two sizes. The writer rejects skipped dimensions; both reject levels
 beyond the natural limit `1 + floor(log2(base_face_size))`.
+
+BC6H encoding of a 1x1 face uses a uniform input block, avoiding artificial black
+contrast during compression. Other partial blocks retain their existing padding.
+The KTX2 profile, mip layout and consumer sampling contract are unchanged.
+Existing assets are not rewritten; regenerated 1x1 KTX2 payloads can differ. See the
+[full-chain sampling and encoding study](../../docs/sampling-encoding-acceptance.md)
+for the measured scope and remaining sampling tradeoffs.
 
 ### Range Handling
 
