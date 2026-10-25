@@ -17,10 +17,7 @@
 - [x] 加入独立 BRDF LUT 数值参考回归及隔离的画质/编码/交替性能实验工具；生产源 LOD、采样曲线和默认完整链暂时保持不变。
 - [x] 完成优化候选筛选、编码/截断分离、历史版本对照、固定材质画面和 27 组端到端性能验收；所有候选均触发必要质量门槛失败，保留 `auto=1` 及原算法。`both` 耗时降至基线的 56.4%–58.8%；实际 site 五层预览通过，详见[优化验收报告](docs/quality-optimization-acceptance.md)。
 
-- [x] 分离浮点 cubemap 烘焙与格式编码，CLI `both` 每个资产只烘焙一次；各格式独立截断告警及部分成功语义保持不变，见[核心库说明](crates/ibl_core/README.md)。
-- [x] 增加 `--specular-min-size` 与 `BakeOptions::specular_min_size`，覆盖 NPOT、极小尺寸、完整 roughness 重烘焙及两个真实 loader；补充消费方实际级数和禁用自动 mip 的约定，见[CLI 说明](crates/ibl_cli/README.md#specular-levels)。
-- [x] 加入独立 BRDF LUT 数值参考回归及隔离的画质/编码/交替性能实验工具；生产源 LOD、采样曲线和默认完整链暂时保持不变。
-- [ ] 完成优化候选结论与共享烘焙性能报告，记录跨平台验证状态及未通过/未裁定项。
+- [ ] 在完整 mip 链和现有消费契约下，验证线性采样预算、BC6H 编码搜索/补边质量，以及样本数与源足迹的解耦；以已共享烘焙版本为基线，筛选能保住浮点收益且逐格式端到端耗时不超过两倍的组合。
 
 - [x] 完成 HDR 编码范围截断防护、核心库 BakeReport 与 CLI 按实际输出汇总的 stderr 告警；范围边界、跨面/mip 计数、两种格式独立告警、写入失败无告警和正常载荷兼容性已通过验收，契约见 [CLI README](crates/ibl_cli/README.md) 与 [核心库 README](crates/ibl_core/README.md)。
 - [x] 实现固定名称 CI Gate，汇总 Linux Quality 与 Windows/macOS Cargo 检查，仅 success 结果通过。
