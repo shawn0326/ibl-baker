@@ -27,9 +27,35 @@
   candidate after checking index visibility, not replace the accepted archive.
 - An additional local sparse-index watch runs for ten minutes without finding
   0.3.0, including fresh cache-miss probes. The public crate download still
-  matches the accepted candidate. No blind retry, npm upload, replacement
-  candidate, version change, tag or GitHub Release is performed. The production
-  release remains incomplete pending registry index visibility.
+  matches the accepted candidate. At that point there is no blind retry, npm
+  upload, replacement candidate, version change, tag or GitHub Release.
+- Recovery attempt 2 starts only after a fresh, isolated Cargo client resolves
+  and downloads `ktx2_writer@0.3.0`. Its cached index checksum and downloaded
+  crate match the original candidate. Only failed jobs of the original run are
+  rerun; artifact `12634902307`, the source commit and candidate manifest are
+  unchanged. The normal release Environment is reviewed again.
+- Attempt 2 accepts `ibl_core@0.3.0`, `ibl_cli@0.3.0` and all four npm CLI
+  packages at 0.2.0 with matching original receipts. The npm CLI receipts expose
+  provenance metadata; the entry's public SLSA statement binds its archive to
+  source `0868326`, `publish.yml` on master and attempt 2 of this original run.
+  The two loader publications and final registry/Release verification remain
+  pending at this recovery checkpoint.
+- Attempt 2 subsequently fails on `@ibltools/ibla-loader@0.2.1`: npm returns
+  E404 on the publication PUT and the following visibility wait times out.
+  KTX2 loader publication is not reached. The package settings show the IBLA
+  Trusted Publisher connection as **Expired**, while KTX2's connection is
+  **Valid**. Both have the expected repository, workflow, environment and
+  direct-publish permission. The expired IBLA connection must be renewed by
+  the package administrator before retrying the original run.
+- Independent partial registry verification downloads all seven accepted
+  archives and matches their SHA-256 values against the original candidate.
+  All three Cargo receipts record this source/run through Trusted Publishing;
+  all four npm CLI SLSA statements bind the archive subject digest to the same
+  source and attempt 2. This checks public provenance context and subject
+  binding, not an independent Sigstore signature verification. An isolated
+  Windows registry execution with scripts disabled reports
+  `@ibltools/cli 0.2.0` and `ibl-baker 0.3.0`. These partial checks do not replace
+  the pending all-package and three-platform registry verification.
 
 This archive preserves dated rollout, bootstrap, rehearsal and production evidence.
 Each section records the state at that time; later verification does not change earlier results.

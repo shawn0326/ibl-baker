@@ -12,10 +12,16 @@ version; this work does not change versions or publish assets.
 ## Verified release status
 
 The [2026-10-26 production attempt](release-history.md#release-preparation-and-partial-publication-2026-10-26)
-is incomplete: only `ktx2_writer@0.3.0` is accepted with the original candidate
-checksum. The remaining eight packages and Release finalization await Cargo
-index visibility and recovery of the original production run. Do not start a
-replacement production run for these versions.
+is incomplete. Recovery attempt 2 uses the original approved candidate after
+fresh Cargo resolution confirms the writer's index entry and archive checksum.
+Registry and Release verification must complete before recording this release
+as successful. Follow the original production run; do not start a replacement
+run or candidate for these versions.
+
+The recovery has accepted the three Rust packages and four npm CLI packages.
+IBLA loader publication now requires renewal of its expired npm Trusted
+Publisher connection; KTX2 loader's connection is valid. Both loader versions
+and final registry/Release verification remain pending.
 
 The [2026-09-29 production release](release-history.md#production-release-2026-09-29)
 verified OIDC publication, registry integrity, npm provenance, registry consumers

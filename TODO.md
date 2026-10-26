@@ -38,7 +38,7 @@
 
 - [x] 完成 Rust/CLI 0.3.0、npm CLI 0.2.0、IBLA loader 0.2.1、KTX2 loader 0.3.1 的版本 PR、四份发布说明和九包完整发布预演；[PR #28](https://github.com/shawn0326/ibl-baker/pull/28) 和[预演 40286257184](https://github.com/shawn0326/ibl-baker/actions/runs/40286257184) 通过，源提交 `0868326`，三平台候选消费及独立归档核验完成。
 - [ ] 完成上述九包正式发布、三平台 registry 消费者、完整性/provenance 校验和四个 GitHub Release 收尾，并记录真实证据。
-- [ ] 完成本次真实部分发布的恢复验收：[运行 40287241785](https://github.com/shawn0326/ibl-baker/actions/runs/40287241785) 仅接收 `ktx2_writer@0.3.0`，checksum 与原候选一致，其余八包未发布；等待 Cargo 索引可见后仅重跑原运行失败任务，补齐真实恢复、registry 消费和 Release 证据，见[发布历史](docs/release-history.md#release-preparation-and-partial-publication-2026-10-26)。
+- [ ] 完成本次真实部分发布的恢复验收：[运行 40287241785](https://github.com/shawn0326/ibl-baker/actions/runs/40287241785) 第 2 次尝试已复用原候选接收三个 Rust 包和四个 npm CLI 包；七包归档/发布来源独立核验及 Windows 隔离安装通过。IBLA loader 的 Trusted Publisher 已过期，需管理员重建后仅重跑原运行失败任务，继续两个 loader、正式 registry 消费和 Release 收尾，见[发布历史](docs/release-history.md#release-preparation-and-partial-publication-2026-10-26)。
 - [ ] 补齐 Cargo 后继包准备前的 sparse index 可见性门槛；本次真实发布发现 API checksum 回执先于索引可见，需避免将 API 接收误当作依赖已可解析，并验证失败恢复继续复用原候选。
 - [ ] 在 .ibla loader 下一次实际版本发布时，补充该包的生产 OIDC/provenance 和 registry 消费者验收。
 
