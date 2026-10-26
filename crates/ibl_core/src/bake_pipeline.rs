@@ -27,7 +27,7 @@ const DEFAULT_BRDF_SAMPLES_HIGH: u32 = 128;
 const MIN_ROUGHNESS: f32 = 1.0e-4;
 const MIN_PDF: f32 = 1.0e-7;
 
-type CubemapFaces = [SourceImage; 6];
+pub(crate) type CubemapFaces = [SourceImage; 6];
 type DirectionCache = [Vec<Vec3>; 6];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -46,6 +46,50 @@ struct BrdfLutSample {
 struct KernelSample {
     local_direction: Vec3,
     pdf: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SourceMipSample {
+    level_low: usize,
+    level_high: usize,
+    fract: f32,
+}
+
+impl SourceMipSample {
+    fn new(lod: f32, mip_count: usize) -> Self {
+        let max_level = mip_count - 1;
+        let lod = lod.clamp(0.0, max_level as f32);
+        let floor = lod.floor();
+        let level_low = floor as usize;
+        Self {
+            level_low,
+            level_high: (level_low + 1).min(max_level),
+            fract: lod - floor,
+        }
+    }
+}
+
+struct PreparedKernelSample {
+    local_direction: Vec3,
+    source_mip: SourceMipSample,
+}
+
+fn prepare_filter_kernel(
+    kernel: &[KernelSample],
+    base_width: u32,
+    cubemap_mips: &[CubemapFaces],
+) -> Vec<PreparedKernelSample> {
+    let sample_count = kernel.len() as u32;
+    kernel
+        .iter()
+        .map(|sample| PreparedKernelSample {
+            local_direction: sample.local_direction,
+            source_mip: SourceMipSample::new(
+                compute_cubemap_lod(sample.pdf, sample_count, base_width, cubemap_mips),
+                cubemap_mips.len(),
+            ),
+        })
+        .collect()
 }
 
 #[derive(Default)]
@@ -91,7 +135,6 @@ impl SampleKernelCache {
 }
 
 struct BakeContext<'a> {
-    base_cubemap: CubemapFaces,
     cubemap_mips: Vec<CubemapFaces>,
     cubemap_borders: Vec<CubemapBorders>,
     direction_caches: BTreeMap<u32, DirectionCache>,
@@ -104,14 +147,13 @@ impl<'a> BakeContext<'a> {
         let rotation = Rotation::from_degrees(rotation_degrees);
         let base_directions = build_direction_cache(base_size);
         let base_cubemap = render_cubemap_faces(source, rotation, &base_directions, base_size);
-        let cubemap_mips = build_cubemap_mip_chain(&base_cubemap);
+        let cubemap_mips = build_cubemap_mip_chain(base_cubemap);
         let cubemap_borders = cubemap_mips.iter().map(CubemapBorders::new).collect();
 
         let mut direction_caches = BTreeMap::new();
         direction_caches.insert(base_size, base_directions);
 
         Self {
-            base_cubemap,
             cubemap_mips,
             cubemap_borders,
             direction_caches,
@@ -132,6 +174,7 @@ impl<'a> BakeContext<'a> {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn build_specular_chunk_entries(
     source: &EnvironmentSource,
     options: &BakeOptions,
@@ -141,6 +184,7 @@ pub(crate) fn build_specular_chunk_entries(
     encode_cubemap_mips(&mip_chain, options.output_encoding)
 }
 
+#[cfg(test)]
 pub(crate) fn build_irradiance_chunk_entries(
     source: &EnvironmentSource,
     options: &BakeOptions,
@@ -154,8 +198,8 @@ pub(crate) fn build_specular_raw(
     options: &BakeOptions,
     mip_count: u32,
 ) -> Vec<CubemapFaces> {
-    let mut context = BakeContext::new(source, options.cube_size, options.rotation_degrees);
-    build_specular_mip_chain(&mut context, options, mip_count)
+    let context = BakeContext::new(source, options.cube_size, options.rotation_degrees);
+    build_specular_mip_chain(context, options, mip_count)
 }
 
 pub(crate) fn build_irradiance_raw(
@@ -236,13 +280,12 @@ pub(crate) fn build_brdf_lut_chunk_entries(
 }
 
 fn build_specular_mip_chain(
-    context: &mut BakeContext<'_>,
+    mut context: BakeContext<'_>,
     options: &BakeOptions,
     mip_count: u32,
 ) -> Vec<CubemapFaces> {
     let mut chain = Vec::with_capacity(mip_count as usize);
-    chain.push(context.base_cubemap.clone());
-    let base_face_size = context.base_cubemap[0].width.max(1);
+    let base_face_size = context.cubemap_mips[0][0].width.max(1);
 
     for mip_level in 1..mip_count {
         let roughness = mip_level as f32 / (mip_count.saturating_sub(1).max(1) as f32);
@@ -250,7 +293,7 @@ fn build_specular_mip_chain(
         let sample_count =
             effective_specular_sample_count(options, roughness, face_size, base_face_size);
         let faces = render_filtered_faces(
-            context,
+            &mut context,
             face_size,
             Distribution::Ggx,
             roughness,
@@ -259,11 +302,14 @@ fn build_specular_mip_chain(
         chain.push(faces);
     }
 
+    // Filtering has finished using source mip zero. Transfer it into the output
+    // instead of retaining another full-resolution float cubemap during filtering.
+    chain.insert(0, context.cubemap_mips.remove(0));
     chain
 }
 
-fn build_cubemap_mip_chain(base_faces: &CubemapFaces) -> Vec<CubemapFaces> {
-    let mut levels = vec![base_faces.clone()];
+fn build_cubemap_mip_chain(base_faces: CubemapFaces) -> Vec<CubemapFaces> {
+    let mut levels = vec![base_faces];
     loop {
         let prev = levels.last().expect("base cubemap mip should exist");
         if prev[0].width <= 1 && prev[0].height <= 1 {
@@ -339,7 +385,10 @@ fn render_filtered_faces(
     let kernel = context
         .kernel_cache
         .kernel(distribution, roughness, sample_count.max(1));
-    let base_width = context.base_cubemap[0].width.max(1);
+    let base_width = context.cubemap_mips[0][0].width.max(1);
+    // Source footprint and mip interpolation depend on this pass, not the
+    // output direction. Keep them out of the per-pixel/per-sample loop.
+    let prepared_kernel = prepare_filter_kernel(kernel, base_width, &context.cubemap_mips);
 
     let faces = Face::all()
         .par_iter()
@@ -350,10 +399,9 @@ fn render_filtered_faces(
                 &context.cubemap_borders,
                 &directions[face.index()],
                 size,
-                kernel,
+                &prepared_kernel,
                 distribution,
                 roughness,
-                base_width,
             )
         })
         .collect::<Vec<_>>();
@@ -361,16 +409,14 @@ fn render_filtered_faces(
     vec_into_cubemap_faces(faces)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn render_filtered_face(
     cubemap_mips: &[CubemapFaces],
     cubemap_borders: &[CubemapBorders],
     directions: &[Vec3],
     size: u32,
-    kernel: &[KernelSample],
+    kernel: &[PreparedKernelSample],
     distribution: Distribution,
     roughness: f32,
-    base_width: u32,
 ) -> SourceImage {
     let pixels = directions
         .iter()
@@ -382,7 +428,6 @@ fn render_filtered_face(
                 kernel,
                 distribution,
                 roughness,
-                base_width,
             )
         })
         .collect();
@@ -393,10 +438,9 @@ fn filter_direction(
     cubemap_mips: &[CubemapFaces],
     cubemap_borders: &[CubemapBorders],
     direction: Vec3,
-    kernel: &[KernelSample],
+    kernel: &[PreparedKernelSample],
     distribution: Distribution,
     roughness: f32,
-    base_width: u32,
 ) -> Vec3 {
     let normal = direction.normalize_or_zero();
     if matches!(distribution, Distribution::Ggx)
@@ -406,15 +450,18 @@ fn filter_direction(
     }
 
     let tbn = generate_tbn(normal);
-    let sample_count = kernel.len() as u32;
 
     match distribution {
         Distribution::Lambertian => {
             let mut accumulated = Vec3::ZERO;
             for sample in kernel {
                 let light = (tbn * sample.local_direction).normalize_or_zero();
-                let lod = compute_cubemap_lod(sample.pdf, sample_count, base_width, cubemap_mips);
-                accumulated += sample_cubemap_lod(cubemap_mips, cubemap_borders, light, lod);
+                accumulated += sample_cubemap_prepared(
+                    cubemap_mips,
+                    cubemap_borders,
+                    light,
+                    sample.source_mip,
+                );
             }
 
             if kernel.is_empty() {
@@ -434,10 +481,12 @@ fn filter_direction(
                 let ndotl = normal.dot(light).max(0.0);
 
                 if ndotl > 0.0 {
-                    let lod =
-                        compute_cubemap_lod(sample.pdf, sample_count, base_width, cubemap_mips);
-                    accumulated +=
-                        sample_cubemap_lod(cubemap_mips, cubemap_borders, light, lod) * ndotl;
+                    accumulated += sample_cubemap_prepared(
+                        cubemap_mips,
+                        cubemap_borders,
+                        light,
+                        sample.source_mip,
+                    ) * ndotl;
                     total_weight += ndotl;
                 }
             }
@@ -473,11 +522,25 @@ fn sample_cubemap_lod(
     direction: Vec3,
     lod: f32,
 ) -> Vec3 {
-    let max_level = (cubemap_mips.len() - 1) as f32;
-    let lod = lod.clamp(0.0, max_level);
-    let level_low = lod.floor() as usize;
-    let level_high = (level_low + 1).min(cubemap_mips.len() - 1);
-    let fract = lod - lod.floor();
+    sample_cubemap_prepared(
+        cubemap_mips,
+        cubemap_borders,
+        direction,
+        SourceMipSample::new(lod, cubemap_mips.len()),
+    )
+}
+
+fn sample_cubemap_prepared(
+    cubemap_mips: &[CubemapFaces],
+    cubemap_borders: &[CubemapBorders],
+    direction: Vec3,
+    source_mip: SourceMipSample,
+) -> Vec3 {
+    let SourceMipSample {
+        level_low,
+        level_high,
+        fract,
+    } = source_mip;
 
     let (face, uv) = direction_to_face_uv(direction.normalize_or_zero());
     let sample_low = cubemap_borders[level_low].sample_bilinear(&cubemap_mips[level_low], face, uv);
@@ -606,7 +669,7 @@ fn effective_irradiance_sample_count(options: &BakeOptions) -> u32 {
     options.sample_count.max(1).min(cap)
 }
 
-fn encode_cubemap_mips(
+pub(crate) fn encode_cubemap_mips(
     mip_chain: &[CubemapFaces],
     encoding: EncodingKind,
 ) -> Result<(Vec<ChunkEntry>, BakeReport), IblError> {
@@ -801,6 +864,61 @@ fn vec_into_cubemap_faces(faces: Vec<SourceImage>) -> CubemapFaces {
 mod tests {
     use super::*;
     use crate::source_image::EnvironmentSource;
+
+    #[test]
+    fn truncated_specular_tail_is_rebaked_at_full_roughness() {
+        let size = 32;
+        let faces = array::from_fn(|face| {
+            SourceImage::from_pixels(
+                size,
+                size,
+                (0..size)
+                    .flat_map(|y| {
+                        (0..size).map(move |x| {
+                            let uv = Vec2::new(
+                                2.0 * (x as f32 + 0.5) / size as f32 - 1.0,
+                                2.0 * (y as f32 + 0.5) / size as f32 - 1.0,
+                            );
+                            let d = cubemap_direction(Face::all()[face], uv);
+                            Vec3::splat(0.5 + 0.5 * d.y)
+                        })
+                    })
+                    .collect(),
+            )
+        });
+        let source = EnvironmentSource::Cubemap(faces);
+        let options = BakeOptions {
+            cube_size: size,
+            sample_count: 4096,
+            quality: BakeQuality::High,
+            specular_min_size: Some(8),
+            ..Default::default()
+        };
+        let chain = build_specular_raw(
+            &source,
+            &options,
+            crate::specular_mip_count(&options).unwrap(),
+        );
+        assert_eq!(
+            chain.iter().map(|f| f[0].width).collect::<Vec<_>>(),
+            [32, 16, 8]
+        );
+        // At r=1 normalized GGX equals cosine convolution. A linear directional
+        // environment has the independent analytic result 1/2 + normal.y/3.
+        for (face, image) in Face::all().iter().zip(chain.last().unwrap()) {
+            for y in 0..8 {
+                for x in 0..8 {
+                    let uv = Vec2::new(
+                        2.0 * (x as f32 + 0.5) / 8.0 - 1.0,
+                        2.0 * (y as f32 + 0.5) / 8.0 - 1.0,
+                    );
+                    let expected = 0.5 + cubemap_direction(*face, uv).y / 3.0;
+                    let actual = image.pixels[(y * 8 + x) as usize].x;
+                    assert!((actual - expected).abs() < 0.015, "{actual} != {expected}");
+                }
+            }
+        }
+    }
 
     fn constant_cube(size: u32, color: Vec3) -> CubemapFaces {
         array::from_fn(|_| {
@@ -1101,7 +1219,7 @@ mod tests {
                 image
             });
             let expected_means = faces.each_ref().map(cube_uv_mean);
-            let chain = build_cubemap_mip_chain(&faces);
+            let chain = build_cubemap_mip_chain(faces.clone());
             for mip in &chain {
                 for (face, expected) in mip.iter().zip(expected_means) {
                     for (actual, expected) in cube_uv_mean(face).into_iter().zip(expected) {
@@ -1129,7 +1247,7 @@ mod tests {
             let faces = array::from_fn(|_| {
                 SourceImage::from_pixels(size, size, vec![color; (size * size) as usize])
             });
-            let chain = build_cubemap_mip_chain(&faces);
+            let chain = build_cubemap_mip_chain(faces.clone());
             for actual in chain.iter().flatten().flat_map(|face| &face.pixels) {
                 assert!(
                     (*actual - color).abs().max_element()
@@ -1537,6 +1655,53 @@ mod tests {
     }
 
     #[test]
+    fn brdf_lut_matches_independent_light_hemisphere_quadrature() {
+        // Integrate D(H) * V(L,V) * NoL directly in light solid angle in f64.
+        // This reference uses neither the production Hammersley sequence nor
+        // its half-vector importance sampling and visibility helper.
+        fn reference(nv: f64, r: f64, steps: u32) -> [f64; 2] {
+            let mut result = [0.0; 2];
+            let vx = (1.0 - nv * nv).sqrt();
+            let a2 = r.powi(4);
+            for y in 0..steps {
+                let nl = (y as f64 + 0.5) / steps as f64;
+                let radial = (1.0 - nl * nl).sqrt();
+                for x in 0..2 * steps {
+                    let phi = std::f64::consts::TAU * (x as f64 + 0.5) / (2 * steps) as f64;
+                    let lx = radial * phi.cos();
+                    let ly = radial * phi.sin();
+                    let length = ((lx + vx).powi(2) + ly * ly + (nl + nv).powi(2)).sqrt();
+                    let nh = (nl + nv) / length;
+                    let vh = (vx * (lx + vx) + nv * (nl + nv)) / length;
+                    let d = a2 / (std::f64::consts::PI * (1.0 + (a2 - 1.0) * nh * nh).powi(2));
+                    let visibility = 0.5
+                        / (nl * (nv * nv + a2 * (1.0 - nv * nv)).sqrt()
+                            + nv * (nl * nl + a2 * (1.0 - nl * nl)).sqrt());
+                    let fresnel = (1.0 - vh).powi(5);
+                    result[0] += d * visibility * nl * (1.0 - fresnel);
+                    result[1] += d * visibility * nl * fresnel;
+                }
+            }
+            result.map(|v| v * std::f64::consts::TAU / (2 * steps * steps) as f64)
+        }
+        for (nv, r) in [(0.2, 0.6), (0.6, 0.4), (1.0, 1.0)] {
+            let coarse = reference(nv, r, 128);
+            let fine = reference(nv, r, 256);
+            let sample = integrate_brdf(nv as f32, r as f32, &build_ggx_kernel(r as f32, 32768));
+            for (channel, actual) in [sample.scale, sample.bias].into_iter().enumerate() {
+                assert!(
+                    (coarse[channel] - fine[channel]).abs() < 1e-4,
+                    "reference did not converge"
+                );
+                assert!(
+                    (actual as f64 - fine[channel]).abs() < 0.002,
+                    "LUT disagrees with independent reference"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn brdf_lut_uses_correlated_smith_visibility() {
         let kernel = build_ggx_kernel(0.5, 64);
         let sample = integrate_brdf(0.5, 0.5, &kernel);
@@ -1545,5 +1710,189 @@ mod tests {
         assert!(sample.bias.is_finite());
         assert!(sample.scale > 0.0);
         assert!(sample.bias >= 0.0);
+    }
+}
+
+#[cfg(test)]
+mod prepared_filter_tests {
+    use super::*;
+
+    #[test]
+    fn prepared_filter_matches_frozen_scalar_path_bit_for_bit() {
+        let mut directions = Vec::new();
+        for x in -1..=1 {
+            for y in -1..=1 {
+                for z in -1..=1 {
+                    if (x, y, z) != (0, 0, 0) {
+                        directions.push(Vec3::new(x as f32, y as f32, z as f32));
+                    }
+                }
+            }
+        }
+        directions.push(Vec3::new(0.13, -0.91, 0.37));
+        for size in [1, 3, 8] {
+            let faces = std::array::from_fn(|face| {
+                let pixels = (0..size * size)
+                    .map(|i| {
+                        Vec3::new(
+                            (face + 1) as f32 * 7.3 + i as f32 * 0.25,
+                            (i / size) as f32 * 0.15 - 0.5,
+                            i as f32 * 31.0,
+                        )
+                    })
+                    .collect();
+                SourceImage::from_pixels(size, size, pixels)
+            });
+            let mips = build_cubemap_mip_chain(faces);
+            let borders: Vec<_> = mips.iter().map(CubemapBorders::new).collect();
+            for distribution in [Distribution::Ggx, Distribution::Lambertian] {
+                for roughness in [0.0, 0.05, 0.4, 1.0] {
+                    for count in [0, 1, 7, 32] {
+                        let kernel = match distribution {
+                            Distribution::Ggx => build_ggx_kernel(roughness, count),
+                            Distribution::Lambertian => build_lambertian_kernel(count),
+                        };
+                        let prepared = prepare_filter_kernel(&kernel, size, &mips);
+                        for direction in &directions {
+                            let expected = legacy_filter_direction(
+                                &mips,
+                                &borders,
+                                *direction,
+                                &kernel,
+                                distribution,
+                                roughness,
+                                size,
+                            );
+                            let actual = filter_direction(
+                                &mips,
+                                &borders,
+                                *direction,
+                                &prepared,
+                                distribution,
+                                roughness,
+                            );
+                            assert_eq!(actual.to_array().map(f32::to_bits),
+                                expected.to_array().map(f32::to_bits),
+                                "size={size}, distribution={distribution:?}, r={roughness}, count={count}, direction={direction:?}");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Frozen a306d63 path: keep the oracle independent of prepared mip metadata.
+    fn legacy_filter_direction(
+        cubemap_mips: &[CubemapFaces],
+        cubemap_borders: &[CubemapBorders],
+        direction: Vec3,
+        kernel: &[KernelSample],
+        distribution: Distribution,
+        roughness: f32,
+        base_width: u32,
+    ) -> Vec3 {
+        let normal = direction.normalize_or_zero();
+        if matches!(distribution, Distribution::Ggx)
+            && (roughness <= MIN_ROUGHNESS || kernel.len() <= 1)
+        {
+            return legacy_sample_cubemap_lod(cubemap_mips, cubemap_borders, normal, 0.0);
+        }
+
+        let tbn = generate_tbn(normal);
+        let sample_count = kernel.len() as u32;
+
+        match distribution {
+            Distribution::Lambertian => {
+                let mut accumulated = Vec3::ZERO;
+                for sample in kernel {
+                    let light = (tbn * sample.local_direction).normalize_or_zero();
+                    let lod = legacy_compute_cubemap_lod(
+                        sample.pdf,
+                        sample_count,
+                        base_width,
+                        cubemap_mips,
+                    );
+                    accumulated +=
+                        legacy_sample_cubemap_lod(cubemap_mips, cubemap_borders, light, lod);
+                }
+
+                if kernel.is_empty() {
+                    legacy_sample_cubemap_lod(cubemap_mips, cubemap_borders, normal, 0.0)
+                } else {
+                    accumulated / kernel.len() as f32
+                }
+            }
+            Distribution::Ggx => {
+                let view = normal;
+                let mut accumulated = Vec3::ZERO;
+                let mut total_weight = 0.0;
+
+                for sample in kernel {
+                    let half_vector = (tbn * sample.local_direction).normalize_or_zero();
+                    let light =
+                        (2.0 * view.dot(half_vector) * half_vector - view).normalize_or_zero();
+                    let ndotl = normal.dot(light).max(0.0);
+
+                    if ndotl > 0.0 {
+                        let lod = legacy_compute_cubemap_lod(
+                            sample.pdf,
+                            sample_count,
+                            base_width,
+                            cubemap_mips,
+                        );
+                        accumulated +=
+                            legacy_sample_cubemap_lod(cubemap_mips, cubemap_borders, light, lod)
+                                * ndotl;
+                        total_weight += ndotl;
+                    }
+                }
+
+                if total_weight > 0.0 {
+                    accumulated / total_weight
+                } else {
+                    legacy_sample_cubemap_lod(cubemap_mips, cubemap_borders, normal, 0.0)
+                }
+            }
+        }
+    }
+
+    fn legacy_compute_cubemap_lod(
+        pdf: f32,
+        sample_count: u32,
+        base_width: u32,
+        cubemap_mips: &[CubemapFaces],
+    ) -> f32 {
+        let max_lod = (cubemap_mips.len().saturating_sub(1)) as f32;
+        if sample_count <= 1 {
+            return 0.0;
+        }
+
+        let texel_ratio =
+            (6.0 * (base_width.max(1) as f32).powi(2)) / ((sample_count as f32) * pdf.max(MIN_PDF));
+        (0.5 * texel_ratio.max(1.0).log2()).clamp(0.0, max_lod)
+    }
+
+    fn legacy_sample_cubemap_lod(
+        cubemap_mips: &[CubemapFaces],
+        cubemap_borders: &[CubemapBorders],
+        direction: Vec3,
+        lod: f32,
+    ) -> Vec3 {
+        let max_level = (cubemap_mips.len() - 1) as f32;
+        let lod = lod.clamp(0.0, max_level);
+        let level_low = lod.floor() as usize;
+        let level_high = (level_low + 1).min(cubemap_mips.len() - 1);
+        let fract = lod - lod.floor();
+
+        let (face, uv) = direction_to_face_uv(direction.normalize_or_zero());
+        let sample_low =
+            cubemap_borders[level_low].sample_bilinear(&cubemap_mips[level_low], face, uv);
+        if level_low == level_high || fract < 1.0e-4 {
+            return sample_low;
+        }
+
+        let sample_high =
+            cubemap_borders[level_high].sample_bilinear(&cubemap_mips[level_high], face, uv);
+        sample_low.lerp(sample_high, fract)
     }
 }

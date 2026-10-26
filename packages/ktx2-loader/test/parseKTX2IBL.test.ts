@@ -78,6 +78,35 @@ const LEGACY_BC6H_UFLOAT_DFD = Uint8Array.of(
 );
 const encoder = new TextEncoder();
 
+test("parseKTX2IBL preserves zero-copy level views for buffers and offset inputs", () => {
+  const bytes = createKtx2Bytes({
+    pixelWidth: 8,
+    levelPayloads: [Uint8Array.of(1, 2, 3), Uint8Array.of(4, 5)],
+  });
+  const storage = new Uint8Array(bytes.byteLength + 26).fill(0xa5);
+  storage.set(bytes, 13);
+  const inputs = [
+    bytes.slice().buffer,
+    storage.subarray(13, 13 + bytes.byteLength),
+    Buffer.from(storage.buffer, 13, bytes.byteLength),
+  ];
+
+  for (const input of inputs) {
+    const view = input instanceof Uint8Array ? input : new Uint8Array(input);
+    const before = Uint8Array.from(view);
+    const parsed = parseKTX2IBL(input);
+    assert.equal(parsed.levels.length, 2);
+    for (const level of parsed.levels) {
+      assert.equal(level.compressedBytes.buffer, view.buffer);
+      assert.equal(level.compressedBytes.byteOffset, view.byteOffset + level.byteOffset);
+      assert.equal(level.compressedBytes.byteLength, level.byteLength);
+      assert.equal(expectDefined(level.faces[0]).uncompressedByteOffset, 0);
+    }
+    assert.deepEqual([...expectDefined(parsed.levels[1]).compressedBytes], [4, 5]);
+    assert.deepEqual([...view], [...before]);
+  }
+});
+
 test("parseKTX2IBL parses a synthetic BC6H zstd cubemap", () => {
   const bytes = createKtx2Bytes({
     pixelWidth: 8,

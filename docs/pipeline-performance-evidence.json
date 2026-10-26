@@ -1,0 +1,3868 @@
+{
+  "baseline": "125ea90",
+  "adopted": [
+    "Reuse one decoded environment per CLI job",
+    "Move base cubemaps into source mips and finished output",
+    "Borrow LUT PNG bytes when writing"
+  ],
+  "benchmark": {
+    "baseline": "125ea90",
+    "binaries": {
+      "baseline": "bf2a287bc58a583cb282103a7dc166369ad7c38f9d7d44abb512a1b3a780ab3a",
+      "candidate": "04819e6b028d93a7ad24359be01dbcd9f2513a5a14a2410032cf67befab4d800"
+    },
+    "machine": {
+      "os": {
+        "system": "Windows",
+        "node": "DESKTOP-HNADL2G",
+        "release": "10",
+        "version": "10.0.19045",
+        "machine": "AMD64",
+        "processor": "Intel64 Family 6 Model 85 Stepping 7, GenuineIntel"
+      },
+      "processor": "Intel(R) Core(TM) i9-10940X CPU @ 3.30GHz",
+      "logical_cpu_count": 28,
+      "python": "3.14.5 (tags/v3.14.5:5607950, May 10 2026, 10:43:50) [MSC v.1944 64 bit (AMD64)]",
+      "rustc_inventory": {
+        "command": [
+          "rustc",
+          "-vV"
+        ],
+        "returncode": 0,
+        "stdout": "rustc 1.98.0 (88d9e12ae 2026-08-18)\nbinary: rustc\ncommit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea\ncommit-date: 2026-08-18\nhost: x86_64-pc-windows-msvc\nrelease: 1.98.0\nLLVM version: 22.1.8",
+        "stderr": ""
+      },
+      "cargo_inventory": {
+        "command": [
+          "cargo",
+          "-V"
+        ],
+        "returncode": 0,
+        "stdout": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+        "stderr": ""
+      },
+      "build_environment_inventory": {},
+      "toolchain_scope": "Inventory at benchmark time, not proof of the toolchain that produced prebuilt binaries"
+    },
+    "source_inputs": {
+      "pisa": {
+        "fixtures\\inputs\\pisa.hdr": "0b3aa24296e6a24263385ea80cd41363596de02d6c5361ac2513aa8cfe0badc6"
+      },
+      "spruit": {
+        "fixtures\\inputs\\spruit_sunrise_2k.jpg": "867a853b9076fd7e6a6e0f38ca5f613ff6bbc672191720bf24af828e6384b62d"
+      },
+      "bridge": {
+        "fixtures\\inputs\\Bridge2\\negx.jpg": "047052e77f698a819903f1d2fe27b40ee56930150fc38913da7e1c58e8dcae70",
+        "fixtures\\inputs\\Bridge2\\negy.jpg": "52b4b95125c777d48ac9ea568d79d55fd3fb62e24a7da37600720cdddb7ab333",
+        "fixtures\\inputs\\Bridge2\\negz.jpg": "1bc79f442f31931576d734565821b41b331a017dd86f2ac6a60ac6d3bbbbe6ba",
+        "fixtures\\inputs\\Bridge2\\posx.jpg": "bfea380ae3b2f2b44d3040c9fe7a8f3e325450a12b7a0f29561b5ca175f1a250",
+        "fixtures\\inputs\\Bridge2\\posy.jpg": "cc467777340037ee8f95460b19772a8ae6a71c125af1714bfd408db2c1c33d98",
+        "fixtures\\inputs\\Bridge2\\posz.jpg": "d56085e5da2e8f2cee13694519ed153995045f5a11b1d41d25be70380cf15548"
+      }
+    },
+    "candidate_source": {
+      "path": "E:\\works\\ibl-baker",
+      "files_sha256": {
+        "Cargo.toml": "cbd55af4e90e09e77be87cfb828f4d1e085698ea9cf85e003e011bd6369f916f",
+        "Cargo.lock": "9655703ac8495972cb3b57facbddfc62e5d6f23645fe2a30fa1851fe207e1bd3",
+        "rust-toolchain.toml": "8f8d40d611a1893f155efdbc186cb69f0c7f5e759f08c85dcaf8a681f48d59cb",
+        "crates\\ibl_cli\\Cargo.toml": "9d26c83ce99bfd4bdda6d8b9f5ae4cb8c0ab3aa68eab0401c3934f6f1f701115",
+        "crates\\ibl_core\\Cargo.toml": "61087af4c9cc872a33345a31b0aab7278c27454f133f24f485a9be1e4d9a9f7f",
+        "crates\\ktx2_writer\\Cargo.toml": "909541b3f071ff89ab815411aa2e1d550ae3ad594449b793155c4ec8c8648be7",
+        "crates\\ktx2_writer\\build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates\\ibl_cli\\src\\main.rs": "718f446f3f5f195669d793133e38e2e94c7713d4ad2f560f6bf5af1f6e114317",
+        "crates\\ibl_core\\src\\bake_pipeline.rs": "dfd418bcdd8e31c59d5ba07e1fccb29816d00524c2e68e2e010d2ba8a38e8f38",
+        "crates\\ibl_core\\src\\cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates\\ibl_core\\src\\lib.rs": "2af0201558e6b0df17b84d34b678ca14f809f0389667f8dcac5bb3a41c2f575c",
+        "crates\\ibl_core\\src\\source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates\\ktx2_writer\\src\\compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates\\ktx2_writer\\src\\dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates\\ktx2_writer\\src\\kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates\\ktx2_writer\\src\\lib.rs": "5a8d67f87353c636b9fa6489d178c6c0e027775781bdfcb835007b5b50a1d1b5",
+        ".cargo\\config.toml": "fe12500cada103393be4cede79687bcd2ec35e00eb0084cb632a17b04f73adaa"
+      },
+      "sha256": "6531a8fd9d6d588ce7b9334825f1953de56875cbac42a1965bf191face45ad16",
+      "scope": "Current source/build configuration snapshot; binary hash and actual build record must establish build identity"
+    },
+    "threads": 4,
+    "warmups": 2,
+    "rounds": 7,
+    "quality": "medium",
+    "samples": 1024,
+    "targets": "all",
+    "scope": "Uninstrumented production CLI; byte-identical IBLA/KTX2/LUT required after every paired run"
+  },
+  "original_trials": [
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.921879800007446,
+            "peak_commit_bytes": 102412288
+          },
+          "candidate": {
+            "seconds": 4.846618700001272,
+            "peak_commit_bytes": 64548864
+          }
+        },
+        "ratios": {
+          "seconds": 0.9847088707842765,
+          "peak_commit_bytes": 0.6302843658760948
+        },
+        "paired_time_ratio_range": [
+          0.9435925308270382,
+          1.024740800341039
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9435925308270382,
+            1.024740800341039
+          ],
+          "peak_commit_bytes": [
+            0.6299776107468416,
+            0.6304695624350052
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.656979499995941,
+            4.6401662999996915,
+            4.78553429999738,
+            5.216044400003739,
+            4.921879800007446,
+            5.040188900005887,
+            5.249073300001328
+          ],
+          "peak_commit_bytes": [
+            102412288,
+            102408192,
+            102428672,
+            102449152,
+            102473728,
+            102408192,
+            102408192
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.7721968999976525,
+            4.689302699989639,
+            4.846618700001272,
+            5.00718240000424,
+            4.8588363000017125,
+            4.755884600002901,
+            5.136908000000403
+          ],
+          "peak_commit_bytes": [
+            64548864,
+            64610304,
+            64544768,
+            64552960,
+            64540672,
+            64532480,
+            64565248
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5650,
+          "sha256": "1251b593b23c59fab475b719352eab1649865106599c55bab978ad928c1f686c"
+        },
+        "specular.ibla": {
+          "bytes": 1786592,
+          "sha256": "b05aaea9255f7f5d6e21eeb5bec7473242455794363653ecac0299f9ed270e2f"
+        }
+      }
+    },
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.697132000001147,
+            "peak_commit_bytes": 102428672
+          },
+          "candidate": {
+            "seconds": 4.70717790001072,
+            "peak_commit_bytes": 67301376
+          }
+        },
+        "ratios": {
+          "seconds": 1.0021387306146752,
+          "peak_commit_bytes": 0.6570560243131923
+        },
+        "paired_time_ratio_range": [
+          0.7221929072060107,
+          1.057665997037555
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.7221929072060107,
+            1.057665997037555
+          ],
+          "peak_commit_bytes": [
+            0.656272487407052,
+            0.6580820603055266
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "needs_15_rounds",
+        "passes": false
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.64742579999438,
+            4.940886399999727,
+            4.673737599994638,
+            6.517895500001032,
+            6.988838499994017,
+            4.697132000001147,
+            4.520688599994173
+          ],
+          "peak_commit_bytes": [
+            102428672,
+            102457344,
+            102432768,
+            102416384,
+            102379520,
+            102465536,
+            102424576
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.605859200004488,
+            4.437440299996524,
+            4.800444599997718,
+            4.70717790001072,
+            6.240582900005393,
+            4.967996799998218,
+            4.38854889999493
+          ],
+          "peak_commit_bytes": [
+            67276800,
+            67403776,
+            67301376,
+            67334144,
+            67502080,
+            67223552,
+            67239936
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5890,
+          "sha256": "88e2e232008557cbde2f0c89499805ea4bc11100b6ed340589df08952a9f2dc0"
+        },
+        "specular.ktx2": {
+          "bytes": 1964840,
+          "sha256": "9967499fc74872e60720629af40138aec6350257560160733d60373bdfc682b0"
+        }
+      }
+    },
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.390543699992122,
+            "peak_commit_bytes": 102449152
+          },
+          "candidate": {
+            "seconds": 5.35670950000349,
+            "peak_commit_bytes": 67792896
+          }
+        },
+        "ratios": {
+          "seconds": 0.9937234160649357,
+          "peak_commit_bytes": 0.6617223732608348
+        },
+        "paired_time_ratio_range": [
+          0.9826959451461593,
+          1.0588412445303
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9826959451461593,
+            1.0348142433222847
+          ],
+          "peak_commit_bytes": [
+            0.6612161675928517,
+            0.6687325069972011
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.204996000000392,
+            5.267582800006494,
+            5.451034500001697,
+            5.33889199999976,
+            5.390543699992122,
+            5.396301900007529,
+            5.571279299998423
+          ],
+          "peak_commit_bytes": [
+            102449152,
+            102440960,
+            102555648,
+            102449152,
+            102420480,
+            102432768,
+            102453248
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            5.303063899991685,
+            5.1955677999940235,
+            5.35670950000349,
+            5.356223300012061,
+            5.707729999994626,
+            5.577071700012311,
+            5.578211400003056
+          ],
+          "peak_commit_bytes": [
+            68481024,
+            68542464,
+            67715072,
+            68505600,
+            67792896,
+            67756032,
+            67743744
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5650,
+          "sha256": "1251b593b23c59fab475b719352eab1649865106599c55bab978ad928c1f686c"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5890,
+          "sha256": "88e2e232008557cbde2f0c89499805ea4bc11100b6ed340589df08952a9f2dc0"
+        },
+        "specular.ibla": {
+          "bytes": 1786592,
+          "sha256": "b05aaea9255f7f5d6e21eeb5bec7473242455794363653ecac0299f9ed270e2f"
+        },
+        "specular.ktx2": {
+          "bytes": 1964840,
+          "sha256": "9967499fc74872e60720629af40138aec6350257560160733d60373bdfc682b0"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.854769900004612,
+            "peak_commit_bytes": 121417728
+          },
+          "candidate": {
+            "seconds": 4.681946199998492,
+            "peak_commit_bytes": 83505152
+          }
+        },
+        "ratios": {
+          "seconds": 0.9644012582334838,
+          "peak_commit_bytes": 0.6877509024052896
+        },
+        "paired_time_ratio_range": [
+          0.939732941935083,
+          0.9732215468142877
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.939732941935083,
+            0.9728357312789958
+          ],
+          "peak_commit_bytes": [
+            0.6876939684253137,
+            0.6880062095032398
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.836037200002465,
+            4.854769900004612,
+            4.814056999995955,
+            4.977284599997802,
+            4.892924999992829,
+            5.103625499992631,
+            4.815966199996183
+          ],
+          "peak_commit_bytes": [
+            121413632,
+            121417728,
+            121364480,
+            121520128,
+            121421824,
+            121421824,
+            121372672
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.613573800001177,
+            4.619378300005337,
+            4.685143999988213,
+            4.677318300004117,
+            4.711778299999423,
+            4.95828469999833,
+            4.681946199998492
+          ],
+          "peak_commit_bytes": [
+            83505152,
+            83513344,
+            83505152,
+            83529728,
+            83628032,
+            83501056,
+            83496960
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5716,
+          "sha256": "1675205cb040ca3b1f5996fc59e4b2e0322aa978177f84f3d26af805e913dbd1"
+        },
+        "specular.ibla": {
+          "bytes": 2277589,
+          "sha256": "85b022935b1458528b4dee237c7a3f133bcc268c31c6b9432bc1d3652c2b0b87"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.565001900002244,
+            "peak_commit_bytes": 121417728
+          },
+          "candidate": {
+            "seconds": 4.468659799997113,
+            "peak_commit_bytes": 86233088
+          }
+        },
+        "ratios": {
+          "seconds": 0.9788954961869603,
+          "peak_commit_bytes": 0.7102182640083662
+        },
+        "paired_time_ratio_range": [
+          0.9477162266002662,
+          1.0136939482974439
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9477162266002662,
+            1.003802013748037
+          ],
+          "peak_commit_bytes": [
+            0.7096480582524272,
+            0.7104153311515233
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.565001900002244,
+            4.715187600013451,
+            4.550409999996191,
+            4.529284899996128,
+            4.53959919999761,
+            4.640695800000685,
+            4.757873700000346
+          ],
+          "peak_commit_bytes": [
+            121487360,
+            121417728,
+            121401344,
+            121552896,
+            121368576,
+            121405440,
+            121503744
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.6275147999986075,
+            4.468659799997113,
+            4.333929299988085,
+            4.3424510000040755,
+            4.389972200006014,
+            4.582358099985868,
+            4.578123200000846
+          ],
+          "peak_commit_bytes": [
+            86220800,
+            86237184,
+            86339584,
+            86233088,
+            86167552,
+            86245376,
+            86224896
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5984,
+          "sha256": "456b0399ef4c8ac65fef26b94a72d4193ea64f77588d24af0c02dbff5ac373f3"
+        },
+        "specular.ktx2": {
+          "bytes": 1843307,
+          "sha256": "582d4dd4b86f9b58341b760d1caa2eeb0490fb5b98acae0b6e81920d51645982"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.273637299993425,
+            "peak_commit_bytes": 121409536
+          },
+          "candidate": {
+            "seconds": 5.0787814000068465,
+            "peak_commit_bytes": 86687744
+          }
+        },
+        "ratios": {
+          "seconds": 0.9630509477800415,
+          "peak_commit_bytes": 0.7140109982794103
+        },
+        "paired_time_ratio_range": [
+          0.94742306140646,
+          0.9749305189486425
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9595737461899418,
+            0.9703598787770407
+          ],
+          "peak_commit_bytes": [
+            0.712681281618887,
+            0.7156978509496981
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.2863085999997566,
+            5.269995599999675,
+            5.264017599998624,
+            5.274840099998983,
+            5.443441700001131,
+            5.2323620000097435,
+            5.273637299993425
+          ],
+          "peak_commit_bytes": [
+            121409536,
+            121397248,
+            121446400,
+            121401344,
+            121413632,
+            121409536,
+            121536512
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            5.0787814000068465,
+            5.046410900002229,
+            5.073902599993744,
+            5.118493200003286,
+            5.157242200002656,
+            5.101189399996656,
+            5.060443900001701
+          ],
+          "peak_commit_bytes": [
+            86552576,
+            86556672,
+            86687744,
+            87343104,
+            86892544,
+            86716416,
+            86204416
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5716,
+          "sha256": "1675205cb040ca3b1f5996fc59e4b2e0322aa978177f84f3d26af805e913dbd1"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5984,
+          "sha256": "456b0399ef4c8ac65fef26b94a72d4193ea64f77588d24af0c02dbff5ac373f3"
+        },
+        "specular.ibla": {
+          "bytes": 2277589,
+          "sha256": "85b022935b1458528b4dee237c7a3f133bcc268c31c6b9432bc1d3652c2b0b87"
+        },
+        "specular.ktx2": {
+          "bytes": 1843307,
+          "sha256": "582d4dd4b86f9b58341b760d1caa2eeb0490fb5b98acae0b6e81920d51645982"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.388523500005249,
+            "peak_commit_bytes": 171847680
+          },
+          "candidate": {
+            "seconds": 4.860117000003811,
+            "peak_commit_bytes": 134008832
+          }
+        },
+        "ratios": {
+          "seconds": 0.9019385365952429,
+          "peak_commit_bytes": 0.7798117030151352
+        },
+        "paired_time_ratio_range": [
+          0.8951218685407885,
+          0.9325626695404019
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9000832632512644,
+            0.9219061965533372
+          ],
+          "peak_commit_bytes": [
+            0.779546700350342,
+            0.7802884042426409
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.3837784999923315,
+            5.417675899996539,
+            5.380765199995949,
+            5.365359300005366,
+            5.388523500005249,
+            5.391212899994571,
+            5.391471299997647
+          ],
+          "peak_commit_bytes": [
+            171835392,
+            171864064,
+            171851776,
+            171827200,
+            171958272,
+            171823104,
+            171847680
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.858011600008467,
+            5.052322300005471,
+            4.816440599999623,
+            4.843136700001196,
+            4.89263079999364,
+            4.860117000003811,
+            4.970430800007307
+          ],
+          "peak_commit_bytes": [
+            134008832,
+            133963776,
+            134123520,
+            134033408,
+            133976064,
+            133976064,
+            134090752
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5000,
+          "sha256": "26e94ca6ecca3ec21025439a48819f824a9937d21cf5a9bb648b82291ada22af"
+        },
+        "specular.ibla": {
+          "bytes": 2311662,
+          "sha256": "473f09075702fb8ab6cbea3be77990a631b2db5177974732b8e41f5742dab58a"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.979373199996189,
+            "peak_commit_bytes": 171831296
+          },
+          "candidate": {
+            "seconds": 4.455572099992423,
+            "peak_commit_bytes": 136962048
+          }
+        },
+        "ratios": {
+          "seconds": 0.8948058161207586,
+          "peak_commit_bytes": 0.7970727753808015
+        },
+        "paired_time_ratio_range": [
+          0.8581004450268007,
+          0.8969673472115056
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8841518681169407,
+            0.8965873054074934
+          ],
+          "peak_commit_bytes": [
+            0.7970251007127362,
+            0.7975733593954852
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.041642800002592,
+            4.967373799998313,
+            4.975773199999821,
+            4.97449810001126,
+            5.194704100009403,
+            4.981503700008034,
+            4.979373199996189
+          ],
+          "peak_commit_bytes": [
+            171831296,
+            171827200,
+            171950080,
+            171839488,
+            171831296,
+            171839488,
+            171827200
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.515749899990624,
+            4.455572099992423,
+            4.44817580000381,
+            4.447095900002751,
+            4.457577900000615,
+            4.441523899993626,
+            4.464442800002871
+          ],
+          "peak_commit_bytes": [
+            136953856,
+            136957952,
+            137035776,
+            136962048,
+            137048064,
+            137072640,
+            136912896
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5753,
+          "sha256": "a7aba4e8f21dc6230a627df3f6d8b94daf75bc8706275516d14b1a62509cd3a4"
+        },
+        "specular.ktx2": {
+          "bytes": 2032746,
+          "sha256": "beae078e8a546445f2989b835c20f586f75e8e27dea44fd35fe2c658fafd903c"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 6.012562599993544,
+            "peak_commit_bytes": 171835392
+          },
+          "candidate": {
+            "seconds": 5.522815400006948,
+            "peak_commit_bytes": 138018816
+          }
+        },
+        "ratios": {
+          "seconds": 0.918546012313099,
+          "peak_commit_bytes": 0.8032036613272311
+        },
+        "paired_time_ratio_range": [
+          0.9034879504793967,
+          1.0133466858540487
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9034879504793967,
+            0.9479766789064681
+          ],
+          "peak_commit_bytes": [
+            0.8012776201940266,
+            0.8052873727621636
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.911095799994655,
+            5.882320599994273,
+            6.012562599993544,
+            5.924258999992162,
+            6.034880000006524,
+            6.205982600004063,
+            6.265982500000973
+          ],
+          "peak_commit_bytes": [
+            171823104,
+            171868160,
+            171823104,
+            171839488,
+            171827200,
+            171835392,
+            171839488
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            5.522815400006948,
+            5.434687000000849,
+            5.461630100006005,
+            5.384889499997371,
+            5.720925500005251,
+            5.607030499988468,
+            6.349612599995453
+          ],
+          "peak_commit_bytes": [
+            137691136,
+            137674752,
+            139198464,
+            138162176,
+            138366976,
+            138018816,
+            137842688
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5000,
+          "sha256": "26e94ca6ecca3ec21025439a48819f824a9937d21cf5a9bb648b82291ada22af"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5753,
+          "sha256": "a7aba4e8f21dc6230a627df3f6d8b94daf75bc8706275516d14b1a62509cd3a4"
+        },
+        "specular.ibla": {
+          "bytes": 2311662,
+          "sha256": "473f09075702fb8ab6cbea3be77990a631b2db5177974732b8e41f5742dab58a"
+        },
+        "specular.ktx2": {
+          "bytes": 2032746,
+          "sha256": "beae078e8a546445f2989b835c20f586f75e8e27dea44fd35fe2c658fafd903c"
+        }
+      }
+    }
+  ],
+  "confirmation": {
+    "sha256": "09adb7de37875aabb258820ba14f2fcc3f9385c587cc60819e43828618a28622",
+    "rows": [
+      {
+        "case": "pisa",
+        "size": 512,
+        "format": "ktx2",
+        "summary": {
+          "medians": {
+            "baseline": {
+              "seconds": 4.426024000000325,
+              "peak_commit_bytes": 102432768
+            },
+            "candidate": {
+              "seconds": 4.415422499994747,
+              "peak_commit_bytes": 67305472
+            }
+          },
+          "ratios": {
+            "seconds": 0.9976047350837735,
+            "peak_commit_bytes": 0.6570697376839412
+          },
+          "paired_time_ratio_range": [
+            0.9472424934128982,
+            1.0066854618014291
+          ],
+          "paired_median_ratio_bootstrap_95pct": {
+            "seconds": [
+              0.9767085761900269,
+              1.0037440706577063
+            ],
+            "peak_commit_bytes": [
+              0.6567796610169492,
+              0.6578957891790299
+            ]
+          },
+          "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+          "point_estimate_passes": true,
+          "acceptance_status": "pass",
+          "passes": true
+        },
+        "samples": {
+          "baseline": {
+            "seconds": [
+              4.3673184999934165,
+              4.521221700008027,
+              4.479647999993176,
+              4.4051857000013115,
+              4.439037300006021,
+              4.504770400002599,
+              4.498631399997976,
+              4.426024000000325,
+              4.631189300009282,
+              4.292286399999284,
+              4.315138899997692,
+              4.449188900005538,
+              4.393473199990694,
+              4.386099399998784,
+              4.399436200008495
+            ],
+            "peak_commit_bytes": [
+              102580224,
+              102465536,
+              102432768,
+              102465536,
+              102420480,
+              102432768,
+              102428672,
+              102416384,
+              102404096,
+              102567936,
+              102535168,
+              102424576,
+              102453248,
+              102432768,
+              102420480
+            ]
+          },
+          "candidate": {
+            "seconds": [
+              4.283940900000744,
+              4.429147200004081,
+              4.42711999999301,
+              4.403114000000642,
+              4.425089100011974,
+              4.431309799998417,
+              4.428096599993296,
+              4.419126300010248,
+              4.386859300007927,
+              4.283907000004547,
+              4.249762899999041,
+              4.272141399997054,
+              4.3899209999945015,
+              4.415422499994747,
+              4.415907999995397
+            ],
+            "peak_commit_bytes": [
+              67305472,
+              67502080,
+              67289088,
+              67280896,
+              67297280,
+              67387392,
+              67506176,
+              67293184,
+              67616768,
+              67309568,
+              67280896,
+              67670016,
+              67301376,
+              67309568,
+              67272704
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "effective_trials": [
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.921879800007446,
+            "peak_commit_bytes": 102412288
+          },
+          "candidate": {
+            "seconds": 4.846618700001272,
+            "peak_commit_bytes": 64548864
+          }
+        },
+        "ratios": {
+          "seconds": 0.9847088707842765,
+          "peak_commit_bytes": 0.6302843658760948
+        },
+        "paired_time_ratio_range": [
+          0.9435925308270382,
+          1.024740800341039
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9435925308270382,
+            1.024740800341039
+          ],
+          "peak_commit_bytes": [
+            0.6299776107468416,
+            0.6304695624350052
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.656979499995941,
+            4.6401662999996915,
+            4.78553429999738,
+            5.216044400003739,
+            4.921879800007446,
+            5.040188900005887,
+            5.249073300001328
+          ],
+          "peak_commit_bytes": [
+            102412288,
+            102408192,
+            102428672,
+            102449152,
+            102473728,
+            102408192,
+            102408192
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.7721968999976525,
+            4.689302699989639,
+            4.846618700001272,
+            5.00718240000424,
+            4.8588363000017125,
+            4.755884600002901,
+            5.136908000000403
+          ],
+          "peak_commit_bytes": [
+            64548864,
+            64610304,
+            64544768,
+            64552960,
+            64540672,
+            64532480,
+            64565248
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5650,
+          "sha256": "1251b593b23c59fab475b719352eab1649865106599c55bab978ad928c1f686c"
+        },
+        "specular.ibla": {
+          "bytes": 1786592,
+          "sha256": "b05aaea9255f7f5d6e21eeb5bec7473242455794363653ecac0299f9ed270e2f"
+        }
+      }
+    },
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.426024000000325,
+            "peak_commit_bytes": 102432768
+          },
+          "candidate": {
+            "seconds": 4.415422499994747,
+            "peak_commit_bytes": 67305472
+          }
+        },
+        "ratios": {
+          "seconds": 0.9976047350837735,
+          "peak_commit_bytes": 0.6570697376839412
+        },
+        "paired_time_ratio_range": [
+          0.9472424934128982,
+          1.0066854618014291
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9767085761900269,
+            1.0037440706577063
+          ],
+          "peak_commit_bytes": [
+            0.6567796610169492,
+            0.6578957891790299
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.3673184999934165,
+            4.521221700008027,
+            4.479647999993176,
+            4.4051857000013115,
+            4.439037300006021,
+            4.504770400002599,
+            4.498631399997976,
+            4.426024000000325,
+            4.631189300009282,
+            4.292286399999284,
+            4.315138899997692,
+            4.449188900005538,
+            4.393473199990694,
+            4.386099399998784,
+            4.399436200008495
+          ],
+          "peak_commit_bytes": [
+            102580224,
+            102465536,
+            102432768,
+            102465536,
+            102420480,
+            102432768,
+            102428672,
+            102416384,
+            102404096,
+            102567936,
+            102535168,
+            102424576,
+            102453248,
+            102432768,
+            102420480
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.283940900000744,
+            4.429147200004081,
+            4.42711999999301,
+            4.403114000000642,
+            4.425089100011974,
+            4.431309799998417,
+            4.428096599993296,
+            4.419126300010248,
+            4.386859300007927,
+            4.283907000004547,
+            4.249762899999041,
+            4.272141399997054,
+            4.3899209999945015,
+            4.415422499994747,
+            4.415907999995397
+          ],
+          "peak_commit_bytes": [
+            67305472,
+            67502080,
+            67289088,
+            67280896,
+            67297280,
+            67387392,
+            67506176,
+            67293184,
+            67616768,
+            67309568,
+            67280896,
+            67670016,
+            67301376,
+            67309568,
+            67272704
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5890,
+          "sha256": "88e2e232008557cbde2f0c89499805ea4bc11100b6ed340589df08952a9f2dc0"
+        },
+        "specular.ktx2": {
+          "bytes": 1964840,
+          "sha256": "9967499fc74872e60720629af40138aec6350257560160733d60373bdfc682b0"
+        }
+      }
+    },
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.390543699992122,
+            "peak_commit_bytes": 102449152
+          },
+          "candidate": {
+            "seconds": 5.35670950000349,
+            "peak_commit_bytes": 67792896
+          }
+        },
+        "ratios": {
+          "seconds": 0.9937234160649357,
+          "peak_commit_bytes": 0.6617223732608348
+        },
+        "paired_time_ratio_range": [
+          0.9826959451461593,
+          1.0588412445303
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9826959451461593,
+            1.0348142433222847
+          ],
+          "peak_commit_bytes": [
+            0.6612161675928517,
+            0.6687325069972011
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.204996000000392,
+            5.267582800006494,
+            5.451034500001697,
+            5.33889199999976,
+            5.390543699992122,
+            5.396301900007529,
+            5.571279299998423
+          ],
+          "peak_commit_bytes": [
+            102449152,
+            102440960,
+            102555648,
+            102449152,
+            102420480,
+            102432768,
+            102453248
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            5.303063899991685,
+            5.1955677999940235,
+            5.35670950000349,
+            5.356223300012061,
+            5.707729999994626,
+            5.577071700012311,
+            5.578211400003056
+          ],
+          "peak_commit_bytes": [
+            68481024,
+            68542464,
+            67715072,
+            68505600,
+            67792896,
+            67756032,
+            67743744
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5650,
+          "sha256": "1251b593b23c59fab475b719352eab1649865106599c55bab978ad928c1f686c"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5890,
+          "sha256": "88e2e232008557cbde2f0c89499805ea4bc11100b6ed340589df08952a9f2dc0"
+        },
+        "specular.ibla": {
+          "bytes": 1786592,
+          "sha256": "b05aaea9255f7f5d6e21eeb5bec7473242455794363653ecac0299f9ed270e2f"
+        },
+        "specular.ktx2": {
+          "bytes": 1964840,
+          "sha256": "9967499fc74872e60720629af40138aec6350257560160733d60373bdfc682b0"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.854769900004612,
+            "peak_commit_bytes": 121417728
+          },
+          "candidate": {
+            "seconds": 4.681946199998492,
+            "peak_commit_bytes": 83505152
+          }
+        },
+        "ratios": {
+          "seconds": 0.9644012582334838,
+          "peak_commit_bytes": 0.6877509024052896
+        },
+        "paired_time_ratio_range": [
+          0.939732941935083,
+          0.9732215468142877
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.939732941935083,
+            0.9728357312789958
+          ],
+          "peak_commit_bytes": [
+            0.6876939684253137,
+            0.6880062095032398
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.836037200002465,
+            4.854769900004612,
+            4.814056999995955,
+            4.977284599997802,
+            4.892924999992829,
+            5.103625499992631,
+            4.815966199996183
+          ],
+          "peak_commit_bytes": [
+            121413632,
+            121417728,
+            121364480,
+            121520128,
+            121421824,
+            121421824,
+            121372672
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.613573800001177,
+            4.619378300005337,
+            4.685143999988213,
+            4.677318300004117,
+            4.711778299999423,
+            4.95828469999833,
+            4.681946199998492
+          ],
+          "peak_commit_bytes": [
+            83505152,
+            83513344,
+            83505152,
+            83529728,
+            83628032,
+            83501056,
+            83496960
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5716,
+          "sha256": "1675205cb040ca3b1f5996fc59e4b2e0322aa978177f84f3d26af805e913dbd1"
+        },
+        "specular.ibla": {
+          "bytes": 2277589,
+          "sha256": "85b022935b1458528b4dee237c7a3f133bcc268c31c6b9432bc1d3652c2b0b87"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.565001900002244,
+            "peak_commit_bytes": 121417728
+          },
+          "candidate": {
+            "seconds": 4.468659799997113,
+            "peak_commit_bytes": 86233088
+          }
+        },
+        "ratios": {
+          "seconds": 0.9788954961869603,
+          "peak_commit_bytes": 0.7102182640083662
+        },
+        "paired_time_ratio_range": [
+          0.9477162266002662,
+          1.0136939482974439
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9477162266002662,
+            1.003802013748037
+          ],
+          "peak_commit_bytes": [
+            0.7096480582524272,
+            0.7104153311515233
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.565001900002244,
+            4.715187600013451,
+            4.550409999996191,
+            4.529284899996128,
+            4.53959919999761,
+            4.640695800000685,
+            4.757873700000346
+          ],
+          "peak_commit_bytes": [
+            121487360,
+            121417728,
+            121401344,
+            121552896,
+            121368576,
+            121405440,
+            121503744
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.6275147999986075,
+            4.468659799997113,
+            4.333929299988085,
+            4.3424510000040755,
+            4.389972200006014,
+            4.582358099985868,
+            4.578123200000846
+          ],
+          "peak_commit_bytes": [
+            86220800,
+            86237184,
+            86339584,
+            86233088,
+            86167552,
+            86245376,
+            86224896
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5984,
+          "sha256": "456b0399ef4c8ac65fef26b94a72d4193ea64f77588d24af0c02dbff5ac373f3"
+        },
+        "specular.ktx2": {
+          "bytes": 1843307,
+          "sha256": "582d4dd4b86f9b58341b760d1caa2eeb0490fb5b98acae0b6e81920d51645982"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.273637299993425,
+            "peak_commit_bytes": 121409536
+          },
+          "candidate": {
+            "seconds": 5.0787814000068465,
+            "peak_commit_bytes": 86687744
+          }
+        },
+        "ratios": {
+          "seconds": 0.9630509477800415,
+          "peak_commit_bytes": 0.7140109982794103
+        },
+        "paired_time_ratio_range": [
+          0.94742306140646,
+          0.9749305189486425
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9595737461899418,
+            0.9703598787770407
+          ],
+          "peak_commit_bytes": [
+            0.712681281618887,
+            0.7156978509496981
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.2863085999997566,
+            5.269995599999675,
+            5.264017599998624,
+            5.274840099998983,
+            5.443441700001131,
+            5.2323620000097435,
+            5.273637299993425
+          ],
+          "peak_commit_bytes": [
+            121409536,
+            121397248,
+            121446400,
+            121401344,
+            121413632,
+            121409536,
+            121536512
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            5.0787814000068465,
+            5.046410900002229,
+            5.073902599993744,
+            5.118493200003286,
+            5.157242200002656,
+            5.101189399996656,
+            5.060443900001701
+          ],
+          "peak_commit_bytes": [
+            86552576,
+            86556672,
+            86687744,
+            87343104,
+            86892544,
+            86716416,
+            86204416
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5716,
+          "sha256": "1675205cb040ca3b1f5996fc59e4b2e0322aa978177f84f3d26af805e913dbd1"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5984,
+          "sha256": "456b0399ef4c8ac65fef26b94a72d4193ea64f77588d24af0c02dbff5ac373f3"
+        },
+        "specular.ibla": {
+          "bytes": 2277589,
+          "sha256": "85b022935b1458528b4dee237c7a3f133bcc268c31c6b9432bc1d3652c2b0b87"
+        },
+        "specular.ktx2": {
+          "bytes": 1843307,
+          "sha256": "582d4dd4b86f9b58341b760d1caa2eeb0490fb5b98acae0b6e81920d51645982"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.388523500005249,
+            "peak_commit_bytes": 171847680
+          },
+          "candidate": {
+            "seconds": 4.860117000003811,
+            "peak_commit_bytes": 134008832
+          }
+        },
+        "ratios": {
+          "seconds": 0.9019385365952429,
+          "peak_commit_bytes": 0.7798117030151352
+        },
+        "paired_time_ratio_range": [
+          0.8951218685407885,
+          0.9325626695404019
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9000832632512644,
+            0.9219061965533372
+          ],
+          "peak_commit_bytes": [
+            0.779546700350342,
+            0.7802884042426409
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.3837784999923315,
+            5.417675899996539,
+            5.380765199995949,
+            5.365359300005366,
+            5.388523500005249,
+            5.391212899994571,
+            5.391471299997647
+          ],
+          "peak_commit_bytes": [
+            171835392,
+            171864064,
+            171851776,
+            171827200,
+            171958272,
+            171823104,
+            171847680
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.858011600008467,
+            5.052322300005471,
+            4.816440599999623,
+            4.843136700001196,
+            4.89263079999364,
+            4.860117000003811,
+            4.970430800007307
+          ],
+          "peak_commit_bytes": [
+            134008832,
+            133963776,
+            134123520,
+            134033408,
+            133976064,
+            133976064,
+            134090752
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5000,
+          "sha256": "26e94ca6ecca3ec21025439a48819f824a9937d21cf5a9bb648b82291ada22af"
+        },
+        "specular.ibla": {
+          "bytes": 2311662,
+          "sha256": "473f09075702fb8ab6cbea3be77990a631b2db5177974732b8e41f5742dab58a"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.979373199996189,
+            "peak_commit_bytes": 171831296
+          },
+          "candidate": {
+            "seconds": 4.455572099992423,
+            "peak_commit_bytes": 136962048
+          }
+        },
+        "ratios": {
+          "seconds": 0.8948058161207586,
+          "peak_commit_bytes": 0.7970727753808015
+        },
+        "paired_time_ratio_range": [
+          0.8581004450268007,
+          0.8969673472115056
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8841518681169407,
+            0.8965873054074934
+          ],
+          "peak_commit_bytes": [
+            0.7970251007127362,
+            0.7975733593954852
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.041642800002592,
+            4.967373799998313,
+            4.975773199999821,
+            4.97449810001126,
+            5.194704100009403,
+            4.981503700008034,
+            4.979373199996189
+          ],
+          "peak_commit_bytes": [
+            171831296,
+            171827200,
+            171950080,
+            171839488,
+            171831296,
+            171839488,
+            171827200
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.515749899990624,
+            4.455572099992423,
+            4.44817580000381,
+            4.447095900002751,
+            4.457577900000615,
+            4.441523899993626,
+            4.464442800002871
+          ],
+          "peak_commit_bytes": [
+            136953856,
+            136957952,
+            137035776,
+            136962048,
+            137048064,
+            137072640,
+            136912896
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5753,
+          "sha256": "a7aba4e8f21dc6230a627df3f6d8b94daf75bc8706275516d14b1a62509cd3a4"
+        },
+        "specular.ktx2": {
+          "bytes": 2032746,
+          "sha256": "beae078e8a546445f2989b835c20f586f75e8e27dea44fd35fe2c658fafd903c"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 6.012562599993544,
+            "peak_commit_bytes": 171835392
+          },
+          "candidate": {
+            "seconds": 5.522815400006948,
+            "peak_commit_bytes": 138018816
+          }
+        },
+        "ratios": {
+          "seconds": 0.918546012313099,
+          "peak_commit_bytes": 0.8032036613272311
+        },
+        "paired_time_ratio_range": [
+          0.9034879504793967,
+          1.0133466858540487
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.9034879504793967,
+            0.9479766789064681
+          ],
+          "peak_commit_bytes": [
+            0.8012776201940266,
+            0.8052873727621636
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.911095799994655,
+            5.882320599994273,
+            6.012562599993544,
+            5.924258999992162,
+            6.034880000006524,
+            6.205982600004063,
+            6.265982500000973
+          ],
+          "peak_commit_bytes": [
+            171823104,
+            171868160,
+            171823104,
+            171839488,
+            171827200,
+            171835392,
+            171839488
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            5.522815400006948,
+            5.434687000000849,
+            5.461630100006005,
+            5.384889499997371,
+            5.720925500005251,
+            5.607030499988468,
+            6.349612599995453
+          ],
+          "peak_commit_bytes": [
+            137691136,
+            137674752,
+            139198464,
+            138162176,
+            138366976,
+            138018816,
+            137842688
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5000,
+          "sha256": "26e94ca6ecca3ec21025439a48819f824a9937d21cf5a9bb648b82291ada22af"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5753,
+          "sha256": "a7aba4e8f21dc6230a627df3f6d8b94daf75bc8706275516d14b1a62509cd3a4"
+        },
+        "specular.ibla": {
+          "bytes": 2311662,
+          "sha256": "473f09075702fb8ab6cbea3be77990a631b2db5177974732b8e41f5742dab58a"
+        },
+        "specular.ktx2": {
+          "bytes": 2032746,
+          "sha256": "beae078e8a546445f2989b835c20f586f75e8e27dea44fd35fe2c658fafd903c"
+        }
+      }
+    }
+  ],
+  "phases": {
+    "baseline": {
+      "sha256": "64b0cd96a74102dc457897e49fa1aa0e721a94843e16539beec4f03fca9ad05b",
+      "binaries": {
+        "baseline": "bf2a287bc58a583cb282103a7dc166369ad7c38f9d7d44abb512a1b3a780ab3a",
+        "profile": "5c0fb66b09356d84114bddb09b7d07ea9431a81616a80390368a5eeaf7018143"
+      },
+      "rows": [
+        {
+          "case": "pisa",
+          "size": 512,
+          "summary": {
+            "bc6h": {
+              "calls": 11,
+              "seconds": 0.517951,
+              "heap_peak": 54301328,
+              "sampled_commit_peak": 56733696
+            },
+            "encode_ibla": {
+              "calls": 2,
+              "seconds": 0.8578851,
+              "heap_peak": 32354866,
+              "sampled_commit_peak": 33251328
+            },
+            "encode_ktx2": {
+              "calls": 2,
+              "seconds": 0.5518651,
+              "heap_peak": 55117602,
+              "sampled_commit_peak": 60424192
+            },
+            "encode_lut": {
+              "calls": 1,
+              "seconds": 0.0103861,
+              "heap_peak": 7745048,
+              "sampled_commit_peak": 9756672
+            },
+            "filter_irradiance": {
+              "calls": 1,
+              "seconds": 0.2510843,
+              "heap_peak": 69708558,
+              "sampled_commit_peak": 71364608
+            },
+            "filter_lut": {
+              "calls": 1,
+              "seconds": 0.0129238,
+              "heap_peak": 7790026,
+              "sampled_commit_peak": 9482240
+            },
+            "filter_specular": {
+              "calls": 1,
+              "seconds": 3.4719638,
+              "heap_peak": 101072066,
+              "sampled_commit_peak": 102526976
+            },
+            "ktx2_rgb_pack": {
+              "calls": 2,
+              "seconds": 0.0069671,
+              "heap_peak": 50369168,
+              "sampled_commit_peak": 53030912
+            },
+            "load": {
+              "calls": 3,
+              "seconds": 0.0195074,
+              "heap_peak": 12617479,
+              "sampled_commit_peak": 15130624
+            },
+            "package_ibla": {
+              "calls": 3,
+              "seconds": 0.0014422,
+              "heap_peak": 32354866,
+              "sampled_commit_peak": 32972800
+            },
+            "png": {
+              "calls": 2,
+              "seconds": 0.8562338,
+              "heap_peak": 29715596,
+              "sampled_commit_peak": 33210368
+            },
+            "process": {
+              "calls": 1,
+              "seconds": 5.3253629,
+              "heap_peak": 101072066,
+              "sampled_commit_peak": 102526976
+            },
+            "projection": {
+              "calls": 2,
+              "seconds": 0.12200710000000001,
+              "heap_peak": 44074862,
+              "sampled_commit_peak": 46702592
+            },
+            "source_borders": {
+              "calls": 2,
+              "seconds": 0.0013078,
+              "heap_peak": 69542566,
+              "sampled_commit_peak": 71106560
+            },
+            "source_mips": {
+              "calls": 2,
+              "seconds": 0.017106700000000002,
+              "heap_peak": 69243542,
+              "sampled_commit_peak": 70955008
+            },
+            "write_ibla": {
+              "calls": 2,
+              "seconds": 0.0028292,
+              "heap_peak": 30571469,
+              "sampled_commit_peak": 33579008
+            },
+            "write_ktx2": {
+              "calls": 2,
+              "seconds": 0.0012188,
+              "heap_peak": 27167034,
+              "sampled_commit_peak": 31105024
+            },
+            "write_lut": {
+              "calls": 1,
+              "seconds": 0.0001921,
+              "heap_peak": 67540,
+              "sampled_commit_peak": 2080768
+            },
+            "zstd": {
+              "calls": 11,
+              "seconds": 0.0150083,
+              "heap_peak": 54071952,
+              "sampled_commit_peak": 60424192
+            }
+          },
+          "groups": {
+            "load": {
+              "samples": {
+                "seconds": [
+                  0.0217528,
+                  0.0195074,
+                  0.0192085
+                ],
+                "heap_peak": [
+                  12617479,
+                  12617479,
+                  12617479
+                ],
+                "sampled_commit_peak": [
+                  15130624,
+                  14770176,
+                  15175680
+                ]
+              },
+              "medians": {
+                "seconds": 0.0195074,
+                "heap_peak": 12617479,
+                "sampled_commit_peak": 15130624
+              }
+            },
+            "projection/preparation": {
+              "samples": {
+                "seconds": [
+                  0.1423446,
+                  0.1402377,
+                  0.1402996
+                ],
+                "heap_peak": [
+                  69542566,
+                  69542566,
+                  69542566
+                ],
+                "sampled_commit_peak": [
+                  71073792,
+                  71319552,
+                  71106560
+                ]
+              },
+              "medians": {
+                "seconds": 0.1402996,
+                "heap_peak": 69542566,
+                "sampled_commit_peak": 71106560
+              }
+            },
+            "filter": {
+              "samples": {
+                "seconds": [
+                  3.8105752,
+                  3.7321857,
+                  3.7317546
+                ],
+                "heap_peak": [
+                  101072066,
+                  101072066,
+                  101072066
+                ],
+                "sampled_commit_peak": [
+                  102506496,
+                  102658048,
+                  102526976
+                ]
+              },
+              "medians": {
+                "seconds": 3.7321857,
+                "heap_peak": 101072066,
+                "sampled_commit_peak": 102526976
+              }
+            },
+            "encode/write": {
+              "samples": {
+                "seconds": [
+                  1.4301506,
+                  1.4224458999999996,
+                  1.4227299
+                ],
+                "heap_peak": [
+                  55117602,
+                  55117602,
+                  55117602
+                ],
+                "sampled_commit_peak": [
+                  60403712,
+                  61341696,
+                  60424192
+                ]
+              },
+              "medians": {
+                "seconds": 1.4227299,
+                "heap_peak": 55117602,
+                "sampled_commit_peak": 60424192
+              }
+            },
+            "other": {
+              "samples": {
+                "seconds": [
+                  0.011560700000001312,
+                  0.010986200000002277,
+                  0.011262000000001215
+                ],
+                "heap_peak": [],
+                "sampled_commit_peak": []
+              },
+              "medians": {
+                "seconds": 0.011262000000001215,
+                "heap_peak": null,
+                "sampled_commit_peak": null
+              }
+            }
+          }
+        },
+        {
+          "case": "spruit",
+          "size": 512,
+          "summary": {
+            "bc6h": {
+              "calls": 11,
+              "seconds": 0.5141041,
+              "heap_peak": 54301357,
+              "sampled_commit_peak": 56803328
+            },
+            "encode_ibla": {
+              "calls": 2,
+              "seconds": 0.7529435,
+              "heap_peak": 34318757,
+              "sampled_commit_peak": 35864576
+            },
+            "encode_ktx2": {
+              "calls": 2,
+              "seconds": 0.5476747,
+              "heap_peak": 54995181,
+              "sampled_commit_peak": 61206528
+            },
+            "encode_lut": {
+              "calls": 1,
+              "seconds": 0.0102047,
+              "heap_peak": 26619457,
+              "sampled_commit_peak": 28950528
+            },
+            "filter_irradiance": {
+              "calls": 1,
+              "seconds": 0.248914,
+              "heap_peak": 88582959,
+              "sampled_commit_peak": 90406912
+            },
+            "filter_lut": {
+              "calls": 1,
+              "seconds": 0.0125917,
+              "heap_peak": 26664435,
+              "sampled_commit_peak": 29085696
+            },
+            "filter_specular": {
+              "calls": 1,
+              "seconds": 3.4930703,
+              "heap_peak": 119946459,
+              "sampled_commit_peak": 121446400
+            },
+            "ktx2_rgb_pack": {
+              "calls": 2,
+              "seconds": 0.0069881000000000006,
+              "heap_peak": 50369197,
+              "sampled_commit_peak": 53116928
+            },
+            "load": {
+              "calls": 3,
+              "seconds": 0.2631328,
+              "heap_peak": 50366261,
+              "sampled_commit_peak": 52908032
+            },
+            "package_ibla": {
+              "calls": 3,
+              "seconds": 0.0020312999999999998,
+              "heap_peak": 34318757,
+              "sampled_commit_peak": 35864576
+            },
+            "png": {
+              "calls": 2,
+              "seconds": 0.7507055,
+              "heap_peak": 30649191,
+              "sampled_commit_peak": 32833536
+            },
+            "process": {
+              "calls": 1,
+              "seconds": 5.5048289,
+              "heap_peak": 119946459,
+              "sampled_commit_peak": 121446400
+            },
+            "projection": {
+              "calls": 2,
+              "seconds": 0.1349691,
+              "heap_peak": 62949263,
+              "sampled_commit_peak": 65101824
+            },
+            "source_borders": {
+              "calls": 2,
+              "seconds": 0.0012198,
+              "heap_peak": 88416967,
+              "sampled_commit_peak": 90402816
+            },
+            "source_mips": {
+              "calls": 2,
+              "seconds": 0.0167702,
+              "heap_peak": 88117943,
+              "sampled_commit_peak": 90292224
+            },
+            "write_ibla": {
+              "calls": 2,
+              "seconds": 0.003693,
+              "heap_peak": 32044494,
+              "sampled_commit_peak": 33853440
+            },
+            "write_ktx2": {
+              "calls": 2,
+              "seconds": 0.001144,
+              "heap_peak": 27045538,
+              "sampled_commit_peak": 29970432
+            },
+            "write_lut": {
+              "calls": 1,
+              "seconds": 0.0001913,
+              "heap_peak": 67589,
+              "sampled_commit_peak": 2121728
+            },
+            "zstd": {
+              "calls": 11,
+              "seconds": 0.014303900000000001,
+              "heap_peak": 54071981,
+              "sampled_commit_peak": 61206528
+            }
+          },
+          "groups": {
+            "load": {
+              "samples": {
+                "seconds": [
+                  0.2589561,
+                  0.2685804,
+                  0.2631328
+                ],
+                "heap_peak": [
+                  50366261,
+                  50366261,
+                  50366261
+                ],
+                "sampled_commit_peak": [
+                  52908032,
+                  52793344,
+                  52912128
+                ]
+              },
+              "medians": {
+                "seconds": 0.2631328,
+                "heap_peak": 50366261,
+                "sampled_commit_peak": 52908032
+              }
+            },
+            "projection/preparation": {
+              "samples": {
+                "seconds": [
+                  0.15296149999999997,
+                  0.15206530000000001,
+                  0.1552358
+                ],
+                "heap_peak": [
+                  88416967,
+                  88416967,
+                  88416967
+                ],
+                "sampled_commit_peak": [
+                  90251264,
+                  90402816,
+                  90480640
+                ]
+              },
+              "medians": {
+                "seconds": 0.15296149999999997,
+                "heap_peak": 88416967,
+                "sampled_commit_peak": 90402816
+              }
+            },
+            "filter": {
+              "samples": {
+                "seconds": [
+                  3.7532035999999995,
+                  3.7548602,
+                  3.7886123
+                ],
+                "heap_peak": [
+                  119946459,
+                  119946459,
+                  119946459
+                ],
+                "sampled_commit_peak": [
+                  121446400,
+                  121442304,
+                  121450496
+                ]
+              },
+              "medians": {
+                "seconds": 3.7548602,
+                "heap_peak": 119946459,
+                "sampled_commit_peak": 121446400
+              }
+            },
+            "encode/write": {
+              "samples": {
+                "seconds": [
+                  1.3118169,
+                  1.3159785000000004,
+                  1.3668205999999994
+                ],
+                "heap_peak": [
+                  54995181,
+                  54995181,
+                  54995181
+                ],
+                "sampled_commit_peak": [
+                  60362752,
+                  61206528,
+                  61325312
+                ]
+              },
+              "medians": {
+                "seconds": 1.3159785000000004,
+                "heap_peak": 54995181,
+                "sampled_commit_peak": 61206528
+              }
+            },
+            "other": {
+              "samples": {
+                "seconds": [
+                  0.01276360000000043,
+                  0.013344499999999648,
+                  0.014892800000001039
+                ],
+                "heap_peak": [],
+                "sampled_commit_peak": []
+              },
+              "medians": {
+                "seconds": 0.013344499999999648,
+                "heap_peak": null,
+                "sampled_commit_peak": null
+              }
+            }
+          }
+        },
+        {
+          "case": "bridge",
+          "size": 512,
+          "summary": {
+            "bc6h": {
+              "calls": 11,
+              "seconds": 0.4939346,
+              "heap_peak": 54301635,
+              "sampled_commit_peak": 57589760
+            },
+            "encode_ibla": {
+              "calls": 2,
+              "seconds": 0.9242042,
+              "heap_peak": 34455353,
+              "sampled_commit_peak": 35004416
+            },
+            "encode_ktx2": {
+              "calls": 2,
+              "seconds": 0.5233848000000001,
+              "heap_peak": 55185608,
+              "sampled_commit_peak": 61341696
+            },
+            "encode_lut": {
+              "calls": 1,
+              "seconds": 0.0100638,
+              "heap_peak": 76951383,
+              "sampled_commit_peak": 79069184
+            },
+            "filter_irradiance": {
+              "calls": 1,
+              "seconds": 0.242199,
+              "heap_peak": 138914885,
+              "sampled_commit_peak": 141164544
+            },
+            "filter_lut": {
+              "calls": 1,
+              "seconds": 0.01317,
+              "heap_peak": 76996361,
+              "sampled_commit_peak": 78663680
+            },
+            "filter_specular": {
+              "calls": 1,
+              "seconds": 3.3658692,
+              "heap_peak": 170278385,
+              "sampled_commit_peak": 171933696
+            },
+            "ktx2_rgb_pack": {
+              "calls": 2,
+              "seconds": 0.0073995,
+              "heap_peak": 50369475,
+              "sampled_commit_peak": 53903360
+            },
+            "load": {
+              "calls": 3,
+              "seconds": 0.7498936,
+              "heap_peak": 88115467,
+              "sampled_commit_peak": 90107904
+            },
+            "package_ibla": {
+              "calls": 3,
+              "seconds": 0.0019333,
+              "heap_peak": 75598515,
+              "sampled_commit_peak": 78364672
+            },
+            "png": {
+              "calls": 2,
+              "seconds": 0.9220385,
+              "heap_peak": 30750359,
+              "sampled_commit_peak": 33591296
+            },
+            "process": {
+              "calls": 1,
+              "seconds": 5.9549035,
+              "heap_peak": 170278385,
+              "sampled_commit_peak": 171933696
+            },
+            "projection": {
+              "calls": 2,
+              "seconds": 0.077225,
+              "heap_peak": 113576389,
+              "sampled_commit_peak": 115453952
+            },
+            "source_borders": {
+              "calls": 2,
+              "seconds": 0.0011727,
+              "heap_peak": 138748893,
+              "sampled_commit_peak": 141160448
+            },
+            "source_mips": {
+              "calls": 2,
+              "seconds": 0.0165806,
+              "heap_peak": 138449869,
+              "sampled_commit_peak": 141062144
+            },
+            "write_ibla": {
+              "calls": 2,
+              "seconds": 0.0037212,
+              "heap_peak": 32146991,
+              "sampled_commit_peak": 33832960
+            },
+            "write_ktx2": {
+              "calls": 2,
+              "seconds": 0.0012404,
+              "heap_peak": 27235255,
+              "sampled_commit_peak": 29941760
+            },
+            "write_lut": {
+              "calls": 1,
+              "seconds": 0.0001837,
+              "heap_peak": 67867,
+              "sampled_commit_peak": 1925120
+            },
+            "zstd": {
+              "calls": 11,
+              "seconds": 0.0102315,
+              "heap_peak": 54072259,
+              "sampled_commit_peak": 61341696
+            }
+          },
+          "groups": {
+            "load": {
+              "samples": {
+                "seconds": [
+                  0.7498936,
+                  0.7551919,
+                  0.7492668
+                ],
+                "heap_peak": [
+                  88115467,
+                  88115467,
+                  88115467
+                ],
+                "sampled_commit_peak": [
+                  90132480,
+                  90107904,
+                  89899008
+                ]
+              },
+              "medians": {
+                "seconds": 0.7498936,
+                "heap_peak": 88115467,
+                "sampled_commit_peak": 90107904
+              }
+            },
+            "projection/preparation": {
+              "samples": {
+                "seconds": [
+                  0.09484870000000001,
+                  0.09458020000000002,
+                  0.1003285
+                ],
+                "heap_peak": [
+                  138748893,
+                  138748893,
+                  138748893
+                ],
+                "sampled_commit_peak": [
+                  141160448,
+                  141103104,
+                  141254656
+                ]
+              },
+              "medians": {
+                "seconds": 0.09484870000000001,
+                "heap_peak": 138748893,
+                "sampled_commit_peak": 141160448
+              }
+            },
+            "filter": {
+              "samples": {
+                "seconds": [
+                  3.6194786000000003,
+                  3.6249485999999997,
+                  3.6352824
+                ],
+                "heap_peak": [
+                  170278385,
+                  170278385,
+                  170278385
+                ],
+                "sampled_commit_peak": [
+                  171933696,
+                  171896832,
+                  172040192
+                ]
+              },
+              "medians": {
+                "seconds": 3.6249485999999997,
+                "heap_peak": 170278385,
+                "sampled_commit_peak": 171933696
+              }
+            },
+            "encode/write": {
+              "samples": {
+                "seconds": [
+                  1.4544700000000006,
+                  1.461414699999999,
+                  1.4719420999999997
+                ],
+                "heap_peak": [
+                  76951383,
+                  76951383,
+                  76951383
+                ],
+                "sampled_commit_peak": [
+                  79237120,
+                  79069184,
+                  78864384
+                ]
+              },
+              "medians": {
+                "seconds": 1.461414699999999,
+                "heap_peak": 76951383,
+                "sampled_commit_peak": 79069184
+              }
+            },
+            "other": {
+              "samples": {
+                "seconds": [
+                  0.018230900000002492,
+                  0.018768099999999066,
+                  0.018748500000000057
+                ],
+                "heap_peak": [],
+                "sampled_commit_peak": []
+              },
+              "medians": {
+                "seconds": 0.018748500000000057,
+                "heap_peak": null,
+                "sampled_commit_peak": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    "candidate": {
+      "sha256": "a0e7f3d763371a89f43b076a3815f90230c7d4b85e85b1ad07be4a4a9d9ce2ae",
+      "binaries": {
+        "baseline": "bf2a287bc58a583cb282103a7dc166369ad7c38f9d7d44abb512a1b3a780ab3a",
+        "profile": "7d403565349c0bd0dbeda3d0ad3f287b47bd696d6a3d24a5d560dfeeb6bcd2be"
+      },
+      "rows": [
+        {
+          "case": "pisa",
+          "size": 512,
+          "summary": {
+            "bc6h": {
+              "calls": 11,
+              "seconds": 0.5137873000000001,
+              "heap_peak": 60592798,
+              "sampled_commit_peak": 63004672
+            },
+            "encode_ibla": {
+              "calls": 2,
+              "seconds": 0.8401734000000001,
+              "heap_peak": 38646334,
+              "sampled_commit_peak": 39514112
+            },
+            "encode_ktx2": {
+              "calls": 2,
+              "seconds": 0.54702,
+              "heap_peak": 61409072,
+              "sampled_commit_peak": 66674688
+            },
+            "encode_lut": {
+              "calls": 1,
+              "seconds": 0.0104273,
+              "heap_peak": 7745068,
+              "sampled_commit_peak": 9883648
+            },
+            "filter_irradiance": {
+              "calls": 1,
+              "seconds": 0.2643163,
+              "heap_peak": 50834206,
+              "sampled_commit_peak": 52617216
+            },
+            "filter_lut": {
+              "calls": 1,
+              "seconds": 0.0126961,
+              "heap_peak": 7790046,
+              "sampled_commit_peak": 10272768
+            },
+            "filter_specular": {
+              "calls": 1,
+              "seconds": 3.409143,
+              "heap_peak": 63323342,
+              "sampled_commit_peak": 64626688
+            },
+            "ktx2_rgb_pack": {
+              "calls": 2,
+              "seconds": 0.0070393,
+              "heap_peak": 56660638,
+              "sampled_commit_peak": 59060224
+            },
+            "load": {
+              "calls": 1,
+              "seconds": 0.0067521,
+              "heap_peak": 12583595,
+              "sampled_commit_peak": 13373440
+            },
+            "package_ibla": {
+              "calls": 3,
+              "seconds": 0.0013838000000000001,
+              "heap_peak": 38646334,
+              "sampled_commit_peak": 39038976
+            },
+            "png": {
+              "calls": 2,
+              "seconds": 0.8386294,
+              "heap_peak": 36007064,
+              "sampled_commit_peak": 39514112
+            },
+            "process": {
+              "calls": 1,
+              "seconds": 5.2161151,
+              "heap_peak": 63323342,
+              "sampled_commit_peak": 66674688
+            },
+            "projection": {
+              "calls": 2,
+              "seconds": 0.1218197,
+              "heap_peak": 44074878,
+              "sampled_commit_peak": 46747648
+            },
+            "source_borders": {
+              "calls": 2,
+              "seconds": 0.0012696,
+              "heap_peak": 50668214,
+              "sampled_commit_peak": 52326400
+            },
+            "source_mips": {
+              "calls": 2,
+              "seconds": 0.0082276,
+              "heap_peak": 50369190,
+              "sampled_commit_peak": 52269056
+            },
+            "write_ibla": {
+              "calls": 2,
+              "seconds": 0.0028709,
+              "heap_peak": 36862939,
+              "sampled_commit_peak": 39206912
+            },
+            "write_ktx2": {
+              "calls": 2,
+              "seconds": 0.0011342000000000001,
+              "heap_peak": 33458508,
+              "sampled_commit_peak": 37109760
+            },
+            "write_lut": {
+              "calls": 1,
+              "seconds": 0.0001751,
+              "heap_peak": 6342755,
+              "sampled_commit_peak": 8486912
+            },
+            "zstd": {
+              "calls": 11,
+              "seconds": 0.0147977,
+              "heap_peak": 60363422,
+              "sampled_commit_peak": 66674688
+            }
+          },
+          "groups": {
+            "load": {
+              "samples": {
+                "seconds": [
+                  0.0067521,
+                  0.006658,
+                  0.0070215
+                ],
+                "heap_peak": [
+                  12583595,
+                  12583595,
+                  12583595
+                ],
+                "sampled_commit_peak": [
+                  13381632,
+                  13373440,
+                  13373440
+                ]
+              },
+              "medians": {
+                "seconds": 0.0067521,
+                "heap_peak": 12583595,
+                "sampled_commit_peak": 13373440
+              }
+            },
+            "projection/preparation": {
+              "samples": {
+                "seconds": [
+                  0.1294583,
+                  0.1321317,
+                  0.13132169999999999
+                ],
+                "heap_peak": [
+                  50668214,
+                  50668214,
+                  50668214
+                ],
+                "sampled_commit_peak": [
+                  52576256,
+                  52326400,
+                  52187136
+                ]
+              },
+              "medians": {
+                "seconds": 0.13132169999999999,
+                "heap_peak": 50668214,
+                "sampled_commit_peak": 52326400
+              }
+            },
+            "filter": {
+              "samples": {
+                "seconds": [
+                  3.6704753999999995,
+                  3.6647526999999998,
+                  3.8612164
+                ],
+                "heap_peak": [
+                  63323342,
+                  63323342,
+                  63323342
+                ],
+                "sampled_commit_peak": [
+                  64622592,
+                  64626688,
+                  64634880
+                ]
+              },
+              "medians": {
+                "seconds": 3.6704753999999995,
+                "heap_peak": 63323342,
+                "sampled_commit_peak": 64626688
+              }
+            },
+            "encode/write": {
+              "samples": {
+                "seconds": [
+                  1.3841415000000006,
+                  1.4060903000000002,
+                  1.4088214000000006
+                ],
+                "heap_peak": [
+                  61409072,
+                  61409072,
+                  61409072
+                ],
+                "sampled_commit_peak": [
+                  66990080,
+                  66674688,
+                  66420736
+                ]
+              },
+              "medians": {
+                "seconds": 1.4060903000000002,
+                "heap_peak": 61409072,
+                "sampled_commit_peak": 66674688
+              }
+            },
+            "other": {
+              "samples": {
+                "seconds": [
+                  0.006084699999999721,
+                  0.006482399999999444,
+                  0.006346499999998478
+                ],
+                "heap_peak": [],
+                "sampled_commit_peak": []
+              },
+              "medians": {
+                "seconds": 0.006346499999998478,
+                "heap_peak": null,
+                "sampled_commit_peak": null
+              }
+            }
+          }
+        },
+        {
+          "case": "spruit",
+          "size": 512,
+          "summary": {
+            "bc6h": {
+              "calls": 11,
+              "seconds": 0.55317,
+              "heap_peak": 79467195,
+              "sampled_commit_peak": 82305024
+            },
+            "encode_ibla": {
+              "calls": 2,
+              "seconds": 0.7574219000000001,
+              "heap_peak": 59484593,
+              "sampled_commit_peak": 59301888
+            },
+            "encode_ktx2": {
+              "calls": 2,
+              "seconds": 0.5889295,
+              "heap_peak": 80161019,
+              "sampled_commit_peak": 86310912
+            },
+            "encode_lut": {
+              "calls": 1,
+              "seconds": 0.0104061,
+              "heap_peak": 26619477,
+              "sampled_commit_peak": 28844032
+            },
+            "filter_irradiance": {
+              "calls": 1,
+              "seconds": 0.2649313,
+              "heap_peak": 69708607,
+              "sampled_commit_peak": 71462912
+            },
+            "filter_lut": {
+              "calls": 1,
+              "seconds": 0.012368,
+              "heap_peak": 26664455,
+              "sampled_commit_peak": 28368896
+            },
+            "filter_specular": {
+              "calls": 1,
+              "seconds": 3.6932021,
+              "heap_peak": 82197735,
+              "sampled_commit_peak": 83558400
+            },
+            "ktx2_rgb_pack": {
+              "calls": 2,
+              "seconds": 0.0071608999999999996,
+              "heap_peak": 75535035,
+              "sampled_commit_peak": 78614528
+            },
+            "load": {
+              "calls": 1,
+              "seconds": 0.0912006,
+              "heap_peak": 50332361,
+              "sampled_commit_peak": 52060160
+            },
+            "package_ibla": {
+              "calls": 3,
+              "seconds": 0.0022418,
+              "heap_peak": 59484593,
+              "sampled_commit_peak": 59301888
+            },
+            "png": {
+              "calls": 2,
+              "seconds": 0.755053,
+              "heap_peak": 55815027,
+              "sampled_commit_peak": 58458112
+            },
+            "process": {
+              "calls": 1,
+              "seconds": 5.5722594,
+              "heap_peak": 82197735,
+              "sampled_commit_peak": 86310912
+            },
+            "projection": {
+              "calls": 2,
+              "seconds": 0.13923839999999998,
+              "heap_peak": 62949279,
+              "sampled_commit_peak": 65413120
+            },
+            "source_borders": {
+              "calls": 2,
+              "seconds": 0.0013816,
+              "heap_peak": 69542615,
+              "sampled_commit_peak": 71323648
+            },
+            "source_mips": {
+              "calls": 2,
+              "seconds": 0.0085195,
+              "heap_peak": 69243591,
+              "sampled_commit_peak": 71254016
+            },
+            "write_ibla": {
+              "calls": 2,
+              "seconds": 0.0040514999999999995,
+              "heap_peak": 57210332,
+              "sampled_commit_peak": 58712064
+            },
+            "write_ktx2": {
+              "calls": 2,
+              "seconds": 0.0012116,
+              "heap_peak": 52211380,
+              "sampled_commit_peak": 56233984
+            },
+            "write_lut": {
+              "calls": 1,
+              "seconds": 0.0002058,
+              "heap_peak": 25217172,
+              "sampled_commit_peak": 27336704
+            },
+            "zstd": {
+              "calls": 11,
+              "seconds": 0.0153122,
+              "heap_peak": 79237819,
+              "sampled_commit_peak": 86310912
+            }
+          },
+          "groups": {
+            "load": {
+              "samples": {
+                "seconds": [
+                  0.0912006,
+                  0.0922905,
+                  0.0880552
+                ],
+                "heap_peak": [
+                  50332361,
+                  50332361,
+                  50332361
+                ],
+                "sampled_commit_peak": [
+                  52060160,
+                  52060160,
+                  52051968
+                ]
+              },
+              "medians": {
+                "seconds": 0.0912006,
+                "heap_peak": 50332361,
+                "sampled_commit_peak": 52060160
+              }
+            },
+            "projection/preparation": {
+              "samples": {
+                "seconds": [
+                  0.1435271,
+                  0.1537758,
+                  0.1491239
+                ],
+                "heap_peak": [
+                  69542615,
+                  69542615,
+                  69542615
+                ],
+                "sampled_commit_peak": [
+                  71045120,
+                  71323648,
+                  71462912
+                ]
+              },
+              "medians": {
+                "seconds": 0.1491239,
+                "heap_peak": 69542615,
+                "sampled_commit_peak": 71323648
+              }
+            },
+            "filter": {
+              "samples": {
+                "seconds": [
+                  3.8864693999999997,
+                  3.9605284,
+                  4.0581963
+                ],
+                "heap_peak": [
+                  82197735,
+                  82197735,
+                  82197735
+                ],
+                "sampled_commit_peak": [
+                  83591168,
+                  83533824,
+                  83558400
+                ]
+              },
+              "medians": {
+                "seconds": 3.9605284,
+                "heap_peak": 82197735,
+                "sampled_commit_peak": 83558400
+              }
+            },
+            "encode/write": {
+              "samples": {
+                "seconds": [
+                  1.3429737000000006,
+                  1.3584334,
+                  1.4135349000000001
+                ],
+                "heap_peak": [
+                  80161019,
+                  80161019,
+                  80161019
+                ],
+                "sampled_commit_peak": [
+                  86396928,
+                  86310912,
+                  86007808
+                ]
+              },
+              "medians": {
+                "seconds": 1.3584334,
+                "heap_peak": 80161019,
+                "sampled_commit_peak": 86310912
+              }
+            },
+            "other": {
+              "samples": {
+                "seconds": [
+                  0.006882500000001457,
+                  0.0072312999999999406,
+                  0.006987500000001923
+                ],
+                "heap_peak": [],
+                "sampled_commit_peak": []
+              },
+              "medians": {
+                "seconds": 0.006987500000001923,
+                "heap_peak": null,
+                "sampled_commit_peak": null
+              }
+            }
+          }
+        },
+        {
+          "case": "bridge",
+          "size": 512,
+          "summary": {
+            "bc6h": {
+              "calls": 11,
+              "seconds": 0.5071584,
+              "heap_peak": 129799121,
+              "sampled_commit_peak": 132546560
+            },
+            "encode_ibla": {
+              "calls": 2,
+              "seconds": 0.9396498999999999,
+              "heap_peak": 109952837,
+              "sampled_commit_peak": 111411200
+            },
+            "encode_ktx2": {
+              "calls": 2,
+              "seconds": 0.5367187,
+              "heap_peak": 130683094,
+              "sampled_commit_peak": 136216576
+            },
+            "encode_lut": {
+              "calls": 1,
+              "seconds": 0.010441,
+              "heap_peak": 76951403,
+              "sampled_commit_peak": 79425536
+            },
+            "filter_irradiance": {
+              "calls": 1,
+              "seconds": 0.253121,
+              "heap_peak": 120040533,
+              "sampled_commit_peak": 121909248
+            },
+            "filter_lut": {
+              "calls": 1,
+              "seconds": 0.0134691,
+              "heap_peak": 76996381,
+              "sampled_commit_peak": 79106048
+            },
+            "filter_specular": {
+              "calls": 1,
+              "seconds": 3.5165926,
+              "heap_peak": 132529661,
+              "sampled_commit_peak": 134017024
+            },
+            "ktx2_rgb_pack": {
+              "calls": 2,
+              "seconds": 0.0073057,
+              "heap_peak": 125866961,
+              "sampled_commit_peak": 128860160
+            },
+            "load": {
+              "calls": 1,
+              "seconds": 0.2600831,
+              "heap_peak": 88081567,
+              "sampled_commit_peak": 89440256
+            },
+            "package_ibla": {
+              "calls": 3,
+              "seconds": 0.0020776,
+              "heap_peak": 109952837,
+              "sampled_commit_peak": 111411200
+            },
+            "png": {
+              "calls": 2,
+              "seconds": 0.9373473000000001,
+              "heap_peak": 106247843,
+              "sampled_commit_peak": 109223936
+            },
+            "process": {
+              "calls": 1,
+              "seconds": 5.6570337,
+              "heap_peak": 132529661,
+              "sampled_commit_peak": 136216576
+            },
+            "projection": {
+              "calls": 2,
+              "seconds": 0.0789034,
+              "heap_peak": 113576405,
+              "sampled_commit_peak": 116355072
+            },
+            "source_borders": {
+              "calls": 2,
+              "seconds": 0.0012099,
+              "heap_peak": 119874541,
+              "sampled_commit_peak": 121909248
+            },
+            "source_mips": {
+              "calls": 2,
+              "seconds": 0.0083065,
+              "heap_peak": 119575517,
+              "sampled_commit_peak": 121741312
+            },
+            "write_ibla": {
+              "calls": 2,
+              "seconds": 0.0037825,
+              "heap_peak": 107644477,
+              "sampled_commit_peak": 110346240
+            },
+            "write_ktx2": {
+              "calls": 2,
+              "seconds": 0.0012527,
+              "heap_peak": 102732745,
+              "sampled_commit_peak": 106643456
+            },
+            "write_lut": {
+              "calls": 1,
+              "seconds": 0.0001524,
+              "heap_peak": 75549098,
+              "sampled_commit_peak": 77930496
+            },
+            "zstd": {
+              "calls": 11,
+              "seconds": 0.010745000000000001,
+              "heap_peak": 129569745,
+              "sampled_commit_peak": 136216576
+            }
+          },
+          "groups": {
+            "load": {
+              "samples": {
+                "seconds": [
+                  0.2553469,
+                  0.2600831,
+                  0.2657627
+                ],
+                "heap_peak": [
+                  88081567,
+                  88081567,
+                  88081567
+                ],
+                "sampled_commit_peak": [
+                  89448448,
+                  89436160,
+                  89440256
+                ]
+              },
+              "medians": {
+                "seconds": 0.2600831,
+                "heap_peak": 88081567,
+                "sampled_commit_peak": 89440256
+              }
+            },
+            "projection/preparation": {
+              "samples": {
+                "seconds": [
+                  0.0885368,
+                  0.08819809999999999,
+                  0.08746699999999999
+                ],
+                "heap_peak": [
+                  119874541,
+                  119874541,
+                  119874541
+                ],
+                "sampled_commit_peak": [
+                  121827328,
+                  121909248,
+                  122118144
+                ]
+              },
+              "medians": {
+                "seconds": 0.08819809999999999,
+                "heap_peak": 119874541,
+                "sampled_commit_peak": 121909248
+              }
+            },
+            "filter": {
+              "samples": {
+                "seconds": [
+                  3.8108199000000003,
+                  3.7466137999999996,
+                  3.8061118
+                ],
+                "heap_peak": [
+                  132529661,
+                  132529661,
+                  132529661
+                ],
+                "sampled_commit_peak": [
+                  134000640,
+                  134017024,
+                  134025216
+                ]
+              },
+              "medians": {
+                "seconds": 3.8061118,
+                "heap_peak": 132529661,
+                "sampled_commit_peak": 134017024
+              }
+            },
+            "encode/write": {
+              "samples": {
+                "seconds": [
+                  1.4928981999999995,
+                  1.4758606000000005,
+                  1.6389875000000003
+                ],
+                "heap_peak": [
+                  130683094,
+                  130683094,
+                  130683094
+                ],
+                "sampled_commit_peak": [
+                  135921664,
+                  137019392,
+                  136216576
+                ]
+              },
+              "medians": {
+                "seconds": 1.4928981999999995,
+                "heap_peak": 130683094,
+                "sampled_commit_peak": 136216576
+              }
+            },
+            "other": {
+              "samples": {
+                "seconds": [
+                  0.009431900000000937,
+                  0.009115199999999213,
+                  0.00906640000000003
+                ],
+                "heap_peak": [],
+                "sampled_commit_peak": []
+              },
+              "medians": {
+                "seconds": 0.009115199999999213,
+                "heap_peak": null,
+                "sampled_commit_peak": null
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "compatibility": {
+    "rows": [
+      {
+        "case": "pisa",
+        "size": 1,
+        "options": [],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 5609,
+            "sha256": "7965cfc4418fac5e2879dd1201824c5f8fee389650afd2fa88ce148fbce5fe54"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5860,
+            "sha256": "fbc93882981ae73b0f0e87e8c2e8e771941a49f95583066895f84cb3a764b0b6"
+          },
+          "specular.ibla": {
+            "bytes": 770,
+            "sha256": "1826df0a80d18a884db93f60731bc505a139a8119d225bc1fd97d441d9f6e918"
+          },
+          "specular.ktx2": {
+            "bytes": 288,
+            "sha256": "4b76a697120988ba084e81abf39c005e1e7eb65112c7edb72bc0ac1e23c584df"
+          }
+        },
+        "parsers": {
+          "width": 1,
+          "levels": 1
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 3,
+        "options": [],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 5609,
+            "sha256": "7965cfc4418fac5e2879dd1201824c5f8fee389650afd2fa88ce148fbce5fe54"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5860,
+            "sha256": "fbc93882981ae73b0f0e87e8c2e8e771941a49f95583066895f84cb3a764b0b6"
+          },
+          "specular.ibla": {
+            "bytes": 1460,
+            "sha256": "42d8ab26c769d4c2df6134a451f07f5a34f0d8ab59ce37119f3e75cb77f22fd0"
+          },
+          "specular.ktx2": {
+            "bytes": 410,
+            "sha256": "fcaecbb69a99a51780a6741b47295f6c4e27d838a41f477cf2714d603fb9fd75"
+          }
+        },
+        "parsers": {
+          "width": 3,
+          "levels": 2
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 31,
+        "options": [],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 5609,
+            "sha256": "7965cfc4418fac5e2879dd1201824c5f8fee389650afd2fa88ce148fbce5fe54"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5860,
+            "sha256": "fbc93882981ae73b0f0e87e8c2e8e771941a49f95583066895f84cb3a764b0b6"
+          },
+          "specular.ibla": {
+            "bytes": 18863,
+            "sha256": "693eb7ec5df313492e21e6fab495d59e70cf1ae8ec55c782c71b2643426e6c79"
+          },
+          "specular.ktx2": {
+            "bytes": 8054,
+            "sha256": "02a79b133e2e8abea0843ebe5f4db436526aae4343f0636dc9787a5b2626ecc8"
+          }
+        },
+        "parsers": {
+          "width": 31,
+          "levels": 5
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 255,
+        "options": [],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 5529,
+            "sha256": "73e44a66885ce8722bbddd0a2a7517d3ab3036f5e3b926a919f8ec7a03847f7e"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5829,
+            "sha256": "947f3e0dba328dd82e6cc410ae68475fb00858376763cf460e4a77b8f9b84f9f"
+          },
+          "specular.ibla": {
+            "bytes": 595596,
+            "sha256": "6ac426f6611d459eea68eecad29c0939d5def077d7ce3be3985807e87323d65a"
+          },
+          "specular.ktx2": {
+            "bytes": 492154,
+            "sha256": "11141a82a77814377fae3aa1c132ea1aafd1805b44c39bce842c4b6a74bfc2de"
+          }
+        },
+        "parsers": {
+          "width": 255,
+          "levels": 8
+        }
+      },
+      {
+        "case": "bridge",
+        "size": 31,
+        "options": [
+          "--irradiance-size",
+          "64",
+          "--rotation",
+          "27.5"
+        ],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 12437,
+            "sha256": "91d264c1f63c99a8d3fd9e1c1efe8d3bd8670df4f2961fb3f323202fc32a091e"
+          },
+          "irradiance.ktx2": {
+            "bytes": 20519,
+            "sha256": "bfa65ffcac9bf164d89eae05d6c44ffc300b83169e0817aafafc587ce243ab04"
+          },
+          "specular.ibla": {
+            "bytes": 20097,
+            "sha256": "0a2bdc62be066631a893f16d16a60805f91a618b42207918ac2d743167fdf36b"
+          },
+          "specular.ktx2": {
+            "bytes": 8430,
+            "sha256": "b2668dbef3916a0648b0e0fb4ba69d8d42b95d8b1ed254edf1c6e7b948762897"
+          }
+        },
+        "parsers": {
+          "width": 31,
+          "levels": 5
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 255,
+        "options": [
+          "--specular-min-size",
+          "16",
+          "--samples",
+          "7",
+          "--quality",
+          "high"
+        ],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 19192,
+            "sha256": "fa8a2249235319e4e93d084217e6523da694867e8ceebe589d67587521a46f33"
+          },
+          "irradiance.ibla": {
+            "bytes": 5034,
+            "sha256": "adf085568eb83bf6c195c69d0b30466287e3ca5b828718a7f45c0cda5c3e5e66"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5962,
+            "sha256": "b261632a24db5aceb2e940e4c0412a2d9d6734234f82a236957f3ede71a31f0d"
+          },
+          "specular.ibla": {
+            "bytes": 555158,
+            "sha256": "f5a87f035370f999d731060d3882be71f3dfcb3f7731e0f46cbbdf6144066faf"
+          },
+          "specular.ktx2": {
+            "bytes": 477650,
+            "sha256": "69bdf69c65719c0a38914baea8b487f721e76d50b0e2dc307bd55ddd271262a9"
+          }
+        },
+        "parsers": {
+          "width": 255,
+          "levels": 4
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 31,
+        "options": [
+          "--target",
+          "irradiance"
+        ],
+        "outputs": {
+          "irradiance.ibla": {
+            "bytes": 5609,
+            "sha256": "7965cfc4418fac5e2879dd1201824c5f8fee389650afd2fa88ce148fbce5fe54"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5860,
+            "sha256": "fbc93882981ae73b0f0e87e8c2e8e771941a49f95583066895f84cb3a764b0b6"
+          }
+        },
+        "parsers": null
+      },
+      {
+        "case": "pisa",
+        "size": 31,
+        "options": [
+          "--target",
+          "lut"
+        ],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          }
+        },
+        "parsers": null
+      }
+    ],
+    "binaries": {
+      "baseline": "bf2a287bc58a583cb282103a7dc166369ad7c38f9d7d44abb512a1b3a780ab3a",
+      "candidate": "04819e6b028d93a7ad24359be01dbcd9f2513a5a14a2410032cf67befab4d800"
+    }
+  },
+  "preparation": {
+    "baseline-source": {
+      "baseline": "125ea90",
+      "sources": {
+        "Cargo.lock": "0d64c67649698bb6c821c87fae742c31d48c25d03a4ecabe9b01b420eb20b488",
+        "Cargo.toml": "298658c3e0794fb73dfccd6f880293cb05f922dd41ae364497df506123b328bf",
+        "crates/ibl_cli/Cargo.toml": "72fac090fa9b3ded8ea41d968bc5eba88815d4106907b632313640278cd4b50a",
+        "crates/ibl_cli/LICENSE": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+        "crates/ibl_cli/README.md": "05ce0f16db6a012eb1968036fa3cd82315573a4eda102b88ccab3df67d530764",
+        "crates/ibl_cli/src/main.rs": "de128160cf5b7b69f5f6de2320e9a96437d08052b35c9509c74326eba1bd76a6",
+        "crates/ibl_cli/tests/hdr_warnings.rs": "dbd43b246640fa6a00195934f56d0eda90876891f91844561c658bfb1741b7d2",
+        "crates/ibl_cli/tests/low_samples.rs": "5d155bd1b2f32d2fa9a7b6c5fcf055ff2993adcf9d2bbd2335ab1ce63faefa75",
+        "crates/ibl_core/Cargo.toml": "6b8788f984c27298c633360c1062d01ebf242081f71c85f6295a92c65853909b",
+        "crates/ibl_core/LICENSE": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+        "crates/ibl_core/README.md": "60c8b19ed991d3266b764f074091f56c527b96c65b09c02c77650310452b9ef1",
+        "crates/ibl_core/examples/source_sampling_export.rs": "c70ff425832e50f6dfb054817e901300032a88f33dd26c43a67d9871d236db0c",
+        "crates/ibl_core/src/bake_pipeline.rs": "9020a504b1a97f1eb0e1c4f772653427e2eaf2220e3f24e96539000990a4f78e",
+        "crates/ibl_core/src/cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates/ibl_core/src/lib.rs": "c2b51c4a94f13644af20d10ca180165fdc0005b13ef2ca644e911577f93e6ed4",
+        "crates/ibl_core/src/source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates/ktx2_writer/Cargo.toml": "3f4572fd491f13f23668727a5626cc40953a860129aa54d463e071473760a06c",
+        "crates/ktx2_writer/LICENSE": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+        "crates/ktx2_writer/README.md": "aa298bfb7d0e272b1a30645b5ad6d8971d3fc6b5e9c513ca47211735cf0733d4",
+        "crates/ktx2_writer/build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates/ktx2_writer/src/compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates/ktx2_writer/src/dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates/ktx2_writer/src/kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates/ktx2_writer/src/lib.rs": "5a8d67f87353c636b9fa6489d178c6c0e027775781bdfcb835007b5b50a1d1b5",
+        "rust-toolchain.toml": "b4ea3c94c934d96a2772b7878c12ccbf3e486313d0988a9c960e0bd87bafc8fe"
+      },
+      "binary": "E:\\works\\ibl-baker\\target\\pipeline-performance\\baseline-build\\release\\ibl-baker.exe",
+      "binary_sha256": "bf2a287bc58a583cb282103a7dc166369ad7c38f9d7d44abb512a1b3a780ab3a",
+      "instrumented": false,
+      "profiler": "8fe16fd8023e78df6e554ddcd5ab571a8813a6fec6ce88cf303603e39e469461",
+      "tool": "98304a9fa09289b72673f4977765e044c02f786bc49d65bb4113f44909ee9c1c",
+      "build_command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--release",
+        "--manifest-path",
+        "E:\\works\\ibl-baker\\target\\pipeline-performance\\baseline-source\\Cargo.toml",
+        "-p",
+        "ibl_cli",
+        "--locked"
+      ]
+    },
+    "profile-baseline": {
+      "baseline": "125ea90",
+      "sources": {
+        "Cargo.lock": "0d64c67649698bb6c821c87fae742c31d48c25d03a4ecabe9b01b420eb20b488",
+        "Cargo.toml": "298658c3e0794fb73dfccd6f880293cb05f922dd41ae364497df506123b328bf",
+        "crates/ibl_cli/Cargo.toml": "72fac090fa9b3ded8ea41d968bc5eba88815d4106907b632313640278cd4b50a",
+        "crates/ibl_cli/LICENSE": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+        "crates/ibl_cli/README.md": "05ce0f16db6a012eb1968036fa3cd82315573a4eda102b88ccab3df67d530764",
+        "crates/ibl_cli/src/main.rs": "de128160cf5b7b69f5f6de2320e9a96437d08052b35c9509c74326eba1bd76a6",
+        "crates/ibl_cli/tests/hdr_warnings.rs": "dbd43b246640fa6a00195934f56d0eda90876891f91844561c658bfb1741b7d2",
+        "crates/ibl_cli/tests/low_samples.rs": "5d155bd1b2f32d2fa9a7b6c5fcf055ff2993adcf9d2bbd2335ab1ce63faefa75",
+        "crates/ibl_core/Cargo.toml": "6b8788f984c27298c633360c1062d01ebf242081f71c85f6295a92c65853909b",
+        "crates/ibl_core/LICENSE": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+        "crates/ibl_core/README.md": "60c8b19ed991d3266b764f074091f56c527b96c65b09c02c77650310452b9ef1",
+        "crates/ibl_core/examples/source_sampling_export.rs": "c70ff425832e50f6dfb054817e901300032a88f33dd26c43a67d9871d236db0c",
+        "crates/ibl_core/src/bake_pipeline.rs": "9020a504b1a97f1eb0e1c4f772653427e2eaf2220e3f24e96539000990a4f78e",
+        "crates/ibl_core/src/cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates/ibl_core/src/lib.rs": "c2b51c4a94f13644af20d10ca180165fdc0005b13ef2ca644e911577f93e6ed4",
+        "crates/ibl_core/src/source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates/ktx2_writer/Cargo.toml": "3f4572fd491f13f23668727a5626cc40953a860129aa54d463e071473760a06c",
+        "crates/ktx2_writer/LICENSE": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+        "crates/ktx2_writer/README.md": "aa298bfb7d0e272b1a30645b5ad6d8971d3fc6b5e9c513ca47211735cf0733d4",
+        "crates/ktx2_writer/build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates/ktx2_writer/src/compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates/ktx2_writer/src/dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates/ktx2_writer/src/kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates/ktx2_writer/src/lib.rs": "5a8d67f87353c636b9fa6489d178c6c0e027775781bdfcb835007b5b50a1d1b5",
+        "rust-toolchain.toml": "b4ea3c94c934d96a2772b7878c12ccbf3e486313d0988a9c960e0bd87bafc8fe"
+      },
+      "binary": "E:\\works\\ibl-baker\\target\\pipeline-performance\\profile-build\\release\\ibl-baker.exe",
+      "binary_sha256": "5c0fb66b09356d84114bddb09b7d07ea9431a81616a80390368a5eeaf7018143",
+      "actual_sources": {
+        "crates\\ibl_cli\\Cargo.toml": "c37a4fc91774d258972a6b4da5abfa039104280bf7ace7ee6ad50713b5b77d84",
+        "crates\\ibl_cli\\src\\main.rs": "192ff9c3d3ff1c84af3ea8ea96dbfb2118a936462bc494a7d4dce9034a85d198",
+        "crates\\ibl_cli\\tests\\hdr_warnings.rs": "dbd43b246640fa6a00195934f56d0eda90876891f91844561c658bfb1741b7d2",
+        "crates\\ibl_cli\\tests\\low_samples.rs": "5d155bd1b2f32d2fa9a7b6c5fcf055ff2993adcf9d2bbd2335ab1ce63faefa75",
+        "crates\\ibl_core\\Cargo.toml": "2da9ed3b0f1e95adc6fb14250b657fef19343cba37b3f9494021a27fbfb69ab1",
+        "crates\\ibl_core\\examples\\source_sampling_export.rs": "c70ff425832e50f6dfb054817e901300032a88f33dd26c43a67d9871d236db0c",
+        "crates\\ibl_core\\src\\bake_pipeline.rs": "f2b0cfd29d3004f9ecc931769e3452f96e82a40dab0d7d6f810b568669f62343",
+        "crates\\ibl_core\\src\\cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates\\ibl_core\\src\\lib.rs": "e8c7c5eca4cc98e6ae07c06251fa94d646040070fbe43bb450f3661ce3e7c7b7",
+        "crates\\ibl_core\\src\\source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates\\ibl_profile_private\\Cargo.toml": "6da64e35936051809a7634f41f6c519658576de7b76fcdf07524059b4bcfd32a",
+        "crates\\ibl_profile_private\\profile.rs": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+        "crates\\ktx2_writer\\build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates\\ktx2_writer\\Cargo.toml": "423967cec2abd823c5d80eb44e8ef9ea69f2384d0a7af161c89d150a16b98e8d",
+        "crates\\ktx2_writer\\src\\compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates\\ktx2_writer\\src\\dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates\\ktx2_writer\\src\\kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates\\ktx2_writer\\src\\lib.rs": "04c6d50df58af461f14e74e17c28257b3f3e5051eeb8aa27d097ff796a7a6e4f"
+      },
+      "instrumented": true,
+      "profiler": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+      "tool": "e75b531351f5aa4e2b186313587bda318454f3a5d0e6c55ed2c997151cbd14c4",
+      "build_command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--release",
+        "--manifest-path",
+        "E:\\works\\ibl-baker\\target\\pipeline-performance\\profile-baseline\\Cargo.toml",
+        "-p",
+        "ibl_cli"
+      ]
+    },
+    "profile-candidate": {
+      "baseline": "125ea90",
+      "sources": {
+        "Cargo.lock": "9655703ac8495972cb3b57facbddfc62e5d6f23645fe2a30fa1851fe207e1bd3",
+        "Cargo.toml": "cbd55af4e90e09e77be87cfb828f4d1e085698ea9cf85e003e011bd6369f916f",
+        "crates/ibl_cli/Cargo.toml": "9d26c83ce99bfd4bdda6d8b9f5ae4cb8c0ab3aa68eab0401c3934f6f1f701115",
+        "crates/ibl_cli/LICENSE": "5ca2920d4f56954100c8f365461aba7b6c6154da49734f7b2703d9275ad49d11",
+        "crates/ibl_cli/README.md": "8d20b53c8d43eaf5742f5409a199b1cd3905a76a4d8eab1926c59b11626655d1",
+        "crates/ibl_cli/src/main.rs": "718f446f3f5f195669d793133e38e2e94c7713d4ad2f560f6bf5af1f6e114317",
+        "crates/ibl_cli/tests/hdr_warnings.rs": "dbd43b246640fa6a00195934f56d0eda90876891f91844561c658bfb1741b7d2",
+        "crates/ibl_cli/tests/low_samples.rs": "5d155bd1b2f32d2fa9a7b6c5fcf055ff2993adcf9d2bbd2335ab1ce63faefa75",
+        "crates/ibl_core/Cargo.toml": "61087af4c9cc872a33345a31b0aab7278c27454f133f24f485a9be1e4d9a9f7f",
+        "crates/ibl_core/LICENSE": "5ca2920d4f56954100c8f365461aba7b6c6154da49734f7b2703d9275ad49d11",
+        "crates/ibl_core/README.md": "f5ed43a1e1f44483c18b3ef0d7f5d3cb5719e8f72c55ca3052cf2a2482484d87",
+        "crates/ibl_core/examples/source_sampling_export.rs": "c70ff425832e50f6dfb054817e901300032a88f33dd26c43a67d9871d236db0c",
+        "crates/ibl_core/src/bake_pipeline.rs": "dfd418bcdd8e31c59d5ba07e1fccb29816d00524c2e68e2e010d2ba8a38e8f38",
+        "crates/ibl_core/src/cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates/ibl_core/src/lib.rs": "2af0201558e6b0df17b84d34b678ca14f809f0389667f8dcac5bb3a41c2f575c",
+        "crates/ibl_core/src/source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates/ktx2_writer/Cargo.toml": "909541b3f071ff89ab815411aa2e1d550ae3ad594449b793155c4ec8c8648be7",
+        "crates/ktx2_writer/LICENSE": "5ca2920d4f56954100c8f365461aba7b6c6154da49734f7b2703d9275ad49d11",
+        "crates/ktx2_writer/README.md": "aa298bfb7d0e272b1a30645b5ad6d8971d3fc6b5e9c513ca47211735cf0733d4",
+        "crates/ktx2_writer/build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates/ktx2_writer/src/compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates/ktx2_writer/src/dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates/ktx2_writer/src/kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates/ktx2_writer/src/lib.rs": "5a8d67f87353c636b9fa6489d178c6c0e027775781bdfcb835007b5b50a1d1b5",
+        "rust-toolchain.toml": "8f8d40d611a1893f155efdbc186cb69f0c7f5e759f08c85dcaf8a681f48d59cb"
+      },
+      "binary": "E:\\works\\ibl-baker\\target\\pipeline-performance\\profile-candidate-build\\release\\ibl-baker.exe",
+      "binary_sha256": "7d403565349c0bd0dbeda3d0ad3f287b47bd696d6a3d24a5d560dfeeb6bcd2be",
+      "actual_sources": {
+        "crates\\ibl_cli\\Cargo.toml": "c37a4fc91774d258972a6b4da5abfa039104280bf7ace7ee6ad50713b5b77d84",
+        "crates\\ibl_cli\\src\\main.rs": "48ab34ebd5ae925e10b3d08837cbe9e1dc3ce355a4dc6d1de906d43bf336b887",
+        "crates\\ibl_cli\\tests\\hdr_warnings.rs": "dbd43b246640fa6a00195934f56d0eda90876891f91844561c658bfb1741b7d2",
+        "crates\\ibl_cli\\tests\\low_samples.rs": "5d155bd1b2f32d2fa9a7b6c5fcf055ff2993adcf9d2bbd2335ab1ce63faefa75",
+        "crates\\ibl_core\\Cargo.toml": "2da9ed3b0f1e95adc6fb14250b657fef19343cba37b3f9494021a27fbfb69ab1",
+        "crates\\ibl_core\\examples\\source_sampling_export.rs": "c70ff425832e50f6dfb054817e901300032a88f33dd26c43a67d9871d236db0c",
+        "crates\\ibl_core\\src\\bake_pipeline.rs": "bbbcbf97ee3150de28d8196cbb6ff7f1ca5f908c0ca2c2e23d36b70a9bb79f14",
+        "crates\\ibl_core\\src\\cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates\\ibl_core\\src\\lib.rs": "2d2f5ed764c9851b67233afb4a2b16935c9c74d540fc0cb199092ecf2dbd8820",
+        "crates\\ibl_core\\src\\source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates\\ibl_profile_private\\Cargo.toml": "6da64e35936051809a7634f41f6c519658576de7b76fcdf07524059b4bcfd32a",
+        "crates\\ibl_profile_private\\profile.rs": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+        "crates\\ktx2_writer\\build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates\\ktx2_writer\\Cargo.toml": "423967cec2abd823c5d80eb44e8ef9ea69f2384d0a7af161c89d150a16b98e8d",
+        "crates\\ktx2_writer\\src\\compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates\\ktx2_writer\\src\\dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates\\ktx2_writer\\src\\kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates\\ktx2_writer\\src\\lib.rs": "04c6d50df58af461f14e74e17c28257b3f3e5051eeb8aa27d097ff796a7a6e4f"
+      },
+      "instrumented": true,
+      "profiler": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+      "tool": "e75b531351f5aa4e2b186313587bda318454f3a5d0e6c55ed2c997151cbd14c4",
+      "build_command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--release",
+        "--manifest-path",
+        "E:\\works\\ibl-baker\\target\\pipeline-performance\\profile-candidate\\Cargo.toml",
+        "-p",
+        "ibl_cli"
+      ]
+    }
+  },
+  "tool_hashes": {
+    "collect.py": "9aa96d6d11161aa6e362d230fca7a9561eed988de9d30c95e2480a72efe8ac3b",
+    "profile.rs": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+    "README.md": "497b69eefa35a0456bdcffd9e452bf957bdd12943d20a078df31e4c7fa45ddd2",
+    "study.py": "e75b531351f5aa4e2b186313587bda318454f3a5d0e6c55ed2c997151cbd14c4"
+  },
+  "limitations": [
+    "Windows, four Rayon threads, measured output size 512 only",
+    "Instrumented phase times are diagnostic",
+    "Phase process memory is sampled, not an exact native high-water mark",
+    "Requested-live Rust heap excludes native malloc, arena overhead and realloc transient copies",
+    "Input reuse retains decoded pixels during encoding",
+    "No new Linux/macOS CI results"
+  ],
+  "figure": {
+    "sha256": "2224106b4b535a6535c5b3a4df1fe54a84e2200a7241c696e736f842f6c1da53",
+    "matplotlib": "3.10.9",
+    "python": "3.14.5 (tags/v3.14.5:5607950, May 10 2026, 10:43:50) [MSC v.1944 64 bit (AMD64)]"
+  }
+}

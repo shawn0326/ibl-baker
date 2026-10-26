@@ -1,4 +1,4 @@
-﻿use half::f16;
+use half::f16;
 use intel_tex_2::{bc6h, RgbaSurface};
 
 use crate::{Ktx2Error, BC6H_UFLOAT_MAX};
@@ -18,7 +18,9 @@ pub(crate) fn bc6h_level_bytes(face_size: u32) -> usize {
 /// Returns raw BC6H block bytes covering the original `face_size × face_size` area.
 pub(crate) fn compress_face_bc6h(pixels: &[f32], face_size: u32) -> Result<Vec<u8>, Ktx2Error> {
     // ISPC BC6H encoder requires width and height to be multiples of 4.
-    // Pad to the nearest block boundary; extra texels are filled with black (0.0).
+    // A 1x1 face represents one uniform value. Fill its entire block with that
+    // value, avoiding artificial black contrast in the encoder's endpoint search.
+    // Retain existing padding for spatially varying partial blocks.
     let padded = round_up_to_block(face_size);
     let padded_usize = padded as usize;
     let face_usize = face_size as usize;
@@ -27,9 +29,14 @@ pub(crate) fn compress_face_bc6h(pixels: &[f32], face_size: u32) -> Result<Vec<u
     let stride_bytes = padded_usize.saturating_mul(8);
     let mut data: Vec<u8> = vec![0u8; padded_usize.saturating_mul(padded_usize) * 8];
 
-    for y in 0..face_usize {
-        for x in 0..face_usize {
-            let src = (y * face_usize + x) * 3;
+    let populated = if face_size == 1 {
+        padded_usize
+    } else {
+        face_usize
+    };
+    for y in 0..populated {
+        for x in 0..populated {
+            let src = (y.min(face_usize - 1) * face_usize + x.min(face_usize - 1)) * 3;
             let dst = (y * padded_usize + x) * 8;
 
             let r = rgb_to_f16(pixels[src])?;
@@ -42,7 +49,6 @@ pub(crate) fn compress_face_bc6h(pixels: &[f32], face_size: u32) -> Result<Vec<u
             data[dst + 4..dst + 6].copy_from_slice(&b.to_le_bytes());
             data[dst + 6..dst + 8].copy_from_slice(&a.to_le_bytes());
         }
-        // Padded columns remain zeroed (black).
     }
 
     let surface = RgbaSurface {
@@ -53,24 +59,9 @@ pub(crate) fn compress_face_bc6h(pixels: &[f32], face_size: u32) -> Result<Vec<u
     };
 
     let settings = bc6h::basic_settings();
-    let result = bc6h::compress_blocks(&settings, &surface);
-
-    // If the original face was smaller than the padded surface, strip the extra block columns
-    // and rows so the caller only gets blocks covering the original texel region.
-    if padded == face_size {
-        Ok(result)
-    } else {
-        let orig_bx = blocks_per_dim(face_size);
-        let orig_by = orig_bx; // square face
-        let pad_bx = (padded / BLOCK_DIM) as usize;
-
-        let mut trimmed = Vec::with_capacity(orig_bx * orig_by * BLOCK_SIZE);
-        for row in 0..orig_by {
-            let s = row * pad_bx * BLOCK_SIZE;
-            trimmed.extend_from_slice(&result[s..s + orig_bx * BLOCK_SIZE]);
-        }
-        Ok(trimmed)
-    }
+    // Rounding to a block boundary does not add any whole blocks beyond the
+    // ceil-divided dimensions of the original face.
+    Ok(bc6h::compress_blocks(&settings, &surface))
 }
 
 /// Reject invalid components and clamp finite RGB before half-float conversion.
@@ -98,6 +89,18 @@ fn round_up_to_block(size: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn single_texel_faces_encode_as_uniform_blocks() {
+        for color in [[0.0, 1.0, 0.5], [0.25, 1.0, 4.0], [35_000.0, 128.0, 64.0]] {
+            let full = color.repeat(16);
+            assert_eq!(
+                compress_face_bc6h(&color, 1).unwrap(),
+                compress_face_bc6h(&full, 4).unwrap(),
+                "color={color:?}"
+            );
+        }
+    }
 
     #[test]
     fn rgb_to_f16_clamps_finite_out_of_range_components() {

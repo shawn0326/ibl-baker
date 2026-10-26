@@ -142,6 +142,34 @@ export interface ParsedKTX2IBLFace {
 
 ## Level Semantics
 
+The [runtime integration contract](https://github.com/shawn0326/ibl-baker/blob/master/docs/runtime-contract.md)
+describes irradiance normalization, BRDF LUT use, GPU capability checks and the
+load-time/shader boundary. Container-valid NPOT sizes can still encounter GPU
+compressed-texture restrictions; power-of-two base sizes are the portable choice.
+
+With ArrayBuffer or same-realm Uint8Array/Node Buffer inputs, `compressedBytes`
+are zero-copy views into the input backing buffer. Input views with nonzero
+offsets, including Node Buffer slices, are supported. Metadata and
+view objects are allocated, but large payload bytes are not copied. Keep input
+bytes immutable and alive while their views are used; retaining a view retains
+the backing buffer. ArrayBuffer transfer detaches the sender's views.
+
+Level `byteOffset` is relative to the KTX2 file view, not its underlying
+ArrayBuffer. Face `uncompressedByteOffset` is relative to one decompressed level.
+Decompress each level once, verify its expected byte length, and use face
+`subarray` views to upload BC6H blocks. Compressed sampling on a supported GPU
+does not require a CPU BC6H-to-RGB decode. The integration owns upload lifetime,
+staging alignment and release of temporary buffers.
+
+For specular assets, upload all supplied faces and levels and sample using
+`LOD = clamp(perceptualRoughness, 0, 1) * (header.levelCount - 1)`, with interpolation
+between adjacent levels. A single level uses LOD zero and has no roughness
+variation. Disable automatic mip generation and restrict the runtime's accessible
+mip range to the supplied levels. Do not infer the level count from `pixelWidth`:
+`--specular-min-size` can produce a freshly filtered truncated chain. Cropping an
+existing chain does not preserve its roughness mapping. These integration
+requirements do not add decompression, decoding or GPU upload to this parser.
+
 KTX2 stores the level index in logical mip order.
 For `ibl-baker` outputs, the level payloads are packed in the file from smallest mip to largest mip.
 The parser preserves logical mip order in `levels`.

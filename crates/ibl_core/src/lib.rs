@@ -13,8 +13,8 @@ mod source_image;
 #[cfg(test)]
 use bake_pipeline::cubemap_direction;
 use bake_pipeline::{
-    build_brdf_lut_chunk_entries, build_irradiance_chunk_entries, build_irradiance_raw,
-    build_specular_chunk_entries, build_specular_raw, encode_mip_chain_to_ktx2,
+    build_brdf_lut_chunk_entries, build_irradiance_raw, build_specular_raw, encode_cubemap_mips,
+    encode_mip_chain_to_ktx2, CubemapFaces,
 };
 #[cfg(test)]
 use source_image::{
@@ -260,6 +260,8 @@ impl BakeQuality {
 pub struct BakeOptions {
     pub asset_kind: AssetKind,
     pub cube_size: u32,
+    /// Minimum specular face width. None selects the documented automatic policy.
+    pub specular_min_size: Option<u32>,
     pub irradiance_size: u32,
     pub output_encoding: EncodingKind,
     pub rotation_degrees: f32,
@@ -272,6 +274,7 @@ impl Default for BakeOptions {
         Self {
             asset_kind: AssetKind::SpecularCubemap,
             cube_size: 512,
+            specular_min_size: None,
             irradiance_size: 32,
             output_encoding: EncodingKind::RgbdSrgb,
             rotation_degrees: 0.0,
@@ -401,6 +404,112 @@ pub struct IblAsset {
     pub chunks: Vec<ChunkData>,
 }
 
+/// Unencoded linear cubemap levels, reusable across output encodings.
+/// The stored images are private and never modified by encoding.
+pub struct BakedCubemap {
+    levels: Vec<CubemapFaces>,
+    manifest: Manifest,
+    encoding: EncodingKind,
+}
+
+/// A decoded environment reusable across sequential bake targets.
+/// Projection and filtering remain scoped to each bake, rather than cached.
+pub struct LoadedEnvironment {
+    source: source_image::EnvironmentSource,
+    source_format: SourceFormat,
+}
+
+impl LoadedEnvironment {
+    /// Load and validate a single-file environment once.
+    pub fn from_file<P: AsRef<Path>>(input: P) -> Result<Self, IblError> {
+        let input = input.as_ref();
+        if !input.exists() {
+            return Err(IblError::InvalidInput(format!(
+                "input file does not exist: {}",
+                input.display()
+            )));
+        }
+        let (source, source_format) = load_environment_from_file(input)?;
+        Ok(Self {
+            source,
+            source_format,
+        })
+    }
+
+    /// Load and validate all six source faces once.
+    pub fn from_cubemap(input: &CubemapInputPaths) -> Result<Self, IblError> {
+        let (source, source_format) = load_environment_from_cubemap_paths(input)?;
+        Ok(Self {
+            source,
+            source_format,
+        })
+    }
+
+    /// Filter a cubemap without reloading the source pixels.
+    pub fn bake_cubemap(&self, options: BakeOptions) -> Result<BakedCubemap, IblError> {
+        bake_environment_to_cubemap(self.source_format, &self.source, options)
+    }
+
+    /// Bake and encode an IBLA asset, including the existing BRDF LUT asset path.
+    pub fn bake_asset_with_report(
+        &self,
+        options: BakeOptions,
+    ) -> Result<(IblAsset, BakeReport), IblError> {
+        bake_environment_to_asset(self.source_format, &self.source, options)
+    }
+}
+
+impl BakedCubemap {
+    /// Encode PNG payloads using the encoding selected when baking.
+    pub fn to_asset_with_report(&self) -> Result<(IblAsset, BakeReport), IblError> {
+        let (entries, report) = encode_cubemap_mips(&self.levels, self.encoding)?;
+        Ok((asset_from_entries(self.manifest.clone(), entries)?, report))
+    }
+
+    /// Encode the same linear pixels as BC6H UFLOAT with zstd compression.
+    pub fn to_ktx2_with_report(&self) -> Result<(Vec<u8>, BakeReport), IblError> {
+        encode_mip_chain_to_ktx2(&self.levels)
+    }
+}
+
+/// Bake a single-file source once for one or both cubemap output formats.
+/// BRDF LUT is not a cubemap and must use the existing asset API.
+pub fn bake_to_cubemap<P: AsRef<Path>>(
+    input: P,
+    options: BakeOptions,
+) -> Result<BakedCubemap, IblError> {
+    LoadedEnvironment::from_file(input)?.bake_cubemap(options)
+}
+
+/// Bake six source faces once for one or both cubemap output formats.
+pub fn bake_cubemap_to_cubemap(
+    input: &CubemapInputPaths,
+    options: BakeOptions,
+) -> Result<BakedCubemap, IblError> {
+    LoadedEnvironment::from_cubemap(input)?.bake_cubemap(options)
+}
+
+fn bake_environment_to_cubemap(
+    source_format: SourceFormat,
+    source: &source_image::EnvironmentSource,
+    options: BakeOptions,
+) -> Result<BakedCubemap, IblError> {
+    validate_bake_options(&options)?;
+    let manifest = build_manifest(source_format, &options)?;
+    let levels = match options.asset_kind {
+        AssetKind::SpecularCubemap => build_specular_raw(source, &options, manifest.mip_count),
+        AssetKind::IrradianceCubemap => vec![build_irradiance_raw(source, &options)],
+        AssetKind::BrdfLut => return Err(IblError::InvalidInput(
+            "BRDF LUT does not support KTX2 output or reusable cubemap output; use bake_to_asset() for PNG".to_string()
+        )),
+    };
+    Ok(BakedCubemap {
+        levels,
+        manifest,
+        encoding: options.output_encoding,
+    })
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InspectInfo {
     pub version: u16,
@@ -494,16 +603,7 @@ pub fn bake_to_asset_with_report<P: AsRef<Path>>(
     input: P,
     options: BakeOptions,
 ) -> Result<(IblAsset, BakeReport), IblError> {
-    let input_path = input.as_ref();
-    if !input_path.exists() {
-        return Err(IblError::InvalidInput(format!(
-            "input file does not exist: {}",
-            input_path.display()
-        )));
-    }
-
-    let (source, source_format) = load_environment_from_file(input_path)?;
-    bake_environment_to_asset(source_format, &source, options)
+    LoadedEnvironment::from_file(input)?.bake_asset_with_report(options)
 }
 
 pub fn bake_cubemap_to_asset(
@@ -518,8 +618,7 @@ pub fn bake_cubemap_to_asset_with_report(
     input: &CubemapInputPaths,
     options: BakeOptions,
 ) -> Result<(IblAsset, BakeReport), IblError> {
-    let (source, source_format) = load_environment_from_cubemap_paths(input)?;
-    bake_environment_to_asset(source_format, &source, options)
+    LoadedEnvironment::from_cubemap(input)?.bake_asset_with_report(options)
 }
 
 /// Bake an equirectangular (latlong) or single-file HDR/EXR/LDR source to KTX2 bytes
@@ -540,8 +639,7 @@ pub fn bake_to_ktx2_with_report<P: AsRef<Path>>(
             input_path.display()
         )));
     }
-    let (source, _source_format) = load_environment_from_file(input_path)?;
-    bake_environment_to_ktx2(&source, options)
+    bake_to_cubemap(input_path, options)?.to_ktx2_with_report()
 }
 
 /// Bake 6-face cubemap inputs to KTX2 bytes (BC6H + zstd). Only valid for `SpecularCubemap`
@@ -558,34 +656,16 @@ pub fn bake_cubemap_to_ktx2_with_report(
     input: &CubemapInputPaths,
     options: BakeOptions,
 ) -> Result<(Vec<u8>, BakeReport), IblError> {
-    let (source, _source_format) = load_environment_from_cubemap_paths(input)?;
-    bake_environment_to_ktx2(&source, options)
+    bake_cubemap_to_cubemap(input, options)?.to_ktx2_with_report()
 }
 
-fn bake_environment_to_ktx2(
-    source: &source_image::EnvironmentSource,
-    options: BakeOptions,
-) -> Result<(Vec<u8>, BakeReport), IblError> {
+fn validate_bake_options(options: &BakeOptions) -> Result<(), IblError> {
     if options.cube_size == 0 || options.irradiance_size == 0 {
         return Err(IblError::InvalidInput(
             "image sizes must be greater than zero".to_string(),
         ));
     }
-    validate_rotation(&options)?;
-    match options.asset_kind {
-        AssetKind::SpecularCubemap => {
-            let mip_count = estimate_mip_count(options.cube_size);
-            let mip_chain = build_specular_raw(source, &options, mip_count);
-            encode_mip_chain_to_ktx2(&mip_chain)
-        }
-        AssetKind::IrradianceCubemap => {
-            let faces = build_irradiance_raw(source, &options);
-            encode_mip_chain_to_ktx2(&[faces])
-        }
-        AssetKind::BrdfLut => Err(IblError::InvalidInput(
-            "BRDF LUT does not support KTX2 output; use bake_to_asset() for PNG".to_string(),
-        )),
-    }
+    validate_rotation(options)
 }
 
 fn bake_environment_to_asset(
@@ -593,15 +673,16 @@ fn bake_environment_to_asset(
     source: &source_image::EnvironmentSource,
     options: BakeOptions,
 ) -> Result<(IblAsset, BakeReport), IblError> {
-    if options.cube_size == 0 || options.irradiance_size == 0 {
-        return Err(IblError::InvalidInput(
-            "image sizes must be greater than zero".to_string(),
-        ));
+    if options.asset_kind != AssetKind::BrdfLut {
+        return bake_environment_to_cubemap(source_format, source, options)?.to_asset_with_report();
     }
+    validate_bake_options(&options)?;
+    let manifest = build_manifest(source_format, &options)?;
+    let (entries, report) = build_brdf_lut_chunk_entries(BRDF_LUT_SIZE, &options)?;
+    Ok((asset_from_entries(manifest, entries)?, report))
+}
 
-    validate_rotation(&options)?;
-
-    let manifest = build_manifest(source_format, &options);
+fn asset_from_entries(manifest: Manifest, entries: Vec<ChunkEntry>) -> Result<IblAsset, IblError> {
     let mut asset = IblAsset {
         header: IblHeader {
             magic: FORMAT_MAGIC,
@@ -615,17 +696,11 @@ fn bake_environment_to_asset(
         chunks: Vec::new(),
     };
 
-    let (entries, report) = match options.asset_kind {
-        AssetKind::SpecularCubemap => {
-            build_specular_chunk_entries(source, &options, asset.manifest.mip_count)?
-        }
-        AssetKind::IrradianceCubemap => build_irradiance_chunk_entries(source, &options)?,
-        AssetKind::BrdfLut => build_brdf_lut_chunk_entries(BRDF_LUT_SIZE, &options)?,
-    };
-    asset.chunk_table = entries.iter().map(|entry| entry.record.clone()).collect();
-    asset.chunks = entries.iter().map(|entry| entry.chunk.clone()).collect();
-
-    Ok((normalize_asset(&asset)?, report))
+    (asset.chunk_table, asset.chunks) = entries
+        .into_iter()
+        .map(|entry| (entry.record, entry.chunk))
+        .unzip();
+    normalize_asset(&asset)
 }
 
 fn validate_rotation(options: &BakeOptions) -> Result<(), IblError> {
@@ -875,19 +950,22 @@ fn error_issue(message: &str) -> ValidationIssue {
     }
 }
 
-fn build_manifest(source_format: SourceFormat, options: &BakeOptions) -> Manifest {
+fn build_manifest(
+    source_format: SourceFormat,
+    options: &BakeOptions,
+) -> Result<Manifest, IblError> {
     let (width, height, mip_count, face_count) = match options.asset_kind {
         AssetKind::SpecularCubemap => (
             options.cube_size,
             options.cube_size,
-            estimate_mip_count(options.cube_size),
+            specular_mip_count(options)?,
             6,
         ),
         AssetKind::IrradianceCubemap => (options.irradiance_size, options.irradiance_size, 1, 6),
         AssetKind::BrdfLut => (BRDF_LUT_SIZE, BRDF_LUT_SIZE, 1, 1),
     };
 
-    Manifest {
+    Ok(Manifest {
         generator: "ibl-baker".to_string(),
         generator_version: env!("CARGO_PKG_VERSION").to_string(),
         encoding: options.output_encoding.as_str().to_string(),
@@ -902,6 +980,115 @@ fn build_manifest(source_format: SourceFormat, options: &BakeOptions) -> Manifes
             quality: options.quality.as_str().to_string(),
             source_format: source_format.as_str().to_string(),
         },
+    })
+}
+
+fn specular_mip_count(options: &BakeOptions) -> Result<u32, IblError> {
+    let size = options.cube_size;
+    // Keep the full-chain default until an alternative passes the quality gate.
+    let minimum = options.specular_min_size.unwrap_or(1);
+    if size == 0 || minimum == 0 || minimum > (size / 2).max(1) {
+        return Err(IblError::InvalidInput(
+            "specular minimum size must be positive and allow at least two levels (or one for size 1)".to_string()
+        ));
+    }
+    let mut width = size;
+    let mut count = 1;
+    while width > 1 && width / 2 >= minimum {
+        width /= 2;
+        count += 1;
+    }
+    Ok(count)
+}
+
+#[cfg(test)]
+mod shared_bake_tests {
+    use super::*;
+    use glam::Vec3;
+
+    #[test]
+    fn minimum_size_preserves_natural_dimensions_and_rejects_missing_roughness_range() {
+        for (size, minimum, count) in [
+            (1, 1, 1),
+            (2, 1, 2),
+            (3, 1, 2),
+            (256, 16, 5),
+            (256, 8, 6),
+            (255, 16, 4),
+            (31, 8, 2),
+        ] {
+            let options = BakeOptions {
+                cube_size: size,
+                specular_min_size: Some(minimum),
+                ..Default::default()
+            };
+            assert_eq!(specular_mip_count(&options).unwrap(), count);
+        }
+        for (size, minimum) in [(0, 1), (1, 0), (1, 2), (2, 2), (31, 16), (256, 129)] {
+            let options = BakeOptions {
+                cube_size: size,
+                specular_min_size: Some(minimum),
+                ..Default::default()
+            };
+            assert!(matches!(
+                specular_mip_count(&options),
+                Err(IblError::InvalidInput(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn shared_encoders_keep_float_pixels_and_clipping_reports_independent() {
+        let source = source_image::EnvironmentSource::Cubemap(std::array::from_fn(|_| {
+            source_image::SourceImage::from_pixels(4, 4, vec![Vec3::new(512.0, 128.0, 64.0); 16])
+        }));
+        let options = BakeOptions {
+            cube_size: 4,
+            specular_min_size: Some(2),
+            sample_count: 8,
+            ..Default::default()
+        };
+        let baked =
+            bake_environment_to_cubemap(SourceFormat::Hdr, &source, options.clone()).unwrap();
+        let original = baked.levels.clone();
+        let (ktx, ktx_report) = baked.to_ktx2_with_report().unwrap();
+        let (ibla, ibla_report) = baked.to_asset_with_report().unwrap();
+        assert_eq!(ibla.manifest.mip_count, 2);
+        assert_eq!(ibla_report.total_pixel_count, 120);
+        assert_eq!(ibla_report.clipped_pixel_count, 120);
+        assert_eq!(ktx_report.clipped_pixel_count, 0);
+        assert_eq!(baked.levels, original);
+        assert_eq!(baked.to_ktx2_with_report().unwrap(), (ktx, ktx_report));
+        assert_eq!(
+            bake_environment_to_asset(SourceFormat::Hdr, &source, options).unwrap(),
+            (ibla, ibla_report)
+        );
+    }
+
+    #[test]
+    fn minimum_size_does_not_affect_irradiance_or_lut() {
+        let source = source_image::EnvironmentSource::Latlong(
+            source_image::SourceImage::from_pixels(4, 2, vec![Vec3::ONE; 8]),
+        );
+        for kind in [AssetKind::IrradianceCubemap, AssetKind::BrdfLut] {
+            let options = BakeOptions {
+                asset_kind: kind,
+                cube_size: 2,
+                irradiance_size: 1,
+                sample_count: 1,
+                ..Default::default()
+            };
+            let expected =
+                bake_environment_to_asset(SourceFormat::Hdr, &source, options.clone()).unwrap();
+            let options = BakeOptions {
+                specular_min_size: Some(999),
+                ..options
+            };
+            assert_eq!(
+                bake_environment_to_asset(SourceFormat::Hdr, &source, options).unwrap(),
+                expected
+            );
+        }
     }
 }
 
@@ -1624,6 +1811,74 @@ mod tests {
         let bytes = encode_png_image(&single_color_image(4, 4, color), EncodingKind::Srgb)
             .expect("png should encode");
         fs::write(path, bytes).expect("png should be written");
+    }
+
+    #[test]
+    fn loaded_environments_reuse_decoded_pixels_across_targets_after_source_removal() {
+        for cubemap in [false, true] {
+            let paths: Vec<_> = (0..if cubemap { 6 } else { 1 })
+                .map(|face| {
+                    let path = unique_temp_path("loaded-environment").with_extension("png");
+                    write_solid_png(&path, glam::Vec3::new((face + 1) as f32 / 8.0, 0.25, 0.5));
+                    path
+                })
+                .collect();
+            let faces = cubemap.then(|| {
+                CubemapInputPaths::from_face_order(std::array::from_fn(|face| paths[face].clone()))
+            });
+            let loaded = match &faces {
+                Some(faces) => LoadedEnvironment::from_cubemap(faces).unwrap(),
+                None => LoadedEnvironment::from_file(&paths[0]).unwrap(),
+            };
+            let mut expected = Vec::new();
+            for kind in [
+                AssetKind::SpecularCubemap,
+                AssetKind::IrradianceCubemap,
+                AssetKind::BrdfLut,
+            ] {
+                let options = BakeOptions {
+                    asset_kind: kind,
+                    cube_size: 5,
+                    irradiance_size: if cubemap { 8 } else { 2 },
+                    rotation_degrees: 37.0,
+                    sample_count: 8,
+                    quality: BakeQuality::Low,
+                    ..Default::default()
+                };
+                let asset = match &faces {
+                    Some(faces) => {
+                        bake_cubemap_to_asset_with_report(faces, options.clone()).unwrap()
+                    }
+                    None => bake_to_asset_with_report(&paths[0], options.clone()).unwrap(),
+                };
+                let ktx2 = (kind != AssetKind::BrdfLut).then(|| match &faces {
+                    Some(faces) => {
+                        bake_cubemap_to_ktx2_with_report(faces, options.clone()).unwrap()
+                    }
+                    None => bake_to_ktx2_with_report(&paths[0], options.clone()).unwrap(),
+                });
+                expected.push((options, asset, ktx2));
+            }
+            for path in &paths {
+                fs::remove_file(path).unwrap();
+            }
+            for (options, asset, ktx2) in expected {
+                assert_eq!(
+                    loaded.bake_asset_with_report(options.clone()).unwrap(),
+                    asset
+                );
+                if let Some(expected) = ktx2 {
+                    assert_eq!(
+                        loaded
+                            .bake_cubemap(options)
+                            .unwrap()
+                            .to_ktx2_with_report()
+                            .unwrap(),
+                        expected
+                    );
+                }
+            }
+        }
     }
 
     #[test]

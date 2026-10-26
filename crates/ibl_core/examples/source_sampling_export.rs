@@ -20,7 +20,7 @@ fn export() -> ExportResult<()> {
         return Err("expected INPUT OUTPUT [--size N] [--samples N] [--rotation DEGREES]".into());
     };
     if input == "--help" {
-        println!("Private raw-float export: INPUT OUTPUT [--size N] [--irradiance-size N] [--samples N] [--rotation DEGREES]\nINPUT is a panorama, or a directory containing px.exr, nx.exr, py.exr, ny.exr, pz.exr, nz.exr. Outputs are little-endian interleaved RGB f32 plus metadata and the production BRDF PNG.");
+        println!("Private raw-float export: INPUT OUTPUT [--size N] [--specular-min-size N] [--irradiance-size N] [--samples N] [--rotation DEGREES]\nINPUT is a panorama, or a directory containing px.exr, nx.exr, py.exr, ny.exr, pz.exr, nz.exr. Outputs are little-endian interleaved RGB f32 plus metadata and the production BRDF PNG.");
         return Ok(());
     }
     let input = PathBuf::from(input);
@@ -36,6 +36,7 @@ fn export() -> ExportResult<()> {
             .ok_or_else(|| format!("missing value for {name}"))?;
         match name.as_str() {
             "--size" => options.cube_size = value.parse()?,
+            "--specular-min-size" => options.specular_min_size = Some(value.parse()?),
             "--irradiance-size" => options.irradiance_size = value.parse()?,
             "--samples" => options.sample_count = value.parse()?,
             "--rotation" => options.rotation_degrees = value.parse()?,
@@ -61,7 +62,7 @@ fn export() -> ExportResult<()> {
     };
     let load_ms = started.elapsed().as_secs_f64() * 1000.0;
     let started = Instant::now();
-    let mip_count = estimate_mip_count(options.cube_size);
+    let mip_count = specular_mip_count(&options)?;
     let specular = build_specular_raw(&source, &options, mip_count);
     let specular_ms = started.elapsed().as_secs_f64() * 1000.0;
     let started = Instant::now();

@@ -20,6 +20,10 @@ The crate is responsible for:
 
 It stays independent from renderer-specific runtime upload paths.
 
+The [runtime integration contract](../../docs/runtime-contract.md) defines the
+current output semantics: normalized Lambert `E/pi`, GGX perceptual-roughness LOD,
+linear RG BRDF coefficients, and loading versus shader responsibilities.
+
 ## Source Cubemap Filtering
 
 Cubemap input resampling and source mip lookups use seamless bilinear filtering.
@@ -50,7 +54,79 @@ base quality caps of 256 (`Low`), 512 (`Medium`), and 1024 (`High`). Smaller mip
 can boost the capped budget up to the requested count. Irradiance and BRDF LUT
 sampling retain their own quality caps.
 
+The [full-chain follow-up](../../docs/sampling-encoding-acceptance.md) isolates
+actual sample count from the source-LOD footprint. Linear-budget candidates stay
+experimental because of converged HDR and encoded subgroup regressions.
+Production keeps the existing r-squared budget and coupled source footprint.
+
+Cubemap filtering prepares each sample's source LOD, neighboring source mip
+indices and interpolation fraction once per pass. They depend on the kernel,
+source width and source mip count, not the output pixel. Preparation is local
+to that pass; the general kernel cache still stores only directions and PDFs
+and remains usable by the BRDF LUT. Pixel directions, weights, accumulation
+order, LOD formula and near-integer interpolation cutoff are unchanged.
+
+## Reuse Decoded Inputs
+
+`LoadedEnvironment::from_file(path)` and `LoadedEnvironment::from_cubemap(&paths)`
+decode and validate the source once. Reuse the result for sequential specular,
+irradiance and LUT targets with `bake_cubemap(options)` or
+`bake_asset_with_report(options)`. The existing convenience functions remain
+available with the same signatures. `BakeOptions` and output contracts are
+unchanged.
+
+```rust,no_run
+use ibl_core::{AssetKind, BakeOptions, LoadedEnvironment};
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+let source = LoadedEnvironment::from_file("environment.hdr")?;
+for asset_kind in [AssetKind::SpecularCubemap, AssetKind::IrradianceCubemap] {
+    let baked = source.bake_cubemap(BakeOptions { asset_kind, ..Default::default() })?;
+    let (bytes, report) = baked.to_ktx2_with_report()?;
+    // Write/use this output before advancing to the next target.
+    let _ = (bytes, report);
+}
+# Ok(())
+# }
+```
+
+This object owns the decoded input pixels, without exposing their layout or
+caching projections, source mips or filtered results across calls. Those working
+buffers remain scoped to each bake. Drop the object when input reuse is finished;
+retaining it during encoding increases that phase's live memory. For a single
+cubemap, `bake_to_cubemap` releases the input before the caller encodes the result.
+
+Source mip zero is owned by its mip chain and transferred into the finished
+specular output after filtering. It is not duplicated as a separate base cube
+or cloned into the output while filtering is still active. The pixel arithmetic,
+source mips, sample budgets and roughness mapping remain unchanged.
+
 ## Bake Reports And RGB Ranges
+
+`bake_to_cubemap(path, options)` and
+`bake_cubemap_to_cubemap(&face_paths, options)` return an opaque `BakedCubemap` for
+specular or irradiance assets. It owns the unencoded linear levels without
+exposing their internal pixel layout. Call `to_asset_with_report()` and/or
+`to_ktx2_with_report()` on the same value to encode once per format. Neither
+encoder changes the stored pixels; reports are computed independently against
+each encoding's range. Drop each encoded output after writing it to avoid keeping
+both encoded buffers alive. BRDF LUT continues to use the existing asset API.
+
+```rust,no_run
+use ibl_core::{bake_to_cubemap, write_asset, BakeOptions};
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+let baked = bake_to_cubemap("environment.hdr", BakeOptions::default())?;
+{
+    let (asset, report) = baked.to_asset_with_report()?;
+    write_asset("specular.ibla", &asset)?;
+    // Inspect report after a successful write.
+    let _ = report;
+}
+let (bytes, report) = baked.to_ktx2_with_report()?;
+std::fs::write("specular.ktx2", bytes)?;
+let _ = report;
+# Ok(())
+# }
+```
 
 The report variants of the existing bake functions return `(output, BakeReport)`:
 
@@ -79,6 +155,21 @@ See the [CLI encoding and KTX2 output documentation](../ibl_cli/README.md) and
 the [`.ibla` format specification](../../docs/format-spec.md) for output contracts.
 
 ## IBLA Mip Topology
+
+`BakeOptions::specular_min_size: Option<u32>` controls the specular output's
+minimum face width. `None` currently resolves to `1`; `Some(1)` also produces the
+complete chain. Larger values keep the natural floor-halved levels whose width
+is at least the minimum. All retained levels are rebaked over the complete linear
+perceptual-roughness range. A base size greater than one must retain at least two
+levels; otherwise the bake returns `IblError::InvalidInput`. Base size one allows
+only `None` or `Some(1)` and has no roughness variation. `Some(0)` is invalid for
+specular. This field has no effect on irradiance or LUT baking.
+
+**Rust source migration:** complete `BakeOptions { ... }` literals must add
+`specular_min_size: None`. Literals with `..Default::default()` and existing bake
+function signatures remain supported. There is no container or loader API
+migration. See [CLI Specular Levels](../ibl_cli/README.md#specular-levels) for
+examples and consumer sampling requirements.
 
 Reading, writing, and validation enforce the natural mip limit:
 `1 <= mip_count <= 1 + floor(log2(max(width, height)))`. Complete and truncated

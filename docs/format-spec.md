@@ -147,6 +147,11 @@ Equivalently, v1 readers may use:
 dimensionAtMip(base, mipLevel) = max(1, base >> mipLevel)
 ```
 
+`build.rotation` records the baker's Y-axis rotation in degrees. Rotation is
+already applied to the output pixels; it is not a runtime sampling instruction.
+The current baker's asset semantics and runtime use are described in the
+[runtime integration contract](runtime-contract.md), without adding fields to v1.
+
 ## Encoding
 
 `encoding` defines how chunk payload bytes must be interpreted after PNG decode.

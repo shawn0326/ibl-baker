@@ -41,6 +41,13 @@ That path does not require installing Rust.
 
 ## Quick Start
 
+Start with `--size` and `--output-format`; medium quality and the complete mip
+chain are the defaults. Use `--quality low` for faster iteration. `--samples`
+and `--specular-min-size` are advanced controls, not required tuning steps. For
+BC6H-capable runtimes, an explicit power-of-two size such as 256 makes storage
+predictable. See the [runtime integration contract](../../docs/runtime-contract.md)
+for linear sampling, asset meanings, loading costs and capability requirements.
+
 ```bash
 # .ibla output (default)
 ibl-baker bake ./environment.hdr --out-dir ./out
@@ -79,10 +86,11 @@ ibl-baker validate ./out/specular.ibla
 | `--target` | `specular`, `irradiance`, `lut` | all | Repeatable; filters output set |
 | `--output-format` | `ibla`, `ktx2`, `both` | `ibla` | Output container format |
 | `--size` | `auto` or integer | `auto` | Specular cubemap face size; also the source cubemap size for irradiance filtering |
+| `--specular-min-size` | `auto` or positive integer | `auto` | Lower bound for specular output face widths; see Specular Levels |
 | `--irradiance-size` | integer | `32` | Final irradiance cubemap face size |
 | `--encoding` | `auto`, `rgbd-srgb`, `srgb`, `linear` | `auto` | `.ibla` payload encoding (ignored for KTX2) |
 | `--faces` | comma-separated filenames | *(auto-detect)* | Face order for directory inputs |
-| `--rotation` | float | `0` | Y-axis rotation in radians |
+| `--rotation` | float | `0` | Y-axis rotation in degrees, applied during baking |
 | `--samples` | non-negative integer | `1024` | Requested sample budget; `0` uses one sample |
 | `--quality` | `low`, `medium`, `high` | `medium` | Bake quality preset |
 
@@ -95,6 +103,15 @@ ibl-baker validate ./out/specular.ibla
 | `both` | both `.ibla` + `.ktx2` | both `.ibla` + `.ktx2` | `brdf-lut.png` |
 
 BRDF LUT always outputs as `.png` regardless of `--output-format`.
+
+For every output format, one CLI bake job decodes its input once and shares the
+immutable source across selected targets. Projection and filtering stay scoped
+to each target, without a persistent cache.
+
+With `both`, each cubemap asset is projected and filtered once. Its linear
+pixels are encoded and written as IBLA, then KTX2. Encoding buffers are released
+between formats. Each file retains its own clipping report; a later failure leaves
+any successfully written earlier files in place.
 
 ### Input
 
@@ -116,6 +133,37 @@ BRDF LUT always outputs as `.png` regardless of `--output-format`.
 - `--samples 0` uses one sample and records `1` in `.ibla` build metadata. Positive values below eight are preserved for specular, irradiance, and BRDF LUT sampling.
 - Specular sampling adapts to roughness and mip size. Its base quality caps are `low` = 256, `medium` = 512, `high` = 1024; smaller mips may use more samples, up to the requested budget.
 - Irradiance sampling is capped by quality: `low` = 256, `medium` = 1024, `high` = 2048; explicit lower `--samples` values are preserved
+
+### Specular Levels
+
+`--specular-min-size auto` currently resolves to **1**, for every input size and
+environment. The quality study did not qualify a replacement default. This fixed
+policy does not inspect scene content or tune itself at runtime.
+
+An explicit positive integer sets the minimum output face width. Dimensions use
+integer division by two, stopping before the next level would fall below the
+minimum. For example, `--size 256 --specular-min-size 16` produces
+`256, 128, 64, 32, 16`; `--size 255 --specular-min-size 16` produces
+`255, 127, 63, 31`. Non-power-of-two inputs can therefore end above the minimum.
+
+For base sizes greater than one, at least two levels are required. An explicit
+minimum larger than `floor(size / 2)` is an error. A base size of one accepts
+`auto` or `1`, producing only the original level with no roughness variation.
+Zero is invalid. This option affects neither internal source mips nor irradiance
+or BRDF LUT output.
+
+Every retained specular level is freshly baked with perceptual roughness
+`mip / (mipCount - 1)`, covering zero through one. Removing levels from an existing
+asset does **not** produce the same result. `1` requests a complete chain, not
+pixel compatibility with every historical algorithm.
+
+Consumers must upload all supplied levels, use their actual count, and disable
+automatic mip generation that would replace the prefiltered images. Sample with
+`LOD = clamp(perceptualRoughness, 0, 1) * (mipCount - 1)` and interpolate adjacent
+levels; a single-level texture uses LOD zero. Configure the texture's accessible
+mip range to the uploaded levels, including for truncated chains. Do not infer
+the count from base width or assume a particular minimum. File layouts and
+parser-only loader APIs are unchanged.
 
 ### Source Filtering
 
@@ -144,21 +192,33 @@ The full binary format specification is defined in [`docs/format-spec.md`](../..
 
 ### KTX2 Output
 
+Container-valid NPOT dimensions are not a promise of compressed upload support
+on every GPU API. Prefer power-of-two base sizes for portable runtime assets;
+see [runtime integration](../../docs/runtime-contract.md#choose-a-bake).
+
 KTX2 outputs are GPU-ready cubemaps using BC6H block compression with zstd supercompression.
 
 - Vulkan format: `VK_FORMAT_BC6H_UFLOAT_BLOCK` (`vkFormat = 143`)
 - Data format descriptor: Khronos BC6H UFLOAT with normalized sample range `[0, 1]`
 - Compression: BC6H unsigned half-float, 4×4 blocks
+- A 1x1 face fills its entire BC6H block with its sole valid texel before compression; logical dimensions and clipping counts exclude padding
 - Supercompression: zstd per-level (scheme 2)
 - Input: finite linear f32 RGB clamped to `[0, 65504]` before conversion to f16 → BC6H (the `--encoding` option has no effect)
 - BC6H stores HDR and LDR values in the `[0, 65504]` range with lossy block compression
 - Face order: +X, −X, +Y, −Y, +Z, −Z
 - KV metadata: `KTXorientation=rd`, `KTXwriter=ibl-baker v{version}`
-Specular output uses a complete floor-halved mip chain down to `1x1`; irradiance
-uses one level. The KTX2 writer and loader also accept valid truncated chains and
+
+Specular output follows [Specular Levels](#specular-levels), with a complete chain
+by default; irradiance uses one level. The KTX2 writer and loader accept valid truncated chains and
 non-power-of-two sizes. The writer rejects skipped dimensions; both reject levels
-beyond the natural limit `1 + floor(log2(base_face_size))`. The CLI does not expose
-a truncation option.
+beyond the natural limit `1 + floor(log2(base_face_size))`.
+
+BC6H encoding of a 1x1 face uses a uniform input block, avoiding artificial black
+contrast during compression. Other partial blocks retain their existing padding.
+The KTX2 profile, mip layout and consumer sampling contract are unchanged.
+Existing assets are not rewritten; regenerated 1x1 KTX2 payloads can differ. See the
+[full-chain sampling and encoding study](../../docs/sampling-encoding-acceptance.md)
+for the measured scope and remaining sampling tradeoffs.
 
 ### Range Handling
 

@@ -21,12 +21,17 @@ assets locally in the browser. Files are processed locally and are not uploaded.
 | [packages/cli/README.md](packages/cli/README.md) | npm CLI installation, platform support and versioning |
 | [docs/release.md](docs/release.md) | CI, release preparation, OIDC publishing and recovery |
 | [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md) | CLI usage, options, and output format details |
+| [Runtime integration contract](docs/runtime-contract.md) | Asset semantics, simple bake controls, load-time work and GPU sampling |
+| [Pipeline performance acceptance](docs/pipeline-performance.md) | Phase costs, decoded-input reuse, float ownership and measured time/memory gains |
+| [Filter precomputation acceptance](docs/lod-performance.md) | Per-pass source mip preparation, exact output parity and incremental performance |
 | [`docs/format-spec.md`](docs/format-spec.md) | `.ibla` binary format specification |
 | [`crates/ibl_core/README.md`](crates/ibl_core/README.md) | Rust core library scope |
 | [`crates/ktx2_writer/README.md`](crates/ktx2_writer/README.md) | Write-only KTX2 serializer scope |
 | [`packages/ibla-loader/README.md`](packages/ibla-loader/README.md) | TypeScript `.ibla` parser API |
 | [`packages/ktx2-loader/README.md`](packages/ktx2-loader/README.md) | Narrow TypeScript parser API for `ibl-baker` KTX2 cubemaps |
 | [`packages/site/README.md`](packages/site/README.md) | Private GitHub Pages browser validation app |
+| [Quality optimization acceptance](docs/quality-optimization-acceptance.md) | Shared baking, optional specular tails, quality decisions and measured limits |
+| [Full-chain sampling and encoding](docs/sampling-encoding-acceptance.md) | Decoupled sampling experiments, BC6H single-texel repair and incremental acceptance |
 
 ## Status
 
@@ -41,6 +46,8 @@ The repository implements the bake pipeline across three layers:
 
 Current priorities:
 
+- preserve clear output and runtime sampling contracts, simple parameters and efficient bake/load/query paths
+- require correct directions, energy normalization and visually sound roughness transitions; keep precision studies diagnostic unless a visible issue needs them
 - keep the `.ibla` container stable and well-specified
 - keep KTX2 output aligned with the BC6H + zstd pipeline
 - keep CLI behavior aligned with [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md)
