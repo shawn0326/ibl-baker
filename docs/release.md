@@ -284,6 +284,13 @@ visible before the full run completes.
 - After an upload timeout/error, query registry acceptance before retrying.
   Missing versions are polled for up to ten minutes; authentication, network,
   rate-limit, server and checksum errors fail instead of meaning "available".
+- A matching crates.io API receipt can precede Cargo index visibility. If a
+  dependent package's preparation cannot resolve the newly uploaded version,
+  check its sparse-index entry and checksum before rerunning failed jobs on the
+  original run. Do not interpret this as a missing upload, replace the candidate,
+  or upload an accepted version again. The 2026-10-26 partial-publication record
+  in [Release History](release-history.md#release-preparation-and-partial-publication-2026-10-26)
+  documents this distinction.
 - Missing/expired original candidates block automatic recovery. If preparation
   failed before any candidate/upload, investigate and start a fresh run.
 - If verification or Release creation fails after publication, rerun failed jobs.

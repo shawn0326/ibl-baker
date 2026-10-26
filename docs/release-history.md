@@ -1,5 +1,31 @@
 # Release History
 
+## Release preparation and partial publication (2026-10-26)
+
+- [Release preparation PR #28](https://github.com/shawn0326/ibl-baker/pull/28)
+  prepares Rust/CLI 0.3.0, the four-package npm CLI 0.2.0 group, IBLA loader
+  0.2.1 and KTX2 loader 0.3.1. The release source is
+  `0868326410784009618b6a2baa52ed9de0576bef`.
+- [All-unit rehearsal 40286257184](https://github.com/shawn0326/ibl-baker/actions/runs/40286257184)
+  passes for all nine packages, three native builds and three npm CLI candidate
+  consumers. Candidate artifact `12634915523`, manifest SHA-256
+  `3e57fc60eef260703b83e979c4f1ff7b99c07eb29b9bd3bf06cba92c32672d3e`.
+- [Production run 40287241785](https://github.com/shawn0326/ibl-baker/actions/runs/40287241785)
+  creates its own candidate artifact `12634902307`, manifest SHA-256
+  `20a72b6faf161da6db605643453b9a7d8c501d6cddb2268213a21a5d04e7f433`.
+  Independent audits verify all package/note hashes, original source identity,
+  exact CLI platform dependencies, native/npm binary equality and the three
+  matching candidate consumer reports. The normal release Environment is
+  reviewed without changing or bypassing its protections.
+- The first publication attempt accepts `ktx2_writer@0.3.0` with SHA-256
+  `4deb0e8bd3a5063534fab917db69a3df988b423967841afbcd30e3c4f1d05f85`.
+  Its API receipt and downloaded crate match the original candidate and record
+  this source/run through GitHub Trusted Publishing. The next `ibl_core`
+  preparation fails because Cargo's index does not yet expose the new writer.
+  The other eight packages are confirmed absent; registry verification and
+  Release finalization have not run. Recovery must reuse the original run and
+  candidate after checking index visibility, not replace the accepted archive.
+
 This archive preserves dated rollout, bootstrap, rehearsal and production evidence.
 Each section records the state at that time; later verification does not change earlier results.
 See [Release Process](release.md) for current operations and recovery rules.
