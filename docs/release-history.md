@@ -25,6 +25,11 @@
   The other eight packages are confirmed absent; registry verification and
   Release finalization have not run. Recovery must reuse the original run and
   candidate after checking index visibility, not replace the accepted archive.
+- An additional local sparse-index watch runs for ten minutes without finding
+  0.3.0, including fresh cache-miss probes. The public crate download still
+  matches the accepted candidate. No blind retry, npm upload, replacement
+  candidate, version change, tag or GitHub Release is performed. The production
+  release remains incomplete pending registry index visibility.
 
 This archive preserves dated rollout, bootstrap, rehearsal and production evidence.
 Each section records the state at that time; later verification does not change earlier results.

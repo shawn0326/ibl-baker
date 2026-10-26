@@ -11,6 +11,12 @@ version; this work does not change versions or publish assets.
 
 ## Verified release status
 
+The [2026-10-26 production attempt](release-history.md#release-preparation-and-partial-publication-2026-10-26)
+is incomplete: only `ktx2_writer@0.3.0` is accepted with the original candidate
+checksum. The remaining eight packages and Release finalization await Cargo
+index visibility and recovery of the original production run. Do not start a
+replacement production run for these versions.
+
 The [2026-09-29 production release](release-history.md#production-release-2026-09-29)
 verified OIDC publication, registry integrity, npm provenance, registry consumers
 and GitHub Release finalization for eight selected packages: Rust/CLI 0.2.3
