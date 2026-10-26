@@ -12,6 +12,36 @@ import {
 const HEADER_BYTE_LENGTH = 16;
 const encoder = new TextEncoder();
 
+test("parseIBLA preserves zero-copy payload views for buffers and offset inputs", () => {
+  const bytes = createIblaBytes({
+    manifest: { ...baseManifest(), mipCount: 2 },
+    chunkPayloads: [Uint8Array.of(1, 2, 3), Uint8Array.of(4, 5)],
+  });
+  const storage = new Uint8Array(bytes.byteLength + 26).fill(0xa5);
+  storage.set(bytes, 13);
+  const inputs = [
+    bytes.slice().buffer,
+    storage.subarray(13, 13 + bytes.byteLength),
+    Buffer.from(storage.buffer, 13, bytes.byteLength),
+  ];
+
+  for (const input of inputs) {
+    const view = input instanceof Uint8Array ? input : new Uint8Array(input);
+    const before = Uint8Array.from(view);
+    const header = new DataView(view.buffer, view.byteOffset, view.byteLength);
+    const binaryStart = HEADER_BYTE_LENGTH + header.getUint32(8, true) + header.getUint32(12, true);
+    const parsed = parseIBLA(input);
+    assert.equal(parsed.chunks.length, 2);
+    for (const chunk of parsed.chunks) {
+      assert.equal(chunk.encodedBytes.buffer, view.buffer);
+      assert.equal(chunk.encodedBytes.byteOffset, view.byteOffset + binaryStart + chunk.byteOffset);
+      assert.equal(chunk.encodedBytes.byteLength, chunk.byteLength);
+    }
+    assert.deepEqual([...expectDefined(parsed.chunks[1]).encodedBytes], [4, 5]);
+    assert.deepEqual([...view], [...before]);
+  }
+});
+
 test("parseIBLA parses a synthetic 2D asset with derived mip metadata", () => {
   const bytes = createIblaBytes({
     manifest: {

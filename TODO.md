@@ -5,12 +5,15 @@
 - Rust bake/validate 主链路、稳定的 .ibla v1、KTX2 导出与独立 BRDF LUT 已落地。
 - 核心库、KTX2 writer、CLI、两个 parser-only loader 和私有 Pages site 的职责边界保持稳定；site 使用手动拖拽入口。
 - 当前对外契约以 [IBLA 规范](docs/format-spec.md)、[CLI README](crates/ibl_cli/README.md)、[IBLA loader README](packages/ibla-loader/README.md) 和 [KTX2 loader README](packages/ktx2-loader/README.md) 为准。
+- 后续按[运行时契约](docs/runtime-contract.md)优先保证方向、归一化和明显画面正确性，再考虑输出稳定、参数简洁、烘焙/加载性能与 GPU 查询成本；小误差研究作为诊断，历史 15%/10% 指标不再作为所有改动的统一发布门槛。
 - 根目录使用 Cargo 与 pnpm workspace；pnpm 安装 Cargo source，Cargo 负责 Rust 构建和发布，npm 负责 registry 发布与消费者验收。
 - 本地输出位于被 Git 忽略的 fixtures/outputs；CI 使用 target/ci-fixtures。CI 覆盖格式检查、Clippy、源码语法、类型检查、测试及归档消费者。
 - 2026-09-29 已正式发布 Rust/CLI 0.2.3、KTX2 loader 0.3.0 和 npm CLI 0.1.1；所选八包的 OIDC、完整性、provenance、消费者和 Release 收尾已验证，.ibla loader 未参与此次发布。
 - 发布操作以 [Release Process](docs/release.md) 为入口；历史 PR、bootstrap、预演与发布证据见 [Release History](docs/release-history.md)。
 
 ## 本轮收尾
+
+- [x] 调整工作重点并补齐运行时消费契约，明确 irradiance 的 E/π、BRDF LUT 线性 RG、roughness 查询、方向、RGBD 过滤近似、按层解压及零拷贝视图生命周期；精简 CLI 帮助的常用/高级参数分层，修正 README 的旋转单位为度，见[运行时契约](docs/runtime-contract.md)。
 
 - [x] 分离浮点 cubemap 烘焙与格式编码，CLI `both` 每个资产只烘焙一次；各格式独立截断告警及部分成功语义保持不变，见[核心库说明](crates/ibl_core/README.md)。
 - [x] 增加 `--specular-min-size` 与 `BakeOptions::specular_min_size`，覆盖 NPOT、极小尺寸、完整 roughness 重烘焙及两个真实 loader；补充消费方实际级数和禁用自动 mip 的约定，见[CLI 说明](crates/ibl_cli/README.md#specular-levels)。
@@ -30,6 +33,8 @@
 
 ## 待验证
 
+- [ ] 下一轮性能改动先按加载、投影、过滤和编码拆分计时及峰值内存，优先减少重复工作、解码和拷贝；使用固定的代表性画面与实际 GPU 查询路径验证收益，避免为单一数值指标增加参数或逐像素工作。
+
 - [ ] 本轮分支合入/发布前取得新的 Linux Quality 和 macOS Cargo CI 结果；本地 Windows Rust、两个 loader、site 和 npm CLI 验收通过，远端平台结果不得以历史绿灯替代。
 
 - [ ] 自然发生部分生产发布失败时，记录真实恢复证据；当前恢复顺序和 checksum 防护已有模拟测试覆盖，不人为制造生产发布故障。
@@ -41,7 +46,7 @@
 - [ ] 评估 LDR 输入的其它 KTX2 编码路径；以收益、兼容性和复杂度的明确权衡为前提。
 - [ ] 将参考实现对比升级为长期质量基线，单独定义基线产物、指标和回归策略。
 - [ ] 仅在出现新的可复现收益证据后，单独研究源 mip 足迹与 FIS 重建的联合策略；当前加权候选不进入生产，未来仍需完整画质与逐场景性能验收。
-- [ ] 若继续推进画质默认值，优先研究强太阳环境覆盖与少量粗尾方向的直接积分，并评价压缩后的方向重建与 roughness 插值；以本轮已收敛的 128 HDR 参考为起点扩展更高尺寸和未查询区间，再完成 15%/10% 采用门槛。被拒绝候选的未开展项目不视为通过，像素编码 SSE 改善不能替代最终采样验收。
+- [ ] 仅在出现明显视觉问题时恢复强太阳覆盖、粗尾直接积分或采样序列研究；先固定画面复现、实际使用条件和性能预算，再选择局部实验。保留已有收敛数据，不默认扩展更高尺寸/更多参考查询，也不把像素编码 SSE 改善等同于最终画面改善。
 
 ## 暂不纳入当前范围
 

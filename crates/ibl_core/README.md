@@ -20,6 +20,10 @@ The crate is responsible for:
 
 It stays independent from renderer-specific runtime upload paths.
 
+The [runtime integration contract](../../docs/runtime-contract.md) defines the
+current output semantics: normalized Lambert `E/pi`, GGX perceptual-roughness LOD,
+linear RG BRDF coefficients, and loading versus shader responsibilities.
+
 ## Source Cubemap Filtering
 
 Cubemap input resampling and source mip lookups use seamless bilinear filtering.

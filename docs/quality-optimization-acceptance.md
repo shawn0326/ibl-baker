@@ -1,5 +1,8 @@
 # IBL quality and bake efficiency acceptance
 
+The numerical adoption criteria below belong to this completed study. Current
+engineering priorities are described in the [runtime integration contract](runtime-contract.md#acceptance-priorities).
+
 The subsequent [full-chain follow-up](sampling-encoding-acceptance.md) improves
 BC6H single-texel encoding. Byte-parity claims below refer to the implementation
 and binaries recorded in this report, before that later encoding repair.

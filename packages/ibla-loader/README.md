@@ -193,6 +193,20 @@ dimensionAtMip(base, mipLevel) = max(1, base >> mipLevel)
 
 ## Parser Output Contract
 
+See the [runtime integration contract](https://github.com/shawn0326/ibl-baker/blob/master/docs/runtime-contract.md)
+for irradiance normalization, BRDF LUT semantics and efficient GPU sampling.
+
+With ArrayBuffer or same-realm Uint8Array/Node Buffer inputs, `encodedBytes` are
+zero-copy views into the supplied backing buffer. Nonzero input-view offsets,
+including Node Buffer slices, are supported. Metadata and
+view objects are allocated, but PNG payload bytes are not copied. Keep the bytes
+immutable while views are in use; a retained view keeps its backing buffer alive.
+ArrayBuffer transfer detaches the sender's views. Parse/decode in the owning
+thread and release loading buffers when upload completes.
+
+Chunk `byteOffset` is relative to the binary section, not the whole file or its
+underlying ArrayBuffer. Prefer `encodedBytes` over manually reconstructing views.
+
 For specular assets, upload every supplied face and mip and use
 `manifest.mipCount` for `LOD = clamp(perceptualRoughness, 0, 1) * (mipCount - 1)`.
 Interpolate adjacent levels. One level always uses LOD zero and cannot represent
@@ -227,6 +241,13 @@ Those higher-level helpers can derive texture topology directly from manifest me
 - cubemap face order remains the fixed v1 sequence `px, nx, py, ny, pz, nz`
 
 Reference decode code for `encoding = "rgbd-srgb"`:
+
+This describes a texel's encoding. Applying it after ordinary hardware filtering
+of packed RGBD is a fast approximation: interpolating RGB and D before division
+does not equal filtering reconstructed HDR. Integrations may use that path when
+visually adequate, or decode to filterable linear texels at load time if visible
+bleed or banding requires it. Preserve unassociated PNG alpha: D is data, not
+transparency. This does not change v1 bytes or add a decode API to the parser.
 
 ```glsl
 vec3 decodeRgbdSrgb(vec4 encodedSample) {

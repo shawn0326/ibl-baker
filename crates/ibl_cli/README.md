@@ -41,6 +41,13 @@ That path does not require installing Rust.
 
 ## Quick Start
 
+Start with `--size` and `--output-format`; medium quality and the complete mip
+chain are the defaults. Use `--quality low` for faster iteration. `--samples`
+and `--specular-min-size` are advanced controls, not required tuning steps. For
+BC6H-capable runtimes, an explicit power-of-two size such as 256 makes storage
+predictable. See the [runtime integration contract](../../docs/runtime-contract.md)
+for linear sampling, asset meanings, loading costs and capability requirements.
+
 ```bash
 # .ibla output (default)
 ibl-baker bake ./environment.hdr --out-dir ./out
@@ -83,7 +90,7 @@ ibl-baker validate ./out/specular.ibla
 | `--irradiance-size` | integer | `32` | Final irradiance cubemap face size |
 | `--encoding` | `auto`, `rgbd-srgb`, `srgb`, `linear` | `auto` | `.ibla` payload encoding (ignored for KTX2) |
 | `--faces` | comma-separated filenames | *(auto-detect)* | Face order for directory inputs |
-| `--rotation` | float | `0` | Y-axis rotation in radians |
+| `--rotation` | float | `0` | Y-axis rotation in degrees, applied during baking |
 | `--samples` | non-negative integer | `1024` | Requested sample budget; `0` uses one sample |
 | `--quality` | `low`, `medium`, `high` | `medium` | Bake quality preset |
 
@@ -180,6 +187,10 @@ The `--encoding` option controls how pixel data is stored:
 The full binary format specification is defined in [`docs/format-spec.md`](../../docs/format-spec.md).
 
 ### KTX2 Output
+
+Container-valid NPOT dimensions are not a promise of compressed upload support
+on every GPU API. Prefer power-of-two base sizes for portable runtime assets;
+see [runtime integration](../../docs/runtime-contract.md#choose-a-bake).
 
 KTX2 outputs are GPU-ready cubemaps using BC6H block compression with zstd supercompression.
 

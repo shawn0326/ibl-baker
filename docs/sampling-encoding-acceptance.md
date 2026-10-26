@@ -1,5 +1,10 @@
 # Full-chain sampling and BC6H follow-up
 
+This report records the completed precision study and its historical adoption
+criteria. Current work follows the [runtime contract's acceptance priorities](runtime-contract.md#acceptance-priorities):
+stable contracts, visible correctness, simple controls and efficient operation.
+The research directions at the end are deferred unless a visible issue warrants them.
+
 ## Decision and scope
 
 Adopt uniform input blocks for BC6H 1x1 faces only. Keep the production

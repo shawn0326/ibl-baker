@@ -763,17 +763,23 @@ fn help_text() -> String {
         "  ibl-baker validate ./out/specular.ibla",
         "",
         "bake options",
-        "  --out-dir",
-        "  --target <specular|irradiance|lut>",
-        "  --size <auto|n>",
-        "  --specular-min-size <auto|n>",
-        "  --irradiance-size <n>",
-        "  --encoding <auto|rgbd-srgb|srgb|linear>",
-        "  --output-format <ibla|ktx2|both>",
+        "  --out-dir <path> (required)",
+        "  --output-format <ibla|ktx2|both> (default: ibla)",
+        "  --size <auto|n> (default: auto; texture resolution)",
+        "  --quality <low|medium|high> (default: medium; offline sample budget)",
+        "  --target <specular|irradiance|lut> (repeatable; default: all)",
+        "",
+        "advanced bake options",
+        "  --specular-min-size <auto|n> (default: auto; complete chain)",
+        "  --irradiance-size <n> (default: 32)",
+        "  --encoding <auto|rgbd-srgb|srgb|linear> (default: auto; IBLA only)",
         "  --faces <px,nx,py,ny,pz,nz>",
-        "  --rotation <deg>",
-        "  --samples <n>",
-        "  --quality <low|medium|high>",
+        "  --rotation <deg> (default: 0)",
+        "  --samples <n> (default: 1024; upper request, 0 uses 1)",
+        "",
+        "runtime example",
+        "  ibl-baker bake environment.hdr --out-dir ./out --output-format ktx2 --size 256",
+        "  use --quality low for faster iteration; leave advanced budgets at defaults",
         "",
         "bake defaults",
         "  --size auto -> 128 | 256 | 512 | 1024 | 2048 | 4096",
@@ -1567,6 +1573,9 @@ mod tests {
         assert!(help.contains("directory auto-detect names"));
         assert!(help.contains("output files -> specular.ibla, irradiance.ibla, brdf-lut.png"));
         assert!(help.contains("validation status"));
+        assert!(help.contains("--rotation <deg>"));
+        assert!(help.contains("default: medium; offline sample budget"));
+        assert!(help.contains("default: 1024; upper request, 0 uses 1"));
         assert!(!help.contains("inspect"));
         assert!(!help.contains("extract"));
     }

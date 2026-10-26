@@ -21,6 +21,7 @@ assets locally in the browser. Files are processed locally and are not uploaded.
 | [packages/cli/README.md](packages/cli/README.md) | npm CLI installation, platform support and versioning |
 | [docs/release.md](docs/release.md) | CI, release preparation, OIDC publishing and recovery |
 | [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md) | CLI usage, options, and output format details |
+| [Runtime integration contract](docs/runtime-contract.md) | Asset semantics, simple bake controls, load-time work and GPU sampling |
 | [`docs/format-spec.md`](docs/format-spec.md) | `.ibla` binary format specification |
 | [`crates/ibl_core/README.md`](crates/ibl_core/README.md) | Rust core library scope |
 | [`crates/ktx2_writer/README.md`](crates/ktx2_writer/README.md) | Write-only KTX2 serializer scope |
@@ -43,6 +44,8 @@ The repository implements the bake pipeline across three layers:
 
 Current priorities:
 
+- preserve clear output and runtime sampling contracts, simple parameters and efficient bake/load/query paths
+- require correct directions, energy normalization and visually sound roughness transitions; keep precision studies diagnostic unless a visible issue needs them
 - keep the `.ibla` container stable and well-specified
 - keep KTX2 output aligned with the BC6H + zstd pipeline
 - keep CLI behavior aligned with [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md)
