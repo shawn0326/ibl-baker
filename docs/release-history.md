@@ -22,9 +22,10 @@
   Its API receipt and downloaded crate match the original candidate and record
   this source/run through GitHub Trusted Publishing. The next `ibl_core`
   preparation fails because Cargo's index does not yet expose the new writer.
-  The other eight packages are confirmed absent; registry verification and
-  Release finalization have not run. Recovery must reuse the original run and
-  candidate after checking index visibility, not replace the accepted archive.
+  At that checkpoint, the other eight packages are confirmed absent; registry
+  verification and Release finalization have not run. Recovery must reuse the
+  original run and candidate after checking index visibility, not replace the
+  accepted archive.
 - An additional local sparse-index watch runs for ten minutes without finding
   0.3.0, including fresh cache-miss probes. The public crate download still
   matches the accepted candidate. At that point there is no blind retry, npm
@@ -45,8 +46,8 @@
   KTX2 loader publication is not reached. The package settings show the IBLA
   Trusted Publisher connection as **Expired**, while KTX2's connection is
   **Valid**. Both have the expected repository, workflow, environment and
-  direct-publish permission. The expired IBLA connection must be renewed by
-  the package administrator before retrying the original run.
+  direct-publish permission. At that checkpoint, the expired IBLA connection
+  requires renewal by the package administrator before retrying the original run.
 - Independent partial registry verification downloads all seven accepted
   archives and matches their SHA-256 values against the original candidate.
   All three Cargo receipts record this source/run through Trusted Publishing;
@@ -56,6 +57,38 @@
   Windows registry execution with scripts disabled reports
   `@ibltools/cli 0.2.0` and `ibl-baker 0.3.0`. These partial checks do not replace
   the pending all-package and three-platform registry verification.
+- The maintainer deletes and recreates only the expired IBLA connection with
+  the expected repository, `publish.yml`, `release` environment and direct
+  publish permission. npm initially reports **Pending validation**, with a
+  first-publication deadline of 2026-10-28 09:04 UTC. Only failed jobs of the
+  original run are rerun as attempt 3; its normal release Environment is reviewed.
+- [Attempt 3](https://github.com/shawn0326/ibl-baker/actions/runs/40287241785/attempts/3)
+  completes successfully. The publish log skips the seven matching accepted
+  packages as `already-published`, then uploads IBLA loader 0.2.1 and KTX2 loader
+  0.3.1. Both uploads succeed with provenance. Candidate artifact `12634902307`
+  and its manifest remain unchanged; no replacement source, archive or run is used.
+- All nine exact registry versions pass archive integrity checks and clean
+  Cargo/loader consumers. Windows x64, macOS arm64 and Linux x64 npm CLI registry
+  consumers all pass. Registry evidence artifact: `12638254197`; platform reports:
+  `12638324202`, `12639011678` and `12639261248`, respectively. Finalization passes.
+- An independent post-release audit downloads all nine registry archives and
+  matches the frozen candidate. It checks exact npm channels, all three crates.io
+  Trusted Publishing source/run contexts and all six npm SLSA statement subjects,
+  source commits and workflow/run contexts. npm CLI statements reference attempt 2;
+  loader statements reference attempt 3. This audit does not independently verify
+  Sigstore signatures. The public Release manifest is byte-identical to the
+  original candidate; its `verified.json` matches all nine receipts and all six
+  candidate/registry CLI reports. GitHub asset digests match the candidate archives.
+- Four published Releases point to source `0868326410784009618b6a2baa52ed9de0576bef`:
+  [Rust/CLI v0.3.0](https://github.com/shawn0326/ibl-baker/releases/tag/v0.3.0),
+  [npm CLI 0.2.0](https://github.com/shawn0326/ibl-baker/releases/tag/npm%2Fcli%2Fv0.2.0),
+  [IBLA loader 0.2.1](https://github.com/shawn0326/ibl-baker/releases/tag/npm%2Fibla-loader%2Fv0.2.1)
+  and [KTX2 loader 0.3.1](https://github.com/shawn0326/ibl-baker/releases/tag/npm%2Fktx2-loader%2Fv0.3.1).
+  Rust/CLI is the repository-wide latest Release. Every Release includes the same
+  manifest and verification evidence; `verified.json` SHA-256 is
+  `671555fe42c2c1a1b9e6831aa972c13f826a11f4c99bb445196e7e8ff379c00d`.
+  This establishes production IBLA OIDC acceptance and actual partial-publication
+  recovery. The Cargo sparse-index readiness gate remains follow-up work in TODO.md.
 
 This archive preserves dated rollout, bootstrap, rehearsal and production evidence.
 Each section records the state at that time; later verification does not change earlier results.

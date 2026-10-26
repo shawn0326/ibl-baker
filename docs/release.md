@@ -4,36 +4,23 @@ This is the operational guide for CI, release preparation, publishing and recove
 Ordinary commits and pull requests never publish packages. The workflow does not
 change versions or refresh local fixtures.
 
-The pending [quality optimization release notes](quality-optimization-release-notes.md)
-include a `BakeOptions` source compatibility change and the new specular tail
-option. Review these migration notes when preparing the next coordinated Rust/CLI
-version; this work does not change versions or publish assets.
+The [quality optimization migration notes](quality-optimization-release-notes.md)
+describe the `BakeOptions` source compatibility change and specular tail option
+released in Rust/CLI 0.3.0 and npm CLI 0.2.0. Review them when upgrading consumers.
 
 ## Verified release status
 
-The [2026-10-26 production attempt](release-history.md#release-preparation-and-partial-publication-2026-10-26)
-is incomplete. Recovery attempt 2 uses the original approved candidate after
-fresh Cargo resolution confirms the writer's index entry and archive checksum.
-Registry and Release verification must complete before recording this release
-as successful. Follow the original production run; do not start a replacement
-run or candidate for these versions.
+The [2026-10-26 production release](release-history.md#release-preparation-and-partial-publication-2026-10-26)
+completed all nine packages: Rust/CLI 0.3.0 (three crates), the four-package npm
+CLI 0.2.0 group, IBLA loader 0.2.1 and KTX2 loader 0.3.1. OIDC publication,
+registry archive integrity, npm provenance metadata, Cargo/loader consumers,
+all three npm CLI platform consumers and four GitHub Releases passed.
 
-The recovery has accepted the three Rust packages and four npm CLI packages.
-IBLA loader publication now requires renewal of its expired npm Trusted
-Publisher connection; KTX2 loader's connection is valid. Both loader versions
-and final registry/Release verification remain pending.
-
-The [2026-09-29 production release](release-history.md#production-release-2026-09-29)
-verified OIDC publication, registry integrity, npm provenance, registry consumers
-and GitHub Release finalization for eight selected packages: Rust/CLI 0.2.3
-(three crates), @ibltools/ktx2-loader 0.3.0, and the four-package npm CLI 0.1.1 group.
-All three npm CLI platform consumers passed. The .ibla loader was not selected,
-so this run does not establish its production OIDC acceptance.
-
-The existing CLI package identities completed bootstrap on 2026-09-18 and ordinary
-registry installation is verified. Real recovery after a partial production
-publication remains untested; ordering and checksum safeguards have simulated
-coverage. Record real recovery evidence when it naturally occurs.
+This release also verified real partial-publication recovery. Attempts 2 and 3
+of the original run reused its frozen candidate. Matching accepted versions were
+skipped; only missing packages were uploaded. The maintainer renewed the expired
+IBLA npm Trusted Publisher before attempt 3, which successfully published both
+loaders. Source, candidate manifest and package archives remained unchanged.
 Historical rollout, bootstrap and rehearsal records live in [Release History](release-history.md).
 
 ## Release units and versions
@@ -70,17 +57,21 @@ Configure a GitHub Trusted Publisher separately on each published package:
 On npm, enable **Allow npm publish**. This workflow uses direct publishing after
 GitHub approval, not npm staged publishing. Stable versions immediately enter
 latest; prerelease versions enter next. There is no automatic later promotion.
+Check the connection's current status before a release. A newly created
+connection can be **Pending validation** until its first successful publication;
+complete that publication before the deadline shown by npm. An **Expired**
+connection needs maintainer renewal before retrying the original failed run.
 
 The GitHub release Environment requires review by shawn0326, allows self-review,
 disallows administrator bypass, and only accepts the master branch. Keep it
 separate from github-pages. No long-lived npm/Cargo token or PAT is needed in
 repository secrets. Cargo obtains a temporary token immediately before upload.
 
-Trusted Publisher configurations for the original three crates and two loaders
-have been reported complete by the maintainer. The four CLI package identities
-completed bootstrap on 2026-09-18 and successful OIDC publishing on 2026-09-29;
-see [Release History](release-history.md). Apply the first-publication procedure
-below only when introducing a new package identity.
+All nine current package identities have successful production OIDC publication
+evidence from 2026-10-26; see [Release History](release-history.md). The four CLI
+identities completed bootstrap on 2026-09-18. Apply the first-publication
+procedure below only when introducing a new package identity. Previous success
+does not guarantee that a connection remains valid for a later release.
 The release Environment has been checked through the API. A dry-run cannot prove
 registry authorization or provenance: mark those verified only after a real release.
 For a new package, establish its ownership/initial publication before depending
@@ -303,6 +294,11 @@ visible before the full run completes.
   or upload an accepted version again. The 2026-10-26 partial-publication record
   in [Release History](release-history.md#release-preparation-and-partial-publication-2026-10-26)
   documents this distinction.
+- An npm publication PUT returning E404 can indicate missing publish permission
+  or an expired Trusted Publisher even when package reads work. Inspect the
+  upload error and package connection status; after maintainer repair, retry
+  failed jobs of the original run. Check registry acceptance first and preserve
+  any already accepted matching versions.
 - Missing/expired original candidates block automatic recovery. If preparation
   failed before any candidate/upload, investigate and start a fresh run.
 - If verification or Release creation fails after publication, rerun failed jobs.
