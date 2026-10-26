@@ -23,6 +23,7 @@ assets locally in the browser. Files are processed locally and are not uploaded.
 | [`crates/ibl_cli/README.md`](crates/ibl_cli/README.md) | CLI usage, options, and output format details |
 | [Runtime integration contract](docs/runtime-contract.md) | Asset semantics, simple bake controls, load-time work and GPU sampling |
 | [Pipeline performance acceptance](docs/pipeline-performance.md) | Phase costs, decoded-input reuse, float ownership and measured time/memory gains |
+| [Filter precomputation acceptance](docs/lod-performance.md) | Per-pass source mip preparation, exact output parity and incremental performance |
 | [`docs/format-spec.md`](docs/format-spec.md) | `.ibla` binary format specification |
 | [`crates/ibl_core/README.md`](crates/ibl_core/README.md) | Rust core library scope |
 | [`crates/ktx2_writer/README.md`](crates/ktx2_writer/README.md) | Write-only KTX2 serializer scope |

@@ -16,6 +16,11 @@ Rust source compatibility change below when choosing its version.
   signatures and options remain available. Base float cubemaps move into their
   mip chains and finished outputs instead of being deeply copied. Quality,
   payload bytes, target order and per-format warning behavior are preserved.
+- Cubemap filtering prepares source LOD and neighboring mip indices/weights once
+  per pass. The arithmetic, source footprint, sample sequence and accumulation
+  order are unchanged; float regressions and paired production runs check exact
+  output parity. No new API or quality parameter is required. See the
+  [incremental performance acceptance](lod-performance.md).
 - BC6H 1x1 faces use uniform input blocks instead of introducing black padding.
   Regenerated 1x1 KTX2 payloads may change; other levels, dimensions, clipping
   counts, block lengths and consumer APIs retain their existing contracts. The

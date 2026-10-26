@@ -1,0 +1,3529 @@
+{
+  "baseline": {
+    "commit": "a306d6316faa919ee40783ae5069b04807bf5590",
+    "binary_sha256": "04819e6b028d93a7ad24359be01dbcd9f2513a5a14a2410032cf67befab4d800",
+    "prior_evidence_sha256": "c44cf06c41e160d7a23ae454785f1a3058baca6ace2ae287b204a101f06e44ab",
+    "prior_source": {
+      "path": "E:\\works\\ibl-baker",
+      "files_sha256": {
+        "Cargo.toml": "cbd55af4e90e09e77be87cfb828f4d1e085698ea9cf85e003e011bd6369f916f",
+        "Cargo.lock": "9655703ac8495972cb3b57facbddfc62e5d6f23645fe2a30fa1851fe207e1bd3",
+        "rust-toolchain.toml": "8f8d40d611a1893f155efdbc186cb69f0c7f5e759f08c85dcaf8a681f48d59cb",
+        "crates\\ibl_cli\\Cargo.toml": "9d26c83ce99bfd4bdda6d8b9f5ae4cb8c0ab3aa68eab0401c3934f6f1f701115",
+        "crates\\ibl_core\\Cargo.toml": "61087af4c9cc872a33345a31b0aab7278c27454f133f24f485a9be1e4d9a9f7f",
+        "crates\\ktx2_writer\\Cargo.toml": "909541b3f071ff89ab815411aa2e1d550ae3ad594449b793155c4ec8c8648be7",
+        "crates\\ktx2_writer\\build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates\\ibl_cli\\src\\main.rs": "718f446f3f5f195669d793133e38e2e94c7713d4ad2f560f6bf5af1f6e114317",
+        "crates\\ibl_core\\src\\bake_pipeline.rs": "dfd418bcdd8e31c59d5ba07e1fccb29816d00524c2e68e2e010d2ba8a38e8f38",
+        "crates\\ibl_core\\src\\cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates\\ibl_core\\src\\lib.rs": "2af0201558e6b0df17b84d34b678ca14f809f0389667f8dcac5bb3a41c2f575c",
+        "crates\\ibl_core\\src\\source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates\\ktx2_writer\\src\\compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates\\ktx2_writer\\src\\dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates\\ktx2_writer\\src\\kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates\\ktx2_writer\\src\\lib.rs": "5a8d67f87353c636b9fa6489d178c6c0e027775781bdfcb835007b5b50a1d1b5",
+        ".cargo\\config.toml": "fe12500cada103393be4cede79687bcd2ec35e00eb0084cb632a17b04f73adaa"
+      },
+      "sha256": "6531a8fd9d6d588ce7b9334825f1953de56875cbac42a1965bf191face45ad16",
+      "scope": "Current source/build configuration snapshot; binary hash and actual build record must establish build identity"
+    },
+    "method": "Reuse the previously measured and source-verified production executable"
+  },
+  "adopted": [
+    "Prepare source LOD and neighboring mip indices/fraction once per filtering pass"
+  ],
+  "benchmark": {
+    "baseline": "a306d63",
+    "binaries": {
+      "baseline": "04819e6b028d93a7ad24359be01dbcd9f2513a5a14a2410032cf67befab4d800",
+      "candidate": "b2be68709a2417fef0a96f7b8c4c97986fd9fd26e60200fde3d44a5d1476bdc1"
+    },
+    "machine": {
+      "os": {
+        "system": "Windows",
+        "node": "DESKTOP-HNADL2G",
+        "release": "10",
+        "version": "10.0.19045",
+        "machine": "AMD64",
+        "processor": "Intel64 Family 6 Model 85 Stepping 7, GenuineIntel"
+      },
+      "processor": "Intel(R) Core(TM) i9-10940X CPU @ 3.30GHz",
+      "logical_cpu_count": 28,
+      "python": "3.14.5 (tags/v3.14.5:5607950, May 10 2026, 10:43:50) [MSC v.1944 64 bit (AMD64)]",
+      "rustc_inventory": {
+        "command": [
+          "rustc",
+          "-vV"
+        ],
+        "returncode": 0,
+        "stdout": "rustc 1.98.0 (88d9e12ae 2026-08-18)\nbinary: rustc\ncommit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea\ncommit-date: 2026-08-18\nhost: x86_64-pc-windows-msvc\nrelease: 1.98.0\nLLVM version: 22.1.8",
+        "stderr": ""
+      },
+      "cargo_inventory": {
+        "command": [
+          "cargo",
+          "-V"
+        ],
+        "returncode": 0,
+        "stdout": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+        "stderr": ""
+      },
+      "build_environment_inventory": {},
+      "toolchain_scope": "Inventory at benchmark time, not proof of the toolchain that produced prebuilt binaries"
+    },
+    "source_inputs": {
+      "pisa": {
+        "fixtures\\inputs\\pisa.hdr": "0b3aa24296e6a24263385ea80cd41363596de02d6c5361ac2513aa8cfe0badc6"
+      },
+      "spruit": {
+        "fixtures\\inputs\\spruit_sunrise_2k.jpg": "867a853b9076fd7e6a6e0f38ca5f613ff6bbc672191720bf24af828e6384b62d"
+      },
+      "bridge": {
+        "fixtures\\inputs\\Bridge2\\negx.jpg": "047052e77f698a819903f1d2fe27b40ee56930150fc38913da7e1c58e8dcae70",
+        "fixtures\\inputs\\Bridge2\\negy.jpg": "52b4b95125c777d48ac9ea568d79d55fd3fb62e24a7da37600720cdddb7ab333",
+        "fixtures\\inputs\\Bridge2\\negz.jpg": "1bc79f442f31931576d734565821b41b331a017dd86f2ac6a60ac6d3bbbbe6ba",
+        "fixtures\\inputs\\Bridge2\\posx.jpg": "bfea380ae3b2f2b44d3040c9fe7a8f3e325450a12b7a0f29561b5ca175f1a250",
+        "fixtures\\inputs\\Bridge2\\posy.jpg": "cc467777340037ee8f95460b19772a8ae6a71c125af1714bfd408db2c1c33d98",
+        "fixtures\\inputs\\Bridge2\\posz.jpg": "d56085e5da2e8f2cee13694519ed153995045f5a11b1d41d25be70380cf15548"
+      }
+    },
+    "candidate_source": {
+      "path": "E:\\works\\ibl-baker",
+      "files_sha256": {
+        "Cargo.toml": "cbd55af4e90e09e77be87cfb828f4d1e085698ea9cf85e003e011bd6369f916f",
+        "Cargo.lock": "9655703ac8495972cb3b57facbddfc62e5d6f23645fe2a30fa1851fe207e1bd3",
+        "rust-toolchain.toml": "8f8d40d611a1893f155efdbc186cb69f0c7f5e759f08c85dcaf8a681f48d59cb",
+        "crates\\ibl_cli\\Cargo.toml": "9d26c83ce99bfd4bdda6d8b9f5ae4cb8c0ab3aa68eab0401c3934f6f1f701115",
+        "crates\\ibl_core\\Cargo.toml": "61087af4c9cc872a33345a31b0aab7278c27454f133f24f485a9be1e4d9a9f7f",
+        "crates\\ktx2_writer\\Cargo.toml": "909541b3f071ff89ab815411aa2e1d550ae3ad594449b793155c4ec8c8648be7",
+        "crates\\ktx2_writer\\build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates\\ibl_cli\\src\\main.rs": "718f446f3f5f195669d793133e38e2e94c7713d4ad2f560f6bf5af1f6e114317",
+        "crates\\ibl_core\\src\\bake_pipeline.rs": "43306eb1094cccd6129007d844a08ef52da1d8ebb33f9c110dc30210eaf2c055",
+        "crates\\ibl_core\\src\\cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates\\ibl_core\\src\\lib.rs": "2af0201558e6b0df17b84d34b678ca14f809f0389667f8dcac5bb3a41c2f575c",
+        "crates\\ibl_core\\src\\source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates\\ktx2_writer\\src\\compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates\\ktx2_writer\\src\\dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates\\ktx2_writer\\src\\kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates\\ktx2_writer\\src\\lib.rs": "5a8d67f87353c636b9fa6489d178c6c0e027775781bdfcb835007b5b50a1d1b5",
+        ".cargo\\config.toml": "fe12500cada103393be4cede79687bcd2ec35e00eb0084cb632a17b04f73adaa"
+      },
+      "sha256": "3bf7ae086cb3a3116a2162ad73f28be170a7b527cc5504706210a0e15cacd24a",
+      "scope": "Current source/build configuration snapshot; binary hash and actual build record must establish build identity"
+    },
+    "threads": 4,
+    "warmups": 2,
+    "rounds": 7,
+    "quality": "medium",
+    "samples": 1024,
+    "targets": "all",
+    "scope": "Uninstrumented production CLI; byte-identical IBLA/KTX2/LUT required after every paired run"
+  },
+  "pilot": {
+    "metadata": {
+      "baseline": "a306d63",
+      "binaries": {
+        "baseline": "04819e6b028d93a7ad24359be01dbcd9f2513a5a14a2410032cf67befab4d800",
+        "candidate": "b2be68709a2417fef0a96f7b8c4c97986fd9fd26e60200fde3d44a5d1476bdc1"
+      },
+      "threads": 4,
+      "warmups": 2,
+      "rounds": 7,
+      "quality": "medium",
+      "samples": 1024
+    },
+    "rows": [
+      {
+        "target": "specular",
+        "runs": {
+          "baseline": [
+            {
+              "seconds": 4.04790600000706,
+              "peak_commit_bytes": 67289088,
+              "peak_job_commit_bytes": 73875456,
+              "started_at_utc": "2026-10-26T03:39:27.431445+00:00",
+              "pid": 37968,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\0-baseline.log"
+            },
+            {
+              "seconds": 3.9413684000028297,
+              "peak_commit_bytes": 67551232,
+              "peak_job_commit_bytes": 74076160,
+              "started_at_utc": "2026-10-26T03:39:38.109032+00:00",
+              "pid": 43436,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\1-baseline.log"
+            },
+            {
+              "seconds": 4.114602600006037,
+              "peak_commit_bytes": 67297280,
+              "peak_job_commit_bytes": 73822208,
+              "started_at_utc": "2026-10-26T03:39:42.064435+00:00",
+              "pid": 26604,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\2-baseline.log"
+            },
+            {
+              "seconds": 3.960581799998181,
+              "peak_commit_bytes": 67280896,
+              "peak_job_commit_bytes": 73883648,
+              "started_at_utc": "2026-10-26T03:39:52.824259+00:00",
+              "pid": 43988,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\3-baseline.log"
+            },
+            {
+              "seconds": 3.94224750000285,
+              "peak_commit_bytes": 67260416,
+              "peak_job_commit_bytes": 73863168,
+              "started_at_utc": "2026-10-26T03:39:56.799860+00:00",
+              "pid": 42892,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\4-baseline.log"
+            },
+            {
+              "seconds": 3.93953540000075,
+              "peak_commit_bytes": 67387392,
+              "peak_job_commit_bytes": 73977856,
+              "started_at_utc": "2026-10-26T03:40:07.309421+00:00",
+              "pid": 43840,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\5-baseline.log"
+            },
+            {
+              "seconds": 3.9501852999965195,
+              "peak_commit_bytes": 67551232,
+              "peak_job_commit_bytes": 74067968,
+              "started_at_utc": "2026-10-26T03:40:11.264318+00:00",
+              "pid": 9560,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\6-baseline.log"
+            }
+          ],
+          "candidate": [
+            {
+              "seconds": 3.3089369000081206,
+              "peak_commit_bytes": 67317760,
+              "peak_job_commit_bytes": 73908224,
+              "started_at_utc": "2026-10-26T03:39:31.480777+00:00",
+              "pid": 43136,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\0-candidate.log"
+            },
+            {
+              "seconds": 3.307316999998875,
+              "peak_commit_bytes": 67551232,
+              "peak_job_commit_bytes": 74141696,
+              "started_at_utc": "2026-10-26T03:39:34.800332+00:00",
+              "pid": 41872,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\1-candidate.log"
+            },
+            {
+              "seconds": 3.3437379999959376,
+              "peak_commit_bytes": 67616768,
+              "peak_job_commit_bytes": 74207232,
+              "started_at_utc": "2026-10-26T03:39:46.184509+00:00",
+              "pid": 16840,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\2-candidate.log"
+            },
+            {
+              "seconds": 3.2817761000042083,
+              "peak_commit_bytes": 67743744,
+              "peak_job_commit_bytes": 74260480,
+              "started_at_utc": "2026-10-26T03:39:49.541269+00:00",
+              "pid": 40756,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\3-candidate.log"
+            },
+            {
+              "seconds": 3.2882431000034558,
+              "peak_commit_bytes": 67350528,
+              "peak_job_commit_bytes": 73883648,
+              "started_at_utc": "2026-10-26T03:40:00.743493+00:00",
+              "pid": 43868,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\4-candidate.log"
+            },
+            {
+              "seconds": 3.2650850000063656,
+              "peak_commit_bytes": 67694592,
+              "peak_job_commit_bytes": 74231808,
+              "started_at_utc": "2026-10-26T03:40:04.043128+00:00",
+              "pid": 20824,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\5-candidate.log"
+            },
+            {
+              "seconds": 3.272317099996144,
+              "peak_commit_bytes": 67649536,
+              "peak_job_commit_bytes": 74248192,
+              "started_at_utc": "2026-10-26T03:40:15.215872+00:00",
+              "pid": 35684,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "specular"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\specular\\6-candidate.log"
+            }
+          ]
+        },
+        "summary": {
+          "medians": {
+            "baseline": {
+              "seconds": 3.9501852999965195,
+              "peak_commit_bytes": 67297280
+            },
+            "candidate": {
+              "seconds": 3.2882431000034558,
+              "peak_commit_bytes": 67616768
+            }
+          },
+          "ratios": {
+            "seconds": 0.8324275572607577,
+            "peak_commit_bytes": 1.0047474132684115
+          },
+          "paired_time_ratio_range": [
+            0.8126515061238311,
+            0.8391291207379905
+          ],
+          "paired_median_ratio_bootstrap_95pct": {
+            "seconds": [
+              0.817444105669042,
+              0.8391291207379905
+            ],
+            "peak_commit_bytes": [
+              1.0,
+              1.006148788506027
+            ]
+          },
+          "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+          "point_estimate_passes": true,
+          "acceptance_status": "pass",
+          "passes": true
+        },
+        "outputs": {
+          "specular.ktx2": {
+            "bytes": 1964840,
+            "sha256": "9967499fc74872e60720629af40138aec6350257560160733d60373bdfc682b0"
+          }
+        }
+      },
+      {
+        "target": "irradiance",
+        "runs": {
+          "baseline": [
+            {
+              "seconds": 0.34317079999891575,
+              "peak_commit_bytes": 52019200,
+              "peak_job_commit_bytes": 58609664,
+              "started_at_utc": "2026-10-26T03:40:19.834840+00:00",
+              "pid": 44724,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\0-baseline.log"
+            },
+            {
+              "seconds": 0.3419990999973379,
+              "peak_commit_bytes": 52027392,
+              "peak_job_commit_bytes": 58626048,
+              "started_at_utc": "2026-10-26T03:40:20.782040+00:00",
+              "pid": 39072,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\1-baseline.log"
+            },
+            {
+              "seconds": 0.34064670000225306,
+              "peak_commit_bytes": 51998720,
+              "peak_job_commit_bytes": 58597376,
+              "started_at_utc": "2026-10-26T03:40:21.125585+00:00",
+              "pid": 31992,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\2-baseline.log"
+            },
+            {
+              "seconds": 0.3415225999924587,
+              "peak_commit_bytes": 52097024,
+              "peak_job_commit_bytes": 58687488,
+              "started_at_utc": "2026-10-26T03:40:22.064458+00:00",
+              "pid": 43316,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\3-baseline.log"
+            },
+            {
+              "seconds": 0.34141390000877436,
+              "peak_commit_bytes": 52121600,
+              "peak_job_commit_bytes": 58732544,
+              "started_at_utc": "2026-10-26T03:40:22.407935+00:00",
+              "pid": 42796,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\4-baseline.log"
+            },
+            {
+              "seconds": 0.34193610001238994,
+              "peak_commit_bytes": 51994624,
+              "peak_job_commit_bytes": 58589184,
+              "started_at_utc": "2026-10-26T03:40:23.350278+00:00",
+              "pid": 40704,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\5-baseline.log"
+            },
+            {
+              "seconds": 0.3474424000014551,
+              "peak_commit_bytes": 51998720,
+              "peak_job_commit_bytes": 58515456,
+              "started_at_utc": "2026-10-26T03:40:23.694035+00:00",
+              "pid": 42200,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\lod-performance\\baseline-build\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\baseline",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\6-baseline.log"
+            }
+          ],
+          "candidate": [
+            {
+              "seconds": 0.30029189999913797,
+              "peak_commit_bytes": 52043776,
+              "peak_job_commit_bytes": 58638336,
+              "started_at_utc": "2026-10-26T03:40:20.179491+00:00",
+              "pid": 43132,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\0-candidate.log"
+            },
+            {
+              "seconds": 0.29876320000039414,
+              "peak_commit_bytes": 52158464,
+              "peak_job_commit_bytes": 58687488,
+              "started_at_utc": "2026-10-26T03:40:20.481694+00:00",
+              "pid": 37368,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\1-candidate.log"
+            },
+            {
+              "seconds": 0.2970122000115225,
+              "peak_commit_bytes": 52150272,
+              "peak_job_commit_bytes": 58671104,
+              "started_at_utc": "2026-10-26T03:40:21.467625+00:00",
+              "pid": 31132,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\2-candidate.log"
+            },
+            {
+              "seconds": 0.29671460000099614,
+              "peak_commit_bytes": 52047872,
+              "peak_job_commit_bytes": 58650624,
+              "started_at_utc": "2026-10-26T03:40:21.766286+00:00",
+              "pid": 44004,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\3-candidate.log"
+            },
+            {
+              "seconds": 0.2965550999942934,
+              "peak_commit_bytes": 52043776,
+              "peak_job_commit_bytes": 58638336,
+              "started_at_utc": "2026-10-26T03:40:22.750874+00:00",
+              "pid": 43288,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\4-candidate.log"
+            },
+            {
+              "seconds": 0.29957430000649765,
+              "peak_commit_bytes": 52015104,
+              "peak_job_commit_bytes": 58601472,
+              "started_at_utc": "2026-10-26T03:40:23.049438+00:00",
+              "pid": 40368,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\5-candidate.log"
+            },
+            {
+              "seconds": 0.29867649999505375,
+              "peak_commit_bytes": 52170752,
+              "peak_job_commit_bytes": 58769408,
+              "started_at_utc": "2026-10-26T03:40:24.042804+00:00",
+              "pid": 9708,
+              "exit_code": 0,
+              "command": [
+                "E:\\works\\ibl-baker\\target\\release\\ibl-baker.exe",
+                "bake",
+                "E:\\works\\ibl-baker\\fixtures\\inputs\\pisa.hdr",
+                "--out-dir",
+                "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\candidate",
+                "--size",
+                "512",
+                "--output-format",
+                "ktx2",
+                "--target",
+                "irradiance"
+              ],
+              "cwd": "E:\\works\\ibl-baker",
+              "log": "E:\\works\\ibl-baker\\target\\lod-performance\\pilot\\irradiance\\6-candidate.log"
+            }
+          ]
+        },
+        "summary": {
+          "medians": {
+            "baseline": {
+              "seconds": 0.34193610001238994,
+              "peak_commit_bytes": 52019200
+            },
+            "candidate": {
+              "seconds": 0.29867649999505375,
+              "peak_commit_bytes": 52047872
+            }
+          },
+          "ratios": {
+            "seconds": 0.8734863033889411,
+            "peak_commit_bytes": 1.0005511811023622
+          },
+          "paired_time_ratio_range": [
+            0.8596432099070317,
+            0.8761119402006476
+          ],
+          "paired_median_ratio_bootstrap_95pct": {
+            "seconds": [
+              0.8687993122784495,
+              0.8761119402006476
+            ],
+            "peak_commit_bytes": [
+              0.9989779070681657,
+              1.0030720756203229
+            ]
+          },
+          "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+          "point_estimate_passes": true,
+          "acceptance_status": "pass",
+          "passes": true
+        },
+        "outputs": {
+          "irradiance.ktx2": {
+            "bytes": 5890,
+            "sha256": "88e2e232008557cbde2f0c89499805ea4bc11100b6ed340589df08952a9f2dc0"
+          }
+        }
+      }
+    ]
+  },
+  "original_trials": [
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.693906900007278,
+            "peak_commit_bytes": 64569344
+          },
+          "candidate": {
+            "seconds": 3.983990199994878,
+            "peak_commit_bytes": 64651264
+          }
+        },
+        "ratios": {
+          "seconds": 0.8487578226122681,
+          "peak_commit_bytes": 1.0012687135244862
+        },
+        "paired_time_ratio_range": [
+          0.7810454061099782,
+          0.8687809436341011
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8223255291929985,
+            0.8598489181075076
+          ],
+          "peak_commit_bytes": [
+            1.0000633793890228,
+            1.0020943072919972
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.646180800002185,
+            5.180155299996841,
+            4.920115400003851,
+            4.778785799993784,
+            4.693906900007278,
+            4.607840500000748,
+            4.6185482000000775
+          ],
+          "peak_commit_bytes": [
+            64557056,
+            64569344,
+            64540672,
+            64626688,
+            64536576,
+            64700416,
+            64598016
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            3.983990199994878,
+            4.045936499998788,
+            4.274502500004019,
+            4.109033799992176,
+            3.929680500004906,
+            3.895307700004196,
+            3.878955699998187
+          ],
+          "peak_commit_bytes": [
+            64733184,
+            64651264,
+            64675840,
+            64630784,
+            64598016,
+            64684032,
+            64643072
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5650,
+          "sha256": "1251b593b23c59fab475b719352eab1649865106599c55bab978ad928c1f686c"
+        },
+        "specular.ibla": {
+          "bytes": 1786592,
+          "sha256": "b05aaea9255f7f5d6e21eeb5bec7473242455794363653ecac0299f9ed270e2f"
+        }
+      }
+    },
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.345753600005992,
+            "peak_commit_bytes": 67280896
+          },
+          "candidate": {
+            "seconds": 3.6230361000052653,
+            "peak_commit_bytes": 67346432
+          }
+        },
+        "ratios": {
+          "seconds": 0.8336957023979156,
+          "peak_commit_bytes": 1.0009740655059052
+        },
+        "paired_time_ratio_range": [
+          0.8242756562903852,
+          0.8398926231538437
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8244533201253947,
+            0.8394114884347402
+          ],
+          "peak_commit_bytes": [
+            0.9996957897298613,
+            1.0021312872975277
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.337024399996153,
+            4.33951029999298,
+            4.341775900000357,
+            4.345753600005992,
+            4.3797266999899875,
+            4.36629439999524,
+            4.378782899992075
+          ],
+          "peak_commit_bytes": [
+            67264512,
+            67289088,
+            67260416,
+            67321856,
+            67497984,
+            67280896,
+            67264512
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            3.642634799994994,
+            3.629255699997884,
+            3.6204481000022497,
+            3.604103899997426,
+            3.6101021000067703,
+            3.6629028000024846,
+            3.6230361000052653
+          ],
+          "peak_commit_bytes": [
+            67301376,
+            67407872,
+            67293184,
+            67346432,
+            67293184,
+            67358720,
+            67596288
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5890,
+          "sha256": "88e2e232008557cbde2f0c89499805ea4bc11100b6ed340589df08952a9f2dc0"
+        },
+        "specular.ktx2": {
+          "bytes": 1964840,
+          "sha256": "9967499fc74872e60720629af40138aec6350257560160733d60373bdfc682b0"
+        }
+      }
+    },
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.33374940000067,
+            "peak_commit_bytes": 67956736
+          },
+          "candidate": {
+            "seconds": 4.5464120999968145,
+            "peak_commit_bytes": 67698688
+          }
+        },
+        "ratios": {
+          "seconds": 0.8523857720042571,
+          "peak_commit_bytes": 0.996202760532819
+        },
+        "paired_time_ratio_range": [
+          0.8210647461517966,
+          0.8839515332176374
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8210647461517966,
+            0.8839515332176374
+          ],
+          "peak_commit_bytes": [
+            0.9882169986243197,
+            1.0009677614468033
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.33374940000067,
+            5.170973500004038,
+            5.217907800004468,
+            5.351108599992585,
+            5.3877705999912,
+            5.196010999992723,
+            5.469733600009931
+          ],
+          "peak_commit_bytes": [
+            68526080,
+            68481024,
+            67715072,
+            67956736,
+            67719168,
+            67768320,
+            67969024
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.5464120999968145,
+            4.528273800009629,
+            4.612377600002219,
+            4.566557699989062,
+            4.423708500005887,
+            4.392935700001544,
+            4.676935199997388
+          ],
+          "peak_commit_bytes": [
+            67690496,
+            67670016,
+            67784704,
+            67698688,
+            67809280,
+            67735552,
+            67674112
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5650,
+          "sha256": "1251b593b23c59fab475b719352eab1649865106599c55bab978ad928c1f686c"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5890,
+          "sha256": "88e2e232008557cbde2f0c89499805ea4bc11100b6ed340589df08952a9f2dc0"
+        },
+        "specular.ibla": {
+          "bytes": 1786592,
+          "sha256": "b05aaea9255f7f5d6e21eeb5bec7473242455794363653ecac0299f9ed270e2f"
+        },
+        "specular.ktx2": {
+          "bytes": 1964840,
+          "sha256": "9967499fc74872e60720629af40138aec6350257560160733d60373bdfc682b0"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.181095699997968,
+            "peak_commit_bytes": 83554304
+          },
+          "candidate": {
+            "seconds": 4.438646099995822,
+            "peak_commit_bytes": 83607552
+          }
+        },
+        "ratios": {
+          "seconds": 0.8567002728781024,
+          "peak_commit_bytes": 1.0006372861414776
+        },
+        "paired_time_ratio_range": [
+          0.7707791290416192,
+          0.9331175637944576
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.7811094680632261,
+            0.8833645510864875
+          ],
+          "peak_commit_bytes": [
+            1.000049017205039,
+            1.001324048646528
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.4662202999898,
+            5.441912399997818,
+            4.964618600002723,
+            5.21102279999468,
+            4.8223858999990625,
+            5.024704800001928,
+            5.181095699997968
+          ],
+          "peak_commit_bytes": [
+            83525632,
+            83505152,
+            83607552,
+            83521536,
+            83554304,
+            83578880,
+            83562496
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.513674700006959,
+            4.194512499991106,
+            4.381009299992002,
+            4.862496900008409,
+            4.25072930000897,
+            4.438646099995822,
+            4.440597900000284
+          ],
+          "peak_commit_bytes": [
+            83636224,
+            83542016,
+            83566592,
+            83648512,
+            83619840,
+            83603456,
+            83607552
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5716,
+          "sha256": "1675205cb040ca3b1f5996fc59e4b2e0322aa978177f84f3d26af805e913dbd1"
+        },
+        "specular.ibla": {
+          "bytes": 2277589,
+          "sha256": "85b022935b1458528b4dee237c7a3f133bcc268c31c6b9432bc1d3652c2b0b87"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.2209078000014415,
+            "peak_commit_bytes": 86233088
+          },
+          "candidate": {
+            "seconds": 4.152012300008209,
+            "peak_commit_bytes": 86302720
+          }
+        },
+        "ratios": {
+          "seconds": 0.7952663519564669,
+          "peak_commit_bytes": 1.0008074858689973
+        },
+        "paired_time_ratio_range": [
+          0.7140448214995248,
+          0.8791370509532512
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.7440356105828969,
+            0.865937173760834
+          ],
+          "peak_commit_bytes": [
+            0.9978213507625272,
+            1.0013778031166856
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.2209078000014415,
+            6.632275700001628,
+            6.910839700009092,
+            5.356987899998785,
+            4.638989400002174,
+            4.458366399994702,
+            4.412387699994724
+          ],
+          "peak_commit_bytes": [
+            86532096,
+            86200320,
+            86159360,
+            86212608,
+            86233088,
+            86241280,
+            86482944
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.152012300008209,
+            5.830679300008342,
+            4.934649300004821,
+            4.422932600005879,
+            3.8254999999917345,
+            3.8606652000016766,
+            3.6891575000045123
+          ],
+          "peak_commit_bytes": [
+            86294528,
+            86286336,
+            86278144,
+            86446080,
+            86319104,
+            86302720,
+            86331392
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5984,
+          "sha256": "456b0399ef4c8ac65fef26b94a72d4193ea64f77588d24af0c02dbff5ac373f3"
+        },
+        "specular.ktx2": {
+          "bytes": 1843307,
+          "sha256": "582d4dd4b86f9b58341b760d1caa2eeb0490fb5b98acae0b6e81920d51645982"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.367899100005161,
+            "peak_commit_bytes": 86683648
+          },
+          "candidate": {
+            "seconds": 4.574411900000996,
+            "peak_commit_bytes": 86671360
+          }
+        },
+        "ratios": {
+          "seconds": 0.8521791886879166,
+          "peak_commit_bytes": 0.9998582431602325
+        },
+        "paired_time_ratio_range": [
+          0.826538003207637,
+          0.8913490951923948
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8360109303376974,
+            0.875643480187115
+          ],
+          "peak_commit_bytes": [
+            0.9921695503352558,
+            1.0048201880818486
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.3870254999928875,
+            5.425859499999206,
+            5.278328799991868,
+            5.372809099993901,
+            5.251497499994002,
+            5.236141500005033,
+            5.367899100005161
+          ],
+          "peak_commit_bytes": [
+            86683648,
+            86544384,
+            86564864,
+            86675456,
+            87416832,
+            87355392,
+            86863872
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.452581299992744,
+            4.5121282000036445,
+            4.704833600000711,
+            4.58208239999658,
+            4.503612200001953,
+            4.574411900000996,
+            4.621934199996758
+          ],
+          "peak_commit_bytes": [
+            86642688,
+            86380544,
+            86732800,
+            87126016,
+            87093248,
+            86671360,
+            86622208
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5716,
+          "sha256": "1675205cb040ca3b1f5996fc59e4b2e0322aa978177f84f3d26af805e913dbd1"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5984,
+          "sha256": "456b0399ef4c8ac65fef26b94a72d4193ea64f77588d24af0c02dbff5ac373f3"
+        },
+        "specular.ibla": {
+          "bytes": 2277589,
+          "sha256": "85b022935b1458528b4dee237c7a3f133bcc268c31c6b9432bc1d3652c2b0b87"
+        },
+        "specular.ktx2": {
+          "bytes": 1843307,
+          "sha256": "582d4dd4b86f9b58341b760d1caa2eeb0490fb5b98acae0b6e81920d51645982"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.0670159999863245,
+            "peak_commit_bytes": 133992448
+          },
+          "candidate": {
+            "seconds": 4.39804249998997,
+            "peak_commit_bytes": 134017024
+          }
+        },
+        "ratios": {
+          "seconds": 0.8679748593653226,
+          "peak_commit_bytes": 1.000183413321921
+        },
+        "paired_time_ratio_range": [
+          0.8365536915422519,
+          0.9061838320641047
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8479835144942298,
+            0.8787757342471008
+          ],
+          "peak_commit_bytes": [
+            1.00009169825162,
+            1.0017120670151947
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.2573343999974895,
+            5.0670159999863245,
+            5.0503914000000805,
+            5.041297599993413,
+            5.090983300004154,
+            5.028342599995085,
+            5.186471699998947
+          ],
+          "peak_commit_bytes": [
+            133992448,
+            133996544,
+            134074368,
+            133943296,
+            133959680,
+            134004736,
+            133976064
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.39804249998997,
+            4.3472068999981275,
+            4.365801399995689,
+            4.4301699999923585,
+            4.4489738999982364,
+            4.292225500001223,
+            4.699896799997077
+          ],
+          "peak_commit_bytes": [
+            134037504,
+            134205440,
+            134017024,
+            133992448,
+            134217728,
+            134017024,
+            134012928
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5000,
+          "sha256": "26e94ca6ecca3ec21025439a48819f824a9937d21cf5a9bb648b82291ada22af"
+        },
+        "specular.ibla": {
+          "bytes": 2311662,
+          "sha256": "473f09075702fb8ab6cbea3be77990a631b2db5177974732b8e41f5742dab58a"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.655086799990386,
+            "peak_commit_bytes": 136949760
+          },
+          "candidate": {
+            "seconds": 3.8853586000041105,
+            "peak_commit_bytes": 136982528
+          }
+        },
+        "ratios": {
+          "seconds": 0.834647938253726,
+          "peak_commit_bytes": 1.0002392702258114
+        },
+        "paired_time_ratio_range": [
+          0.7997179566498855,
+          0.850191010049107
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8016030250770885,
+            0.850191010049107
+          ],
+          "peak_commit_bytes": [
+            0.9997907324364723,
+            1.00065805216559
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.821721200001775,
+            4.8047048000007635,
+            4.833086799990269,
+            4.616563399991719,
+            4.598507699993206,
+            4.595658299993374,
+            4.655086799990386
+          ],
+          "peak_commit_bytes": [
+            137064448,
+            136908800,
+            136937472,
+            136945664,
+            137011200,
+            136949760,
+            136953856
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            3.904333800004679,
+            4.005913899993175,
+            3.865106299999752,
+            3.924960699994699,
+            3.8492781999957515,
+            3.8082978000020375,
+            3.8853586000041105
+          ],
+          "peak_commit_bytes": [
+            137027584,
+            136982528,
+            137027584,
+            136962048,
+            136982528,
+            137064448,
+            136962048
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5753,
+          "sha256": "a7aba4e8f21dc6230a627df3f6d8b94daf75bc8706275516d14b1a62509cd3a4"
+        },
+        "specular.ktx2": {
+          "bytes": 2032746,
+          "sha256": "beae078e8a546445f2989b835c20f586f75e8e27dea44fd35fe2c658fafd903c"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.444857800001046,
+            "peak_commit_bytes": 138129408
+          },
+          "candidate": {
+            "seconds": 4.829436600004556,
+            "peak_commit_bytes": 138047488
+          }
+        },
+        "ratios": {
+          "seconds": 0.8869720344218408,
+          "peak_commit_bytes": 0.9994069329537705
+        },
+        "paired_time_ratio_range": [
+          0.8383446929771317,
+          0.916161318300273
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8526523063406308,
+            0.906426316589187
+          ],
+          "peak_commit_bytes": [
+            0.9959438654666035,
+            1.0036203929016558
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.4874241999932565,
+            5.424325499989209,
+            5.453336199992918,
+            5.401280400008545,
+            5.3901794999983395,
+            5.559123400002136,
+            5.444857800001046
+          ],
+          "peak_commit_bytes": [
+            138346496,
+            138129408,
+            138027008,
+            138199040,
+            138051584,
+            137994240,
+            138473472
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.784786000003805,
+            4.834065600007307,
+            4.935362400006852,
+            4.829436600004556,
+            4.678864899993641,
+            4.660461599996779,
+            4.988368100006483
+          ],
+          "peak_commit_bytes": [
+            137723904,
+            138035200,
+            137785344,
+            138072064,
+            138047488,
+            138547200,
+            138526720
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5000,
+          "sha256": "26e94ca6ecca3ec21025439a48819f824a9937d21cf5a9bb648b82291ada22af"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5753,
+          "sha256": "a7aba4e8f21dc6230a627df3f6d8b94daf75bc8706275516d14b1a62509cd3a4"
+        },
+        "specular.ibla": {
+          "bytes": 2311662,
+          "sha256": "473f09075702fb8ab6cbea3be77990a631b2db5177974732b8e41f5742dab58a"
+        },
+        "specular.ktx2": {
+          "bytes": 2032746,
+          "sha256": "beae078e8a546445f2989b835c20f586f75e8e27dea44fd35fe2c658fafd903c"
+        }
+      }
+    }
+  ],
+  "confirmation": {
+    "sha256": "836b23e93bd23bef81c28a54e135473d2f2722d8069eec8cbb86f410c3445fce",
+    "rows": []
+  },
+  "effective_trials": [
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.693906900007278,
+            "peak_commit_bytes": 64569344
+          },
+          "candidate": {
+            "seconds": 3.983990199994878,
+            "peak_commit_bytes": 64651264
+          }
+        },
+        "ratios": {
+          "seconds": 0.8487578226122681,
+          "peak_commit_bytes": 1.0012687135244862
+        },
+        "paired_time_ratio_range": [
+          0.7810454061099782,
+          0.8687809436341011
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8223255291929985,
+            0.8598489181075076
+          ],
+          "peak_commit_bytes": [
+            1.0000633793890228,
+            1.0020943072919972
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.646180800002185,
+            5.180155299996841,
+            4.920115400003851,
+            4.778785799993784,
+            4.693906900007278,
+            4.607840500000748,
+            4.6185482000000775
+          ],
+          "peak_commit_bytes": [
+            64557056,
+            64569344,
+            64540672,
+            64626688,
+            64536576,
+            64700416,
+            64598016
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            3.983990199994878,
+            4.045936499998788,
+            4.274502500004019,
+            4.109033799992176,
+            3.929680500004906,
+            3.895307700004196,
+            3.878955699998187
+          ],
+          "peak_commit_bytes": [
+            64733184,
+            64651264,
+            64675840,
+            64630784,
+            64598016,
+            64684032,
+            64643072
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5650,
+          "sha256": "1251b593b23c59fab475b719352eab1649865106599c55bab978ad928c1f686c"
+        },
+        "specular.ibla": {
+          "bytes": 1786592,
+          "sha256": "b05aaea9255f7f5d6e21eeb5bec7473242455794363653ecac0299f9ed270e2f"
+        }
+      }
+    },
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.345753600005992,
+            "peak_commit_bytes": 67280896
+          },
+          "candidate": {
+            "seconds": 3.6230361000052653,
+            "peak_commit_bytes": 67346432
+          }
+        },
+        "ratios": {
+          "seconds": 0.8336957023979156,
+          "peak_commit_bytes": 1.0009740655059052
+        },
+        "paired_time_ratio_range": [
+          0.8242756562903852,
+          0.8398926231538437
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8244533201253947,
+            0.8394114884347402
+          ],
+          "peak_commit_bytes": [
+            0.9996957897298613,
+            1.0021312872975277
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.337024399996153,
+            4.33951029999298,
+            4.341775900000357,
+            4.345753600005992,
+            4.3797266999899875,
+            4.36629439999524,
+            4.378782899992075
+          ],
+          "peak_commit_bytes": [
+            67264512,
+            67289088,
+            67260416,
+            67321856,
+            67497984,
+            67280896,
+            67264512
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            3.642634799994994,
+            3.629255699997884,
+            3.6204481000022497,
+            3.604103899997426,
+            3.6101021000067703,
+            3.6629028000024846,
+            3.6230361000052653
+          ],
+          "peak_commit_bytes": [
+            67301376,
+            67407872,
+            67293184,
+            67346432,
+            67293184,
+            67358720,
+            67596288
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5890,
+          "sha256": "88e2e232008557cbde2f0c89499805ea4bc11100b6ed340589df08952a9f2dc0"
+        },
+        "specular.ktx2": {
+          "bytes": 1964840,
+          "sha256": "9967499fc74872e60720629af40138aec6350257560160733d60373bdfc682b0"
+        }
+      }
+    },
+    {
+      "case": "pisa",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.33374940000067,
+            "peak_commit_bytes": 67956736
+          },
+          "candidate": {
+            "seconds": 4.5464120999968145,
+            "peak_commit_bytes": 67698688
+          }
+        },
+        "ratios": {
+          "seconds": 0.8523857720042571,
+          "peak_commit_bytes": 0.996202760532819
+        },
+        "paired_time_ratio_range": [
+          0.8210647461517966,
+          0.8839515332176374
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8210647461517966,
+            0.8839515332176374
+          ],
+          "peak_commit_bytes": [
+            0.9882169986243197,
+            1.0009677614468033
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.33374940000067,
+            5.170973500004038,
+            5.217907800004468,
+            5.351108599992585,
+            5.3877705999912,
+            5.196010999992723,
+            5.469733600009931
+          ],
+          "peak_commit_bytes": [
+            68526080,
+            68481024,
+            67715072,
+            67956736,
+            67719168,
+            67768320,
+            67969024
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.5464120999968145,
+            4.528273800009629,
+            4.612377600002219,
+            4.566557699989062,
+            4.423708500005887,
+            4.392935700001544,
+            4.676935199997388
+          ],
+          "peak_commit_bytes": [
+            67690496,
+            67670016,
+            67784704,
+            67698688,
+            67809280,
+            67735552,
+            67674112
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5650,
+          "sha256": "1251b593b23c59fab475b719352eab1649865106599c55bab978ad928c1f686c"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5890,
+          "sha256": "88e2e232008557cbde2f0c89499805ea4bc11100b6ed340589df08952a9f2dc0"
+        },
+        "specular.ibla": {
+          "bytes": 1786592,
+          "sha256": "b05aaea9255f7f5d6e21eeb5bec7473242455794363653ecac0299f9ed270e2f"
+        },
+        "specular.ktx2": {
+          "bytes": 1964840,
+          "sha256": "9967499fc74872e60720629af40138aec6350257560160733d60373bdfc682b0"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.181095699997968,
+            "peak_commit_bytes": 83554304
+          },
+          "candidate": {
+            "seconds": 4.438646099995822,
+            "peak_commit_bytes": 83607552
+          }
+        },
+        "ratios": {
+          "seconds": 0.8567002728781024,
+          "peak_commit_bytes": 1.0006372861414776
+        },
+        "paired_time_ratio_range": [
+          0.7707791290416192,
+          0.9331175637944576
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.7811094680632261,
+            0.8833645510864875
+          ],
+          "peak_commit_bytes": [
+            1.000049017205039,
+            1.001324048646528
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.4662202999898,
+            5.441912399997818,
+            4.964618600002723,
+            5.21102279999468,
+            4.8223858999990625,
+            5.024704800001928,
+            5.181095699997968
+          ],
+          "peak_commit_bytes": [
+            83525632,
+            83505152,
+            83607552,
+            83521536,
+            83554304,
+            83578880,
+            83562496
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.513674700006959,
+            4.194512499991106,
+            4.381009299992002,
+            4.862496900008409,
+            4.25072930000897,
+            4.438646099995822,
+            4.440597900000284
+          ],
+          "peak_commit_bytes": [
+            83636224,
+            83542016,
+            83566592,
+            83648512,
+            83619840,
+            83603456,
+            83607552
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5716,
+          "sha256": "1675205cb040ca3b1f5996fc59e4b2e0322aa978177f84f3d26af805e913dbd1"
+        },
+        "specular.ibla": {
+          "bytes": 2277589,
+          "sha256": "85b022935b1458528b4dee237c7a3f133bcc268c31c6b9432bc1d3652c2b0b87"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.2209078000014415,
+            "peak_commit_bytes": 86233088
+          },
+          "candidate": {
+            "seconds": 4.152012300008209,
+            "peak_commit_bytes": 86302720
+          }
+        },
+        "ratios": {
+          "seconds": 0.7952663519564669,
+          "peak_commit_bytes": 1.0008074858689973
+        },
+        "paired_time_ratio_range": [
+          0.7140448214995248,
+          0.8791370509532512
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.7440356105828969,
+            0.865937173760834
+          ],
+          "peak_commit_bytes": [
+            0.9978213507625272,
+            1.0013778031166856
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.2209078000014415,
+            6.632275700001628,
+            6.910839700009092,
+            5.356987899998785,
+            4.638989400002174,
+            4.458366399994702,
+            4.412387699994724
+          ],
+          "peak_commit_bytes": [
+            86532096,
+            86200320,
+            86159360,
+            86212608,
+            86233088,
+            86241280,
+            86482944
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.152012300008209,
+            5.830679300008342,
+            4.934649300004821,
+            4.422932600005879,
+            3.8254999999917345,
+            3.8606652000016766,
+            3.6891575000045123
+          ],
+          "peak_commit_bytes": [
+            86294528,
+            86286336,
+            86278144,
+            86446080,
+            86319104,
+            86302720,
+            86331392
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5984,
+          "sha256": "456b0399ef4c8ac65fef26b94a72d4193ea64f77588d24af0c02dbff5ac373f3"
+        },
+        "specular.ktx2": {
+          "bytes": 1843307,
+          "sha256": "582d4dd4b86f9b58341b760d1caa2eeb0490fb5b98acae0b6e81920d51645982"
+        }
+      }
+    },
+    {
+      "case": "spruit",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.367899100005161,
+            "peak_commit_bytes": 86683648
+          },
+          "candidate": {
+            "seconds": 4.574411900000996,
+            "peak_commit_bytes": 86671360
+          }
+        },
+        "ratios": {
+          "seconds": 0.8521791886879166,
+          "peak_commit_bytes": 0.9998582431602325
+        },
+        "paired_time_ratio_range": [
+          0.826538003207637,
+          0.8913490951923948
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8360109303376974,
+            0.875643480187115
+          ],
+          "peak_commit_bytes": [
+            0.9921695503352558,
+            1.0048201880818486
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.3870254999928875,
+            5.425859499999206,
+            5.278328799991868,
+            5.372809099993901,
+            5.251497499994002,
+            5.236141500005033,
+            5.367899100005161
+          ],
+          "peak_commit_bytes": [
+            86683648,
+            86544384,
+            86564864,
+            86675456,
+            87416832,
+            87355392,
+            86863872
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.452581299992744,
+            4.5121282000036445,
+            4.704833600000711,
+            4.58208239999658,
+            4.503612200001953,
+            4.574411900000996,
+            4.621934199996758
+          ],
+          "peak_commit_bytes": [
+            86642688,
+            86380544,
+            86732800,
+            87126016,
+            87093248,
+            86671360,
+            86622208
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5716,
+          "sha256": "1675205cb040ca3b1f5996fc59e4b2e0322aa978177f84f3d26af805e913dbd1"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5984,
+          "sha256": "456b0399ef4c8ac65fef26b94a72d4193ea64f77588d24af0c02dbff5ac373f3"
+        },
+        "specular.ibla": {
+          "bytes": 2277589,
+          "sha256": "85b022935b1458528b4dee237c7a3f133bcc268c31c6b9432bc1d3652c2b0b87"
+        },
+        "specular.ktx2": {
+          "bytes": 1843307,
+          "sha256": "582d4dd4b86f9b58341b760d1caa2eeb0490fb5b98acae0b6e81920d51645982"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "ibla",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.0670159999863245,
+            "peak_commit_bytes": 133992448
+          },
+          "candidate": {
+            "seconds": 4.39804249998997,
+            "peak_commit_bytes": 134017024
+          }
+        },
+        "ratios": {
+          "seconds": 0.8679748593653226,
+          "peak_commit_bytes": 1.000183413321921
+        },
+        "paired_time_ratio_range": [
+          0.8365536915422519,
+          0.9061838320641047
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8479835144942298,
+            0.8787757342471008
+          ],
+          "peak_commit_bytes": [
+            1.00009169825162,
+            1.0017120670151947
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.2573343999974895,
+            5.0670159999863245,
+            5.0503914000000805,
+            5.041297599993413,
+            5.090983300004154,
+            5.028342599995085,
+            5.186471699998947
+          ],
+          "peak_commit_bytes": [
+            133992448,
+            133996544,
+            134074368,
+            133943296,
+            133959680,
+            134004736,
+            133976064
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.39804249998997,
+            4.3472068999981275,
+            4.365801399995689,
+            4.4301699999923585,
+            4.4489738999982364,
+            4.292225500001223,
+            4.699896799997077
+          ],
+          "peak_commit_bytes": [
+            134037504,
+            134205440,
+            134017024,
+            133992448,
+            134217728,
+            134017024,
+            134012928
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5000,
+          "sha256": "26e94ca6ecca3ec21025439a48819f824a9937d21cf5a9bb648b82291ada22af"
+        },
+        "specular.ibla": {
+          "bytes": 2311662,
+          "sha256": "473f09075702fb8ab6cbea3be77990a631b2db5177974732b8e41f5742dab58a"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "ktx2",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 4.655086799990386,
+            "peak_commit_bytes": 136949760
+          },
+          "candidate": {
+            "seconds": 3.8853586000041105,
+            "peak_commit_bytes": 136982528
+          }
+        },
+        "ratios": {
+          "seconds": 0.834647938253726,
+          "peak_commit_bytes": 1.0002392702258114
+        },
+        "paired_time_ratio_range": [
+          0.7997179566498855,
+          0.850191010049107
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8016030250770885,
+            0.850191010049107
+          ],
+          "peak_commit_bytes": [
+            0.9997907324364723,
+            1.00065805216559
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            4.821721200001775,
+            4.8047048000007635,
+            4.833086799990269,
+            4.616563399991719,
+            4.598507699993206,
+            4.595658299993374,
+            4.655086799990386
+          ],
+          "peak_commit_bytes": [
+            137064448,
+            136908800,
+            136937472,
+            136945664,
+            137011200,
+            136949760,
+            136953856
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            3.904333800004679,
+            4.005913899993175,
+            3.865106299999752,
+            3.924960699994699,
+            3.8492781999957515,
+            3.8082978000020375,
+            3.8853586000041105
+          ],
+          "peak_commit_bytes": [
+            137027584,
+            136982528,
+            137027584,
+            136962048,
+            136982528,
+            137064448,
+            136962048
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5753,
+          "sha256": "a7aba4e8f21dc6230a627df3f6d8b94daf75bc8706275516d14b1a62509cd3a4"
+        },
+        "specular.ktx2": {
+          "bytes": 2032746,
+          "sha256": "beae078e8a546445f2989b835c20f586f75e8e27dea44fd35fe2c658fafd903c"
+        }
+      }
+    },
+    {
+      "case": "bridge",
+      "size": 512,
+      "format": "both",
+      "summary": {
+        "medians": {
+          "baseline": {
+            "seconds": 5.444857800001046,
+            "peak_commit_bytes": 138129408
+          },
+          "candidate": {
+            "seconds": 4.829436600004556,
+            "peak_commit_bytes": 138047488
+          }
+        },
+        "ratios": {
+          "seconds": 0.8869720344218408,
+          "peak_commit_bytes": 0.9994069329537705
+        },
+        "paired_time_ratio_range": [
+          0.8383446929771317,
+          0.916161318300273
+        ],
+        "paired_median_ratio_bootstrap_95pct": {
+          "seconds": [
+            0.8526523063406308,
+            0.906426316589187
+          ],
+          "peak_commit_bytes": [
+            0.9959438654666035,
+            1.0036203929016558
+          ]
+        },
+        "noise_diagnostic": "2000 deterministic paired bootstrap resamples, seed 0x1B1; correlated host noise can remain",
+        "point_estimate_passes": true,
+        "acceptance_status": "pass",
+        "passes": true
+      },
+      "samples": {
+        "baseline": {
+          "seconds": [
+            5.4874241999932565,
+            5.424325499989209,
+            5.453336199992918,
+            5.401280400008545,
+            5.3901794999983395,
+            5.559123400002136,
+            5.444857800001046
+          ],
+          "peak_commit_bytes": [
+            138346496,
+            138129408,
+            138027008,
+            138199040,
+            138051584,
+            137994240,
+            138473472
+          ]
+        },
+        "candidate": {
+          "seconds": [
+            4.784786000003805,
+            4.834065600007307,
+            4.935362400006852,
+            4.829436600004556,
+            4.678864899993641,
+            4.660461599996779,
+            4.988368100006483
+          ],
+          "peak_commit_bytes": [
+            137723904,
+            138035200,
+            137785344,
+            138072064,
+            138047488,
+            138547200,
+            138526720
+          ]
+        }
+      },
+      "outputs": {
+        "brdf-lut.png": {
+          "bytes": 16265,
+          "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+        },
+        "irradiance.ibla": {
+          "bytes": 5000,
+          "sha256": "26e94ca6ecca3ec21025439a48819f824a9937d21cf5a9bb648b82291ada22af"
+        },
+        "irradiance.ktx2": {
+          "bytes": 5753,
+          "sha256": "a7aba4e8f21dc6230a627df3f6d8b94daf75bc8706275516d14b1a62509cd3a4"
+        },
+        "specular.ibla": {
+          "bytes": 2311662,
+          "sha256": "473f09075702fb8ab6cbea3be77990a631b2db5177974732b8e41f5742dab58a"
+        },
+        "specular.ktx2": {
+          "bytes": 2032746,
+          "sha256": "beae078e8a546445f2989b835c20f586f75e8e27dea44fd35fe2c658fafd903c"
+        }
+      }
+    }
+  ],
+  "phases": {
+    "baseline": {
+      "sha256": "002b638338f531c98d523728a2901e5e63b0e5a09b7f37353da3e3bd81d55896",
+      "binaries": {
+        "baseline": "04819e6b028d93a7ad24359be01dbcd9f2513a5a14a2410032cf67befab4d800",
+        "profile": "636b550b87d9dbd2c612ccbe175e142455cd7d97cf03f45723bc3ac7fd96dac4"
+      },
+      "rows": [
+        {
+          "case": "pisa",
+          "size": 512,
+          "summary": {
+            "bc6h": {
+              "calls": 11,
+              "seconds": 0.5098178999999999,
+              "heap_peak": 60592759,
+              "sampled_commit_peak": 63008768
+            },
+            "encode_ibla": {
+              "calls": 2,
+              "seconds": 0.8370685,
+              "heap_peak": 38646307,
+              "sampled_commit_peak": 39493632
+            },
+            "encode_ktx2": {
+              "calls": 2,
+              "seconds": 0.5433672,
+              "heap_peak": 61409033,
+              "sampled_commit_peak": 66682880
+            },
+            "encode_lut": {
+              "calls": 1,
+              "seconds": 0.0102883,
+              "heap_peak": 7744993,
+              "sampled_commit_peak": 9990144
+            },
+            "filter_irradiance": {
+              "calls": 1,
+              "seconds": 0.250616,
+              "heap_peak": 50834155,
+              "sampled_commit_peak": 52568064
+            },
+            "filter_lut": {
+              "calls": 1,
+              "seconds": 0.0136184,
+              "heap_peak": 7789971,
+              "sampled_commit_peak": 9338880
+            },
+            "filter_specular": {
+              "calls": 1,
+              "seconds": 3.4656836,
+              "heap_peak": 63323315,
+              "sampled_commit_peak": 64606208
+            },
+            "ktx2_rgb_pack": {
+              "calls": 2,
+              "seconds": 0.007455600000000001,
+              "heap_peak": 56660599,
+              "sampled_commit_peak": 59305984
+            },
+            "load": {
+              "calls": 1,
+              "seconds": 0.0068429,
+              "heap_peak": 12583568,
+              "sampled_commit_peak": 13369344
+            },
+            "package_ibla": {
+              "calls": 3,
+              "seconds": 0.0013489,
+              "heap_peak": 38646307,
+              "sampled_commit_peak": 39124992
+            },
+            "png": {
+              "calls": 2,
+              "seconds": 0.8352778999999999,
+              "heap_peak": 36007037,
+              "sampled_commit_peak": 39493632
+            },
+            "process": {
+              "calls": 1,
+              "seconds": 5.2797261,
+              "heap_peak": 63323315,
+              "sampled_commit_peak": 66682880
+            },
+            "projection": {
+              "calls": 2,
+              "seconds": 0.12127650000000001,
+              "heap_peak": 44074827,
+              "sampled_commit_peak": 46202880
+            },
+            "source_borders": {
+              "calls": 2,
+              "seconds": 0.0012356,
+              "heap_peak": 50668163,
+              "sampled_commit_peak": 52568064
+            },
+            "source_mips": {
+              "calls": 2,
+              "seconds": 0.008641099999999999,
+              "heap_peak": 50369139,
+              "sampled_commit_peak": 52527104
+            },
+            "write_ibla": {
+              "calls": 2,
+              "seconds": 0.0028733,
+              "heap_peak": 36862900,
+              "sampled_commit_peak": 39022592
+            },
+            "write_ktx2": {
+              "calls": 2,
+              "seconds": 0.0011302,
+              "heap_peak": 33458445,
+              "sampled_commit_peak": 38027264
+            },
+            "write_lut": {
+              "calls": 1,
+              "seconds": 0.0001795,
+              "heap_peak": 6342656,
+              "sampled_commit_peak": 8335360
+            },
+            "zstd": {
+              "calls": 11,
+              "seconds": 0.014489,
+              "heap_peak": 60363383,
+              "sampled_commit_peak": 66682880
+            }
+          },
+          "groups": {
+            "load": {
+              "samples": {
+                "seconds": [
+                  0.006811,
+                  0.0068429,
+                  0.0074482
+                ],
+                "heap_peak": [
+                  12583568,
+                  12583568,
+                  12583568
+                ],
+                "sampled_commit_peak": [
+                  13365248,
+                  13369344,
+                  13377536
+                ]
+              },
+              "medians": {
+                "seconds": 0.0068429,
+                "heap_peak": 12583568,
+                "sampled_commit_peak": 13369344
+              }
+            },
+            "projection/preparation": {
+              "samples": {
+                "seconds": [
+                  0.1328036,
+                  0.1299235,
+                  0.1311532
+                ],
+                "heap_peak": [
+                  50668163,
+                  50668163,
+                  50668163
+                ],
+                "sampled_commit_peak": [
+                  52965376,
+                  52568064,
+                  52215808
+                ]
+              },
+              "medians": {
+                "seconds": 0.1311532,
+                "heap_peak": 50668163,
+                "sampled_commit_peak": 52568064
+              }
+            },
+            "filter": {
+              "samples": {
+                "seconds": [
+                  3.8316238,
+                  3.6519426999999998,
+                  3.7319989000000002
+                ],
+                "heap_peak": [
+                  63323315,
+                  63323315,
+                  63323315
+                ],
+                "sampled_commit_peak": [
+                  64589824,
+                  64724992,
+                  64606208
+                ]
+              },
+              "medians": {
+                "seconds": 3.7319989000000002,
+                "heap_peak": 63323315,
+                "sampled_commit_peak": 64606208
+              }
+            },
+            "encode/write": {
+              "samples": {
+                "seconds": [
+                  1.4079843999999992,
+                  1.3855293,
+                  1.3948949000000002
+                ],
+                "heap_peak": [
+                  61409033,
+                  61409033,
+                  61409033
+                ],
+                "sampled_commit_peak": [
+                  66670592,
+                  66850816,
+                  66682880
+                ]
+              },
+              "medians": {
+                "seconds": 1.3948949000000002,
+                "heap_peak": 61409033,
+                "sampled_commit_peak": 66682880
+              }
+            },
+            "other": {
+              "samples": {
+                "seconds": [
+                  0.009602499999999736,
+                  0.013048099999998897,
+                  0.014230900000001157
+                ],
+                "heap_peak": [],
+                "sampled_commit_peak": []
+              },
+              "medians": {
+                "seconds": 0.013048099999998897,
+                "heap_peak": null,
+                "sampled_commit_peak": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    "candidate": {
+      "sha256": "4f01e99f73b961b79ad54a3fe6f98b2199a72414874462c44c8a60acb1079b23",
+      "binaries": {
+        "baseline": "04819e6b028d93a7ad24359be01dbcd9f2513a5a14a2410032cf67befab4d800",
+        "profile": "20262acc3e4c75bf4ad74721c506594913259efe749d1b5d0fb9f7ef656c0458"
+      },
+      "rows": [
+        {
+          "case": "pisa",
+          "size": 512,
+          "summary": {
+            "bc6h": {
+              "calls": 11,
+              "seconds": 0.5109111,
+              "heap_peak": 60592773,
+              "sampled_commit_peak": 62996480
+            },
+            "encode_ibla": {
+              "calls": 2,
+              "seconds": 0.8506598000000001,
+              "heap_peak": 38646319,
+              "sampled_commit_peak": 39583744
+            },
+            "encode_ktx2": {
+              "calls": 2,
+              "seconds": 0.5441477,
+              "heap_peak": 61409047,
+              "sampled_commit_peak": 66699264
+            },
+            "encode_lut": {
+              "calls": 1,
+              "seconds": 0.0103969,
+              "heap_peak": 7745013,
+              "sampled_commit_peak": 9875456
+            },
+            "filter_irradiance": {
+              "calls": 1,
+              "seconds": 0.2003113,
+              "heap_peak": 50875131,
+              "sampled_commit_peak": 52674560
+            },
+            "filter_lut": {
+              "calls": 1,
+              "seconds": 0.0120036,
+              "heap_peak": 7789991,
+              "sampled_commit_peak": 9502720
+            },
+            "filter_specular": {
+              "calls": 1,
+              "seconds": 2.6812895,
+              "heap_peak": 63364287,
+              "sampled_commit_peak": 64626688
+            },
+            "ktx2_rgb_pack": {
+              "calls": 2,
+              "seconds": 0.0071467,
+              "heap_peak": 56660613,
+              "sampled_commit_peak": 59285504
+            },
+            "load": {
+              "calls": 1,
+              "seconds": 0.0066008,
+              "heap_peak": 12583580,
+              "sampled_commit_peak": 13373440
+            },
+            "package_ibla": {
+              "calls": 3,
+              "seconds": 0.0013641,
+              "heap_peak": 38646319,
+              "sampled_commit_peak": 39079936
+            },
+            "png": {
+              "calls": 2,
+              "seconds": 0.8485378,
+              "heap_peak": 36007049,
+              "sampled_commit_peak": 39583744
+            },
+            "process": {
+              "calls": 1,
+              "seconds": 4.4613818,
+              "heap_peak": 63364287,
+              "sampled_commit_peak": 66699264
+            },
+            "projection": {
+              "calls": 2,
+              "seconds": 0.1214454,
+              "heap_peak": 44074843,
+              "sampled_commit_peak": 45711360
+            },
+            "source_borders": {
+              "calls": 2,
+              "seconds": 0.0012328999999999999,
+              "heap_peak": 50668179,
+              "sampled_commit_peak": 52477952
+            },
+            "source_mips": {
+              "calls": 2,
+              "seconds": 0.009056499999999999,
+              "heap_peak": 50369155,
+              "sampled_commit_peak": 52420608
+            },
+            "write_ibla": {
+              "calls": 2,
+              "seconds": 0.0030118999999999996,
+              "heap_peak": 36862914,
+              "sampled_commit_peak": 39927808
+            },
+            "write_ktx2": {
+              "calls": 2,
+              "seconds": 0.0011943,
+              "heap_peak": 33458463,
+              "sampled_commit_peak": 36790272
+            },
+            "write_lut": {
+              "calls": 1,
+              "seconds": 0.0001709,
+              "heap_peak": 6342680,
+              "sampled_commit_peak": 8306688
+            },
+            "zstd": {
+              "calls": 11,
+              "seconds": 0.0146775,
+              "heap_peak": 60363397,
+              "sampled_commit_peak": 66699264
+            }
+          },
+          "groups": {
+            "load": {
+              "samples": {
+                "seconds": [
+                  0.0066008,
+                  0.0071755,
+                  0.0065789
+                ],
+                "heap_peak": [
+                  12583580,
+                  12583580,
+                  12583580
+                ],
+                "sampled_commit_peak": [
+                  13373440,
+                  13373440,
+                  13385728
+                ]
+              },
+              "medians": {
+                "seconds": 0.0066008,
+                "heap_peak": 12583580,
+                "sampled_commit_peak": 13373440
+              }
+            },
+            "projection/preparation": {
+              "samples": {
+                "seconds": [
+                  0.1316514,
+                  0.13097910000000001,
+                  0.13162529999999997
+                ],
+                "heap_peak": [
+                  50668179,
+                  50668179,
+                  50668179
+                ],
+                "sampled_commit_peak": [
+                  52666368,
+                  52113408,
+                  52477952
+                ]
+              },
+              "medians": {
+                "seconds": 0.13162529999999997,
+                "heap_peak": 50668179,
+                "sampled_commit_peak": 52477952
+              }
+            },
+            "filter": {
+              "samples": {
+                "seconds": [
+                  2.8885185,
+                  2.8927904,
+                  2.9172641
+                ],
+                "heap_peak": [
+                  63364287,
+                  63364287,
+                  63364287
+                ],
+                "sampled_commit_peak": [
+                  64626688,
+                  64622592,
+                  64737280
+                ]
+              },
+              "medians": {
+                "seconds": 2.8927904,
+                "heap_peak": 63364287,
+                "sampled_commit_peak": 64626688
+              }
+            },
+            "encode/write": {
+              "samples": {
+                "seconds": [
+                  1.4295358999999999,
+                  1.4222295999999999,
+                  1.3987467999999996
+                ],
+                "heap_peak": [
+                  61409047,
+                  61409047,
+                  61409047
+                ],
+                "sampled_commit_peak": [
+                  66674688,
+                  66699264,
+                  66719744
+                ]
+              },
+              "medians": {
+                "seconds": 1.4222295999999999,
+                "heap_peak": 61409047,
+                "sampled_commit_peak": 66699264
+              }
+            },
+            "other": {
+              "samples": {
+                "seconds": [
+                  0.007515600000000511,
+                  0.006890499999999911,
+                  0.00716669999999997
+                ],
+                "heap_peak": [],
+                "sampled_commit_peak": []
+              },
+              "medians": {
+                "seconds": 0.00716669999999997,
+                "heap_peak": null,
+                "sampled_commit_peak": null
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "compatibility": {
+    "rows": [
+      {
+        "case": "pisa",
+        "size": 1,
+        "options": [],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 5609,
+            "sha256": "7965cfc4418fac5e2879dd1201824c5f8fee389650afd2fa88ce148fbce5fe54"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5860,
+            "sha256": "fbc93882981ae73b0f0e87e8c2e8e771941a49f95583066895f84cb3a764b0b6"
+          },
+          "specular.ibla": {
+            "bytes": 770,
+            "sha256": "1826df0a80d18a884db93f60731bc505a139a8119d225bc1fd97d441d9f6e918"
+          },
+          "specular.ktx2": {
+            "bytes": 288,
+            "sha256": "4b76a697120988ba084e81abf39c005e1e7eb65112c7edb72bc0ac1e23c584df"
+          }
+        },
+        "parsers": {
+          "width": 1,
+          "levels": 1
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 3,
+        "options": [],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 5609,
+            "sha256": "7965cfc4418fac5e2879dd1201824c5f8fee389650afd2fa88ce148fbce5fe54"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5860,
+            "sha256": "fbc93882981ae73b0f0e87e8c2e8e771941a49f95583066895f84cb3a764b0b6"
+          },
+          "specular.ibla": {
+            "bytes": 1460,
+            "sha256": "42d8ab26c769d4c2df6134a451f07f5a34f0d8ab59ce37119f3e75cb77f22fd0"
+          },
+          "specular.ktx2": {
+            "bytes": 410,
+            "sha256": "fcaecbb69a99a51780a6741b47295f6c4e27d838a41f477cf2714d603fb9fd75"
+          }
+        },
+        "parsers": {
+          "width": 3,
+          "levels": 2
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 31,
+        "options": [],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 5609,
+            "sha256": "7965cfc4418fac5e2879dd1201824c5f8fee389650afd2fa88ce148fbce5fe54"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5860,
+            "sha256": "fbc93882981ae73b0f0e87e8c2e8e771941a49f95583066895f84cb3a764b0b6"
+          },
+          "specular.ibla": {
+            "bytes": 18863,
+            "sha256": "693eb7ec5df313492e21e6fab495d59e70cf1ae8ec55c782c71b2643426e6c79"
+          },
+          "specular.ktx2": {
+            "bytes": 8054,
+            "sha256": "02a79b133e2e8abea0843ebe5f4db436526aae4343f0636dc9787a5b2626ecc8"
+          }
+        },
+        "parsers": {
+          "width": 31,
+          "levels": 5
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 255,
+        "options": [],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 5529,
+            "sha256": "73e44a66885ce8722bbddd0a2a7517d3ab3036f5e3b926a919f8ec7a03847f7e"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5829,
+            "sha256": "947f3e0dba328dd82e6cc410ae68475fb00858376763cf460e4a77b8f9b84f9f"
+          },
+          "specular.ibla": {
+            "bytes": 595596,
+            "sha256": "6ac426f6611d459eea68eecad29c0939d5def077d7ce3be3985807e87323d65a"
+          },
+          "specular.ktx2": {
+            "bytes": 492154,
+            "sha256": "11141a82a77814377fae3aa1c132ea1aafd1805b44c39bce842c4b6a74bfc2de"
+          }
+        },
+        "parsers": {
+          "width": 255,
+          "levels": 8
+        }
+      },
+      {
+        "case": "bridge",
+        "size": 31,
+        "options": [
+          "--irradiance-size",
+          "64",
+          "--rotation",
+          "27.5"
+        ],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          },
+          "irradiance.ibla": {
+            "bytes": 12437,
+            "sha256": "91d264c1f63c99a8d3fd9e1c1efe8d3bd8670df4f2961fb3f323202fc32a091e"
+          },
+          "irradiance.ktx2": {
+            "bytes": 20519,
+            "sha256": "bfa65ffcac9bf164d89eae05d6c44ffc300b83169e0817aafafc587ce243ab04"
+          },
+          "specular.ibla": {
+            "bytes": 20097,
+            "sha256": "0a2bdc62be066631a893f16d16a60805f91a618b42207918ac2d743167fdf36b"
+          },
+          "specular.ktx2": {
+            "bytes": 8430,
+            "sha256": "b2668dbef3916a0648b0e0fb4ba69d8d42b95d8b1ed254edf1c6e7b948762897"
+          }
+        },
+        "parsers": {
+          "width": 31,
+          "levels": 5
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 255,
+        "options": [
+          "--specular-min-size",
+          "16",
+          "--samples",
+          "7",
+          "--quality",
+          "high"
+        ],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 19192,
+            "sha256": "fa8a2249235319e4e93d084217e6523da694867e8ceebe589d67587521a46f33"
+          },
+          "irradiance.ibla": {
+            "bytes": 5034,
+            "sha256": "adf085568eb83bf6c195c69d0b30466287e3ca5b828718a7f45c0cda5c3e5e66"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5962,
+            "sha256": "b261632a24db5aceb2e940e4c0412a2d9d6734234f82a236957f3ede71a31f0d"
+          },
+          "specular.ibla": {
+            "bytes": 555158,
+            "sha256": "f5a87f035370f999d731060d3882be71f3dfcb3f7731e0f46cbbdf6144066faf"
+          },
+          "specular.ktx2": {
+            "bytes": 477650,
+            "sha256": "69bdf69c65719c0a38914baea8b487f721e76d50b0e2dc307bd55ddd271262a9"
+          }
+        },
+        "parsers": {
+          "width": 255,
+          "levels": 4
+        }
+      },
+      {
+        "case": "pisa",
+        "size": 31,
+        "options": [
+          "--target",
+          "irradiance"
+        ],
+        "outputs": {
+          "irradiance.ibla": {
+            "bytes": 5609,
+            "sha256": "7965cfc4418fac5e2879dd1201824c5f8fee389650afd2fa88ce148fbce5fe54"
+          },
+          "irradiance.ktx2": {
+            "bytes": 5860,
+            "sha256": "fbc93882981ae73b0f0e87e8c2e8e771941a49f95583066895f84cb3a764b0b6"
+          }
+        },
+        "parsers": null
+      },
+      {
+        "case": "pisa",
+        "size": 31,
+        "options": [
+          "--target",
+          "lut"
+        ],
+        "outputs": {
+          "brdf-lut.png": {
+            "bytes": 16265,
+            "sha256": "4a5cda4bc268a96c8c4ab6895709e4e7cbbbabb4162452ae53275d5223b6c180"
+          }
+        },
+        "parsers": null
+      }
+    ],
+    "binaries": {
+      "baseline": "04819e6b028d93a7ad24359be01dbcd9f2513a5a14a2410032cf67befab4d800",
+      "candidate": "b2be68709a2417fef0a96f7b8c4c97986fd9fd26e60200fde3d44a5d1476bdc1"
+    }
+  },
+  "preparation": {
+    "profile-baseline": {
+      "baseline": "a306d63",
+      "sources": {
+        "Cargo.lock": "0d64c67649698bb6c821c87fae742c31d48c25d03a4ecabe9b01b420eb20b488",
+        "Cargo.toml": "298658c3e0794fb73dfccd6f880293cb05f922dd41ae364497df506123b328bf",
+        "crates/ibl_cli/Cargo.toml": "72fac090fa9b3ded8ea41d968bc5eba88815d4106907b632313640278cd4b50a",
+        "crates/ibl_cli/LICENSE": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+        "crates/ibl_cli/README.md": "8d20b53c8d43eaf5742f5409a199b1cd3905a76a4d8eab1926c59b11626655d1",
+        "crates/ibl_cli/src/main.rs": "718f446f3f5f195669d793133e38e2e94c7713d4ad2f560f6bf5af1f6e114317",
+        "crates/ibl_cli/tests/hdr_warnings.rs": "dbd43b246640fa6a00195934f56d0eda90876891f91844561c658bfb1741b7d2",
+        "crates/ibl_cli/tests/low_samples.rs": "5d155bd1b2f32d2fa9a7b6c5fcf055ff2993adcf9d2bbd2335ab1ce63faefa75",
+        "crates/ibl_core/Cargo.toml": "6b8788f984c27298c633360c1062d01ebf242081f71c85f6295a92c65853909b",
+        "crates/ibl_core/LICENSE": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+        "crates/ibl_core/README.md": "f5ed43a1e1f44483c18b3ef0d7f5d3cb5719e8f72c55ca3052cf2a2482484d87",
+        "crates/ibl_core/examples/source_sampling_export.rs": "c70ff425832e50f6dfb054817e901300032a88f33dd26c43a67d9871d236db0c",
+        "crates/ibl_core/src/bake_pipeline.rs": "dfd418bcdd8e31c59d5ba07e1fccb29816d00524c2e68e2e010d2ba8a38e8f38",
+        "crates/ibl_core/src/cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates/ibl_core/src/lib.rs": "2af0201558e6b0df17b84d34b678ca14f809f0389667f8dcac5bb3a41c2f575c",
+        "crates/ibl_core/src/source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates/ktx2_writer/Cargo.toml": "3f4572fd491f13f23668727a5626cc40953a860129aa54d463e071473760a06c",
+        "crates/ktx2_writer/LICENSE": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+        "crates/ktx2_writer/README.md": "aa298bfb7d0e272b1a30645b5ad6d8971d3fc6b5e9c513ca47211735cf0733d4",
+        "crates/ktx2_writer/build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates/ktx2_writer/src/compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates/ktx2_writer/src/dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates/ktx2_writer/src/kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates/ktx2_writer/src/lib.rs": "5a8d67f87353c636b9fa6489d178c6c0e027775781bdfcb835007b5b50a1d1b5",
+        "rust-toolchain.toml": "b4ea3c94c934d96a2772b7878c12ccbf3e486313d0988a9c960e0bd87bafc8fe"
+      },
+      "binary": "E:\\works\\ibl-baker\\target\\lod-performance\\profile-build\\release\\ibl-baker.exe",
+      "binary_sha256": "636b550b87d9dbd2c612ccbe175e142455cd7d97cf03f45723bc3ac7fd96dac4",
+      "actual_sources": {
+        "crates\\ibl_cli\\Cargo.toml": "c37a4fc91774d258972a6b4da5abfa039104280bf7ace7ee6ad50713b5b77d84",
+        "crates\\ibl_cli\\src\\main.rs": "48ab34ebd5ae925e10b3d08837cbe9e1dc3ce355a4dc6d1de906d43bf336b887",
+        "crates\\ibl_cli\\tests\\hdr_warnings.rs": "dbd43b246640fa6a00195934f56d0eda90876891f91844561c658bfb1741b7d2",
+        "crates\\ibl_cli\\tests\\low_samples.rs": "5d155bd1b2f32d2fa9a7b6c5fcf055ff2993adcf9d2bbd2335ab1ce63faefa75",
+        "crates\\ibl_core\\Cargo.toml": "2da9ed3b0f1e95adc6fb14250b657fef19343cba37b3f9494021a27fbfb69ab1",
+        "crates\\ibl_core\\examples\\source_sampling_export.rs": "c70ff425832e50f6dfb054817e901300032a88f33dd26c43a67d9871d236db0c",
+        "crates\\ibl_core\\src\\bake_pipeline.rs": "bbbcbf97ee3150de28d8196cbb6ff7f1ca5f908c0ca2c2e23d36b70a9bb79f14",
+        "crates\\ibl_core\\src\\cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates\\ibl_core\\src\\lib.rs": "2d2f5ed764c9851b67233afb4a2b16935c9c74d540fc0cb199092ecf2dbd8820",
+        "crates\\ibl_core\\src\\source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates\\ibl_profile_private\\Cargo.toml": "6da64e35936051809a7634f41f6c519658576de7b76fcdf07524059b4bcfd32a",
+        "crates\\ibl_profile_private\\profile.rs": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+        "crates\\ktx2_writer\\build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates\\ktx2_writer\\Cargo.toml": "423967cec2abd823c5d80eb44e8ef9ea69f2384d0a7af161c89d150a16b98e8d",
+        "crates\\ktx2_writer\\src\\compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates\\ktx2_writer\\src\\dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates\\ktx2_writer\\src\\kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates\\ktx2_writer\\src\\lib.rs": "04c6d50df58af461f14e74e17c28257b3f3e5051eeb8aa27d097ff796a7a6e4f"
+      },
+      "instrumented": true,
+      "profiler": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+      "tool": "e75b531351f5aa4e2b186313587bda318454f3a5d0e6c55ed2c997151cbd14c4",
+      "build_command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--release",
+        "--manifest-path",
+        "E:\\works\\ibl-baker\\target\\lod-performance\\profile-baseline\\Cargo.toml",
+        "-p",
+        "ibl_cli"
+      ]
+    },
+    "profile-candidate": {
+      "baseline": "a306d63",
+      "sources": {
+        "Cargo.lock": "9655703ac8495972cb3b57facbddfc62e5d6f23645fe2a30fa1851fe207e1bd3",
+        "Cargo.toml": "cbd55af4e90e09e77be87cfb828f4d1e085698ea9cf85e003e011bd6369f916f",
+        "crates/ibl_cli/Cargo.toml": "9d26c83ce99bfd4bdda6d8b9f5ae4cb8c0ab3aa68eab0401c3934f6f1f701115",
+        "crates/ibl_cli/LICENSE": "5ca2920d4f56954100c8f365461aba7b6c6154da49734f7b2703d9275ad49d11",
+        "crates/ibl_cli/README.md": "8d20b53c8d43eaf5742f5409a199b1cd3905a76a4d8eab1926c59b11626655d1",
+        "crates/ibl_cli/src/main.rs": "718f446f3f5f195669d793133e38e2e94c7713d4ad2f560f6bf5af1f6e114317",
+        "crates/ibl_cli/tests/hdr_warnings.rs": "dbd43b246640fa6a00195934f56d0eda90876891f91844561c658bfb1741b7d2",
+        "crates/ibl_cli/tests/low_samples.rs": "5d155bd1b2f32d2fa9a7b6c5fcf055ff2993adcf9d2bbd2335ab1ce63faefa75",
+        "crates/ibl_core/Cargo.toml": "61087af4c9cc872a33345a31b0aab7278c27454f133f24f485a9be1e4d9a9f7f",
+        "crates/ibl_core/LICENSE": "5ca2920d4f56954100c8f365461aba7b6c6154da49734f7b2703d9275ad49d11",
+        "crates/ibl_core/README.md": "b35ee9b9b4a7e7068eea6d47a45c30b3b062fd14f8f619163308b3870cb8b0de",
+        "crates/ibl_core/examples/source_sampling_export.rs": "c70ff425832e50f6dfb054817e901300032a88f33dd26c43a67d9871d236db0c",
+        "crates/ibl_core/src/bake_pipeline.rs": "43306eb1094cccd6129007d844a08ef52da1d8ebb33f9c110dc30210eaf2c055",
+        "crates/ibl_core/src/cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates/ibl_core/src/lib.rs": "2af0201558e6b0df17b84d34b678ca14f809f0389667f8dcac5bb3a41c2f575c",
+        "crates/ibl_core/src/source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates/ktx2_writer/Cargo.toml": "909541b3f071ff89ab815411aa2e1d550ae3ad594449b793155c4ec8c8648be7",
+        "crates/ktx2_writer/LICENSE": "5ca2920d4f56954100c8f365461aba7b6c6154da49734f7b2703d9275ad49d11",
+        "crates/ktx2_writer/README.md": "aa298bfb7d0e272b1a30645b5ad6d8971d3fc6b5e9c513ca47211735cf0733d4",
+        "crates/ktx2_writer/build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates/ktx2_writer/src/compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates/ktx2_writer/src/dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates/ktx2_writer/src/kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates/ktx2_writer/src/lib.rs": "5a8d67f87353c636b9fa6489d178c6c0e027775781bdfcb835007b5b50a1d1b5",
+        "rust-toolchain.toml": "8f8d40d611a1893f155efdbc186cb69f0c7f5e759f08c85dcaf8a681f48d59cb"
+      },
+      "binary": "E:\\works\\ibl-baker\\target\\lod-performance\\profile-candidate-build\\release\\ibl-baker.exe",
+      "binary_sha256": "20262acc3e4c75bf4ad74721c506594913259efe749d1b5d0fb9f7ef656c0458",
+      "actual_sources": {
+        "crates\\ibl_cli\\Cargo.toml": "c37a4fc91774d258972a6b4da5abfa039104280bf7ace7ee6ad50713b5b77d84",
+        "crates\\ibl_cli\\src\\main.rs": "48ab34ebd5ae925e10b3d08837cbe9e1dc3ce355a4dc6d1de906d43bf336b887",
+        "crates\\ibl_cli\\tests\\hdr_warnings.rs": "dbd43b246640fa6a00195934f56d0eda90876891f91844561c658bfb1741b7d2",
+        "crates\\ibl_cli\\tests\\low_samples.rs": "5d155bd1b2f32d2fa9a7b6c5fcf055ff2993adcf9d2bbd2335ab1ce63faefa75",
+        "crates\\ibl_core\\Cargo.toml": "2da9ed3b0f1e95adc6fb14250b657fef19343cba37b3f9494021a27fbfb69ab1",
+        "crates\\ibl_core\\examples\\source_sampling_export.rs": "c70ff425832e50f6dfb054817e901300032a88f33dd26c43a67d9871d236db0c",
+        "crates\\ibl_core\\src\\bake_pipeline.rs": "247ac1161ef8a523dd98a76f7cbf5112cee802257082ffb0099b847081f6ac5c",
+        "crates\\ibl_core\\src\\cubemap.rs": "aa05f57223c6677cdd910eda64557c1226bdedff94375725380c94a515616407",
+        "crates\\ibl_core\\src\\lib.rs": "2d2f5ed764c9851b67233afb4a2b16935c9c74d540fc0cb199092ecf2dbd8820",
+        "crates\\ibl_core\\src\\source_image.rs": "dea009f3450082ff0ea627c5db71532bf6fa042f4e57acf009279f81d02245de",
+        "crates\\ibl_profile_private\\Cargo.toml": "6da64e35936051809a7634f41f6c519658576de7b76fcdf07524059b4bcfd32a",
+        "crates\\ibl_profile_private\\profile.rs": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+        "crates\\ktx2_writer\\build.rs": "e7b4f55a346c4bf5537070fb44c447f13f794c9d31306fcf78004524a1b9a960",
+        "crates\\ktx2_writer\\Cargo.toml": "423967cec2abd823c5d80eb44e8ef9ea69f2384d0a7af161c89d150a16b98e8d",
+        "crates\\ktx2_writer\\src\\compress.rs": "203a834add88de1c2bb4b141ab1327322475cb3887ca8ab77b6937db1963c30d",
+        "crates\\ktx2_writer\\src\\dfd.rs": "607fbaf99dabb53174d72b7b20d34000fb687c8446af89e51b00553db83af7e2",
+        "crates\\ktx2_writer\\src\\kv.rs": "0fe75adfee2714ff0611a8e48ac8df84d2c1a34d572b7f914b8c47362b032719",
+        "crates\\ktx2_writer\\src\\lib.rs": "04c6d50df58af461f14e74e17c28257b3f3e5051eeb8aa27d097ff796a7a6e4f"
+      },
+      "instrumented": true,
+      "profiler": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+      "tool": "e75b531351f5aa4e2b186313587bda318454f3a5d0e6c55ed2c997151cbd14c4",
+      "build_command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--release",
+        "--manifest-path",
+        "E:\\works\\ibl-baker\\target\\lod-performance\\profile-candidate\\Cargo.toml",
+        "-p",
+        "ibl_cli"
+      ]
+    }
+  },
+  "tool_hashes": {
+    "scripts\\lod-performance\\collect.py": "e37c20e451798cf1cd8aefbdd4c0c340b554880654493d20cea0bb80d9523e2c",
+    "scripts\\lod-performance\\README.md": "422b2ae273d7647b15b3d6a6ba377c50997ea8c5614876dd929c41820de36276",
+    "scripts\\lod-performance\\study.py": "b1fee0b09a36447aaf398cd0d05ade6c9a30b597ab955d76c800b53643f80468",
+    "scripts\\pipeline-performance\\study.py": "e75b531351f5aa4e2b186313587bda318454f3a5d0e6c55ed2c997151cbd14c4",
+    "scripts\\pipeline-performance\\profile.rs": "50d65fe62964ef1c5cdef9a21b1373b4f78c8f8b6c945dc14ce92f356046a2ae",
+    "scripts\\pipeline-performance\\collect.py": "9aa96d6d11161aa6e362d230fca7a9561eed988de9d30c95e2480a72efe8ac3b",
+    "scripts\\source-sampling\\benchmark.py": "a4db7f84fee5ba1a830a5fd1376fa0c5302f516413475f6e1b0b8845e5f1cd88",
+    "scripts\\quality-optimization\\acceptance.py": "b4308dee8d90aa0ea3440f15e90fa2be951bd6b892e30075f5072bbae8400189"
+  },
+  "limitations": [
+    "Windows, four Rayon threads, measured output size 512 only",
+    "Instrumented phase times are diagnostic, not production speed claims",
+    "Phase process memory is sampled and can miss short peaks",
+    "Requested-live Rust heap excludes native malloc, allocator overhead and realloc transients",
+    "Prepared kernel adds O(sample-count) temporary storage per pass",
+    "Cross-platform CI is recorded separately from the native performance study"
+  ],
+  "figure": {
+    "sha256": "dbcbd48fe87f8cad127955eb576ce92df68b686731793d4d0a26dbfaa995b240",
+    "matplotlib": "3.10.9",
+    "python": "3.14.5 (tags/v3.14.5:5607950, May 10 2026, 10:43:50) [MSC v.1944 64 bit (AMD64)]"
+  }
+}

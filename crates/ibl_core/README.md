@@ -59,6 +59,13 @@ actual sample count from the source-LOD footprint. Linear-budget candidates stay
 experimental because of converged HDR and encoded subgroup regressions.
 Production keeps the existing r-squared budget and coupled source footprint.
 
+Cubemap filtering prepares each sample's source LOD, neighboring source mip
+indices and interpolation fraction once per pass. They depend on the kernel,
+source width and source mip count, not the output pixel. Preparation is local
+to that pass; the general kernel cache still stores only directions and PDFs
+and remains usable by the BRDF LUT. Pixel directions, weights, accumulation
+order, LOD formula and near-integer interpolation cutoff are unchanged.
+
 ## Reuse Decoded Inputs
 
 `LoadedEnvironment::from_file(path)` and `LoadedEnvironment::from_cubemap(&paths)`

@@ -15,6 +15,7 @@
 
 - [x] 调整工作重点并补齐运行时消费契约，明确 irradiance 的 E/π、BRDF LUT 线性 RG、roughness 查询、方向、RGBD 过滤近似、按层解压及零拷贝视图生命周期；精简 CLI 帮助的常用/高级参数分层，修正 README 的旋转单位为度，见[运行时契约](docs/runtime-contract.md)。
 - [x] 完成加载、投影、过滤、编码/打包/写出的耗时及阶段内存剖析；CLI 单作业共享一次源解码，基础 cubemap 改为所有权转移，LUT 写出借用字节。512 面宽九组产物逐字节一致，进程峰值提交内存降低 19.7%–37.0%，六面 JPEG 稳定提速 8.1%–10.5%；明确编码阶段因保留源图而增加内存的权衡，见[性能验收报告](docs/pipeline-performance.md)。
+- [x] 完成以 `a306d63` 为增量基线的过滤源 LOD/mip 插值预计算；浮点逐位回归和八组兼容矩阵通过，512 面宽三类输入/三种格式的九组产物逐字节一致，耗时下降 11.3%–20.5%，峰值提交内存基本持平。保持完整链、默认画质和消费契约，不新增公开参数；124 项 Rust 测试及本地静态检查通过，见[过滤优化验收报告](docs/lod-performance.md)。
 
 - [x] 分离浮点 cubemap 烘焙与格式编码，CLI `both` 每个资产只烘焙一次；各格式独立截断告警及部分成功语义保持不变，见[核心库说明](crates/ibl_core/README.md)。
 - [x] 增加 `--specular-min-size` 与 `BakeOptions::specular_min_size`，覆盖 NPOT、极小尺寸、完整 roughness 重烘焙及两个真实 loader；补充消费方实际级数和禁用自动 mip 的约定，见[CLI 说明](crates/ibl_cli/README.md#specular-levels)。
