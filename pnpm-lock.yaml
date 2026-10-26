@@ -202,10 +202,10 @@ importers:
   packages/site:
     dependencies:
       '@ibltools/ibla-loader':
-        specifier: workspace:0.2.0
+        specifier: workspace:0.2.1
         version: link:../ibla-loader
       '@ibltools/ktx2-loader':
-        specifier: workspace:0.3.0
+        specifier: workspace:0.3.1
         version: link:../ktx2-loader
       zstddec:
         specifier: ^0.2.0

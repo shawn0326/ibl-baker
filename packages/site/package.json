@@ -6,8 +6,8 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@ibltools/ibla-loader": "workspace:0.2.0",
-    "@ibltools/ktx2-loader": "workspace:0.3.0",
+    "@ibltools/ibla-loader": "workspace:0.2.1",
+    "@ibltools/ktx2-loader": "workspace:0.3.1",
     "zstddec": "^0.2.0"
   },
   "devDependencies": {

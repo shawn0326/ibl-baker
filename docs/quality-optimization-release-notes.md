@@ -1,8 +1,10 @@
-# Quality optimization release notes (unreleased)
+# Quality optimization migration notes
 
-No release is published by this work. Package versions are unchanged. Select the
-next release through the normal [release process](release.md); account for the
-Rust source compatibility change below when choosing its version.
+These changes are prepared for [Rust/CLI 0.3.0](releases/rust-cli-0.3.0.md) and
+[@ibltools/cli 0.2.0](releases/npm-cli-0.2.0.md). The dated notes describe the
+complete release since the prior published versions; this document focuses on
+the optimization and Rust source migration. Publication follows the normal
+[release process](release.md), independently of version preparation.
 
 - The CLI accepts `--specular-min-size <auto|positive integer>`. `auto` remains a
   complete chain ending at one. Explicit larger minima rebake the retained levels
