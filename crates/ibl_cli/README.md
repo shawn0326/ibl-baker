@@ -104,7 +104,11 @@ ibl-baker validate ./out/specular.ibla
 
 BRDF LUT always outputs as `.png` regardless of `--output-format`.
 
-With `both`, each cubemap asset is loaded, projected and filtered once. Its linear
+For every output format, one CLI bake job decodes its input once and shares the
+immutable source across selected targets. Projection and filtering stay scoped
+to each target, without a persistent cache.
+
+With `both`, each cubemap asset is projected and filtered once. Its linear
 pixels are encoded and written as IBLA, then KTX2. Encoding buffers are released
 between formats. Each file retains its own clipping report; a later failure leaves
 any successfully written earlier files in place.

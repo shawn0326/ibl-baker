@@ -11,6 +11,11 @@ Rust source compatibility change below when choosing its version.
 - `--output-format both` shares one cubemap bake per asset across IBLA and KTX2
   encoding. Clipping reports remain independent. Successful earlier writes are
   retained if a later format fails.
+- A CLI job reuses one decoded source across selected targets. Rust callers can
+  use the additive opaque `LoadedEnvironment` API for the same reuse; existing
+  signatures and options remain available. Base float cubemaps move into their
+  mip chains and finished outputs instead of being deeply copied. Quality,
+  payload bytes, target order and per-format warning behavior are preserved.
 - BC6H 1x1 faces use uniform input blocks instead of introducing black padding.
   Regenerated 1x1 KTX2 payloads may change; other levels, dimensions, clipping
   counts, block lengths and consumer APIs retain their existing contracts. The

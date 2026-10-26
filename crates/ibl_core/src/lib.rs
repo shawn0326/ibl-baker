@@ -412,6 +412,53 @@ pub struct BakedCubemap {
     encoding: EncodingKind,
 }
 
+/// A decoded environment reusable across sequential bake targets.
+/// Projection and filtering remain scoped to each bake, rather than cached.
+pub struct LoadedEnvironment {
+    source: source_image::EnvironmentSource,
+    source_format: SourceFormat,
+}
+
+impl LoadedEnvironment {
+    /// Load and validate a single-file environment once.
+    pub fn from_file<P: AsRef<Path>>(input: P) -> Result<Self, IblError> {
+        let input = input.as_ref();
+        if !input.exists() {
+            return Err(IblError::InvalidInput(format!(
+                "input file does not exist: {}",
+                input.display()
+            )));
+        }
+        let (source, source_format) = load_environment_from_file(input)?;
+        Ok(Self {
+            source,
+            source_format,
+        })
+    }
+
+    /// Load and validate all six source faces once.
+    pub fn from_cubemap(input: &CubemapInputPaths) -> Result<Self, IblError> {
+        let (source, source_format) = load_environment_from_cubemap_paths(input)?;
+        Ok(Self {
+            source,
+            source_format,
+        })
+    }
+
+    /// Filter a cubemap without reloading the source pixels.
+    pub fn bake_cubemap(&self, options: BakeOptions) -> Result<BakedCubemap, IblError> {
+        bake_environment_to_cubemap(self.source_format, &self.source, options)
+    }
+
+    /// Bake and encode an IBLA asset, including the existing BRDF LUT asset path.
+    pub fn bake_asset_with_report(
+        &self,
+        options: BakeOptions,
+    ) -> Result<(IblAsset, BakeReport), IblError> {
+        bake_environment_to_asset(self.source_format, &self.source, options)
+    }
+}
+
 impl BakedCubemap {
     /// Encode PNG payloads using the encoding selected when baking.
     pub fn to_asset_with_report(&self) -> Result<(IblAsset, BakeReport), IblError> {
@@ -431,15 +478,7 @@ pub fn bake_to_cubemap<P: AsRef<Path>>(
     input: P,
     options: BakeOptions,
 ) -> Result<BakedCubemap, IblError> {
-    let input = input.as_ref();
-    if !input.exists() {
-        return Err(IblError::InvalidInput(format!(
-            "input file does not exist: {}",
-            input.display()
-        )));
-    }
-    let (source, format) = load_environment_from_file(input)?;
-    bake_environment_to_cubemap(format, &source, options)
+    LoadedEnvironment::from_file(input)?.bake_cubemap(options)
 }
 
 /// Bake six source faces once for one or both cubemap output formats.
@@ -447,8 +486,7 @@ pub fn bake_cubemap_to_cubemap(
     input: &CubemapInputPaths,
     options: BakeOptions,
 ) -> Result<BakedCubemap, IblError> {
-    let (source, format) = load_environment_from_cubemap_paths(input)?;
-    bake_environment_to_cubemap(format, &source, options)
+    LoadedEnvironment::from_cubemap(input)?.bake_cubemap(options)
 }
 
 fn bake_environment_to_cubemap(
@@ -565,16 +603,7 @@ pub fn bake_to_asset_with_report<P: AsRef<Path>>(
     input: P,
     options: BakeOptions,
 ) -> Result<(IblAsset, BakeReport), IblError> {
-    let input_path = input.as_ref();
-    if !input_path.exists() {
-        return Err(IblError::InvalidInput(format!(
-            "input file does not exist: {}",
-            input_path.display()
-        )));
-    }
-
-    let (source, source_format) = load_environment_from_file(input_path)?;
-    bake_environment_to_asset(source_format, &source, options)
+    LoadedEnvironment::from_file(input)?.bake_asset_with_report(options)
 }
 
 pub fn bake_cubemap_to_asset(
@@ -589,8 +618,7 @@ pub fn bake_cubemap_to_asset_with_report(
     input: &CubemapInputPaths,
     options: BakeOptions,
 ) -> Result<(IblAsset, BakeReport), IblError> {
-    let (source, source_format) = load_environment_from_cubemap_paths(input)?;
-    bake_environment_to_asset(source_format, &source, options)
+    LoadedEnvironment::from_cubemap(input)?.bake_asset_with_report(options)
 }
 
 /// Bake an equirectangular (latlong) or single-file HDR/EXR/LDR source to KTX2 bytes
@@ -1783,6 +1811,74 @@ mod tests {
         let bytes = encode_png_image(&single_color_image(4, 4, color), EncodingKind::Srgb)
             .expect("png should encode");
         fs::write(path, bytes).expect("png should be written");
+    }
+
+    #[test]
+    fn loaded_environments_reuse_decoded_pixels_across_targets_after_source_removal() {
+        for cubemap in [false, true] {
+            let paths: Vec<_> = (0..if cubemap { 6 } else { 1 })
+                .map(|face| {
+                    let path = unique_temp_path("loaded-environment").with_extension("png");
+                    write_solid_png(&path, glam::Vec3::new((face + 1) as f32 / 8.0, 0.25, 0.5));
+                    path
+                })
+                .collect();
+            let faces = cubemap.then(|| {
+                CubemapInputPaths::from_face_order(std::array::from_fn(|face| paths[face].clone()))
+            });
+            let loaded = match &faces {
+                Some(faces) => LoadedEnvironment::from_cubemap(faces).unwrap(),
+                None => LoadedEnvironment::from_file(&paths[0]).unwrap(),
+            };
+            let mut expected = Vec::new();
+            for kind in [
+                AssetKind::SpecularCubemap,
+                AssetKind::IrradianceCubemap,
+                AssetKind::BrdfLut,
+            ] {
+                let options = BakeOptions {
+                    asset_kind: kind,
+                    cube_size: 5,
+                    irradiance_size: if cubemap { 8 } else { 2 },
+                    rotation_degrees: 37.0,
+                    sample_count: 8,
+                    quality: BakeQuality::Low,
+                    ..Default::default()
+                };
+                let asset = match &faces {
+                    Some(faces) => {
+                        bake_cubemap_to_asset_with_report(faces, options.clone()).unwrap()
+                    }
+                    None => bake_to_asset_with_report(&paths[0], options.clone()).unwrap(),
+                };
+                let ktx2 = (kind != AssetKind::BrdfLut).then(|| match &faces {
+                    Some(faces) => {
+                        bake_cubemap_to_ktx2_with_report(faces, options.clone()).unwrap()
+                    }
+                    None => bake_to_ktx2_with_report(&paths[0], options.clone()).unwrap(),
+                });
+                expected.push((options, asset, ktx2));
+            }
+            for path in &paths {
+                fs::remove_file(path).unwrap();
+            }
+            for (options, asset, ktx2) in expected {
+                assert_eq!(
+                    loaded.bake_asset_with_report(options.clone()).unwrap(),
+                    asset
+                );
+                if let Some(expected) = ktx2 {
+                    assert_eq!(
+                        loaded
+                            .bake_cubemap(options)
+                            .unwrap()
+                            .to_ktx2_with_report()
+                            .unwrap(),
+                        expected
+                    );
+                }
+            }
+        }
     }
 
     #[test]

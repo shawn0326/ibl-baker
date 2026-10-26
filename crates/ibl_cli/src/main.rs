@@ -7,10 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use ibl_core::{
-    bake_cubemap_to_asset_with_report, bake_cubemap_to_cubemap, bake_to_asset_with_report,
-    bake_to_cubemap, inspect_asset, read_asset, validate_asset, write_asset, AssetKind,
-    BakeOptions, BakeQuality, BakeReport, BakedCubemap, CubemapInputPaths, EncodingKind, IblError,
-    SourceFormat,
+    inspect_asset, read_asset, validate_asset, write_asset, AssetKind, BakeOptions, BakeQuality,
+    BakeReport, CubemapInputPaths, EncodingKind, IblError, LoadedEnvironment, SourceFormat,
 };
 
 fn main() {
@@ -92,6 +90,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
     let input = resolve_bake_input(input, requested_faces.as_deref())?;
     options.cube_size = resolve_requested_size(&input, requested_size)?;
     options.output_encoding = resolve_requested_encoding(&input, requested_encoding);
+    let source = load_bake_input(&input)?;
 
     let mut outputs = Vec::new();
     for target in target_selection.resolved_targets() {
@@ -110,7 +109,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
                 };
                 let emit_ibla = matches!(output_format, OutputFormat::Ibla | OutputFormat::Both);
                 let emit_ktx2 = matches!(output_format, OutputFormat::Ktx2 | OutputFormat::Both);
-                let baked = bake_input_to_cubemap(&input, target_options)?;
+                let baked = source.bake_cubemap(target_options)?;
                 if emit_ibla {
                     let (asset, report) = baked.to_asset_with_report()?;
                     let output = output_dir.join(format!("{name}.ibla"));
@@ -130,9 +129,9 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
                 // BRDF LUT always outputs as PNG regardless of --output-format.
                 let mut target_options = options.clone();
                 target_options.asset_kind = AssetKind::BrdfLut;
-                let (asset, _) = bake_input_to_asset(&input, target_options)?;
+                let (asset, _) = source.bake_asset_with_report(target_options)?;
                 let output = output_dir.join("brdf-lut.png");
-                let bytes = asset
+                let bytes = &asset
                     .chunks
                     .first()
                     .ok_or_else(|| {
@@ -140,8 +139,7 @@ fn handle_bake(args: &[String]) -> Result<String, CliError> {
                             "brdf-lut bake did not produce an image chunk".to_string(),
                         ))
                     })?
-                    .bytes
-                    .clone();
+                    .bytes;
                 fs::write(&output, bytes).map_err(IblError::from)?;
                 outputs.push(output);
             }
@@ -322,28 +320,11 @@ fn choose_supported_specular_size(face_size: u32) -> u32 {
         .unwrap_or(AUTO_SIZE_BUCKETS[0])
 }
 
-fn bake_input_to_asset(
-    input: &BakeInput,
-    options: BakeOptions,
-) -> Result<(ibl_core::IblAsset, BakeReport), CliError> {
+fn load_bake_input(input: &BakeInput) -> Result<LoadedEnvironment, CliError> {
     match input {
-        BakeInput::File { path } => {
-            bake_to_asset_with_report(path, options).map_err(CliError::from)
-        }
+        BakeInput::File { path } => LoadedEnvironment::from_file(path).map_err(CliError::from),
         BakeInput::Cubemap { faces, .. } => {
-            bake_cubemap_to_asset_with_report(faces, options).map_err(CliError::from)
-        }
-    }
-}
-
-fn bake_input_to_cubemap(
-    input: &BakeInput,
-    options: BakeOptions,
-) -> Result<BakedCubemap, CliError> {
-    match input {
-        BakeInput::File { path } => bake_to_cubemap(path, options).map_err(CliError::from),
-        BakeInput::Cubemap { faces, .. } => {
-            bake_cubemap_to_cubemap(faces, options).map_err(CliError::from)
+            LoadedEnvironment::from_cubemap(faces).map_err(CliError::from)
         }
     }
 }

@@ -14,6 +14,7 @@
 ## 本轮收尾
 
 - [x] 调整工作重点并补齐运行时消费契约，明确 irradiance 的 E/π、BRDF LUT 线性 RG、roughness 查询、方向、RGBD 过滤近似、按层解压及零拷贝视图生命周期；精简 CLI 帮助的常用/高级参数分层，修正 README 的旋转单位为度，见[运行时契约](docs/runtime-contract.md)。
+- [x] 完成加载、投影、过滤、编码/打包/写出的耗时及阶段内存剖析；CLI 单作业共享一次源解码，基础 cubemap 改为所有权转移，LUT 写出借用字节。512 面宽九组产物逐字节一致，进程峰值提交内存降低 19.7%–37.0%，六面 JPEG 稳定提速 8.1%–10.5%；明确编码阶段因保留源图而增加内存的权衡，见[性能验收报告](docs/pipeline-performance.md)。
 
 - [x] 分离浮点 cubemap 烘焙与格式编码，CLI `both` 每个资产只烘焙一次；各格式独立截断告警及部分成功语义保持不变，见[核心库说明](crates/ibl_core/README.md)。
 - [x] 增加 `--specular-min-size` 与 `BakeOptions::specular_min_size`，覆盖 NPOT、极小尺寸、完整 roughness 重烘焙及两个真实 loader；补充消费方实际级数和禁用自动 mip 的约定，见[CLI 说明](crates/ibl_cli/README.md#specular-levels)。
@@ -32,8 +33,6 @@
 - [x] 补齐 KTX2 writer、Rust IBLA 读写/校验及两个 loader 的 mip 拓扑校验；保留合法截断链、非 2 幂尺寸和矩形单面纹理，提前拒绝超长尾链及错误尺寸记录，定向回归通过，契约见 [IBLA 规范](docs/format-spec.md) 与对应 README。
 
 ## 待验证
-
-- [ ] 下一轮性能改动先按加载、投影、过滤和编码拆分计时及峰值内存，优先减少重复工作、解码和拷贝；使用固定的代表性画面与实际 GPU 查询路径验证收益，避免为单一数值指标增加参数或逐像素工作。
 
 - [ ] 本轮分支合入/发布前取得新的 Linux Quality 和 macOS Cargo CI 结果；本地 Windows Rust、两个 loader、site 和 npm CLI 验收通过，远端平台结果不得以历史绿灯替代。
 

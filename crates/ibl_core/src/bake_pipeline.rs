@@ -91,7 +91,6 @@ impl SampleKernelCache {
 }
 
 struct BakeContext<'a> {
-    base_cubemap: CubemapFaces,
     cubemap_mips: Vec<CubemapFaces>,
     cubemap_borders: Vec<CubemapBorders>,
     direction_caches: BTreeMap<u32, DirectionCache>,
@@ -104,14 +103,13 @@ impl<'a> BakeContext<'a> {
         let rotation = Rotation::from_degrees(rotation_degrees);
         let base_directions = build_direction_cache(base_size);
         let base_cubemap = render_cubemap_faces(source, rotation, &base_directions, base_size);
-        let cubemap_mips = build_cubemap_mip_chain(&base_cubemap);
+        let cubemap_mips = build_cubemap_mip_chain(base_cubemap);
         let cubemap_borders = cubemap_mips.iter().map(CubemapBorders::new).collect();
 
         let mut direction_caches = BTreeMap::new();
         direction_caches.insert(base_size, base_directions);
 
         Self {
-            base_cubemap,
             cubemap_mips,
             cubemap_borders,
             direction_caches,
@@ -156,8 +154,8 @@ pub(crate) fn build_specular_raw(
     options: &BakeOptions,
     mip_count: u32,
 ) -> Vec<CubemapFaces> {
-    let mut context = BakeContext::new(source, options.cube_size, options.rotation_degrees);
-    build_specular_mip_chain(&mut context, options, mip_count)
+    let context = BakeContext::new(source, options.cube_size, options.rotation_degrees);
+    build_specular_mip_chain(context, options, mip_count)
 }
 
 pub(crate) fn build_irradiance_raw(
@@ -238,13 +236,12 @@ pub(crate) fn build_brdf_lut_chunk_entries(
 }
 
 fn build_specular_mip_chain(
-    context: &mut BakeContext<'_>,
+    mut context: BakeContext<'_>,
     options: &BakeOptions,
     mip_count: u32,
 ) -> Vec<CubemapFaces> {
     let mut chain = Vec::with_capacity(mip_count as usize);
-    chain.push(context.base_cubemap.clone());
-    let base_face_size = context.base_cubemap[0].width.max(1);
+    let base_face_size = context.cubemap_mips[0][0].width.max(1);
 
     for mip_level in 1..mip_count {
         let roughness = mip_level as f32 / (mip_count.saturating_sub(1).max(1) as f32);
@@ -252,7 +249,7 @@ fn build_specular_mip_chain(
         let sample_count =
             effective_specular_sample_count(options, roughness, face_size, base_face_size);
         let faces = render_filtered_faces(
-            context,
+            &mut context,
             face_size,
             Distribution::Ggx,
             roughness,
@@ -261,11 +258,14 @@ fn build_specular_mip_chain(
         chain.push(faces);
     }
 
+    // Filtering has finished using source mip zero. Transfer it into the output
+    // instead of retaining another full-resolution float cubemap during filtering.
+    chain.insert(0, context.cubemap_mips.remove(0));
     chain
 }
 
-fn build_cubemap_mip_chain(base_faces: &CubemapFaces) -> Vec<CubemapFaces> {
-    let mut levels = vec![base_faces.clone()];
+fn build_cubemap_mip_chain(base_faces: CubemapFaces) -> Vec<CubemapFaces> {
+    let mut levels = vec![base_faces];
     loop {
         let prev = levels.last().expect("base cubemap mip should exist");
         if prev[0].width <= 1 && prev[0].height <= 1 {
@@ -341,7 +341,7 @@ fn render_filtered_faces(
     let kernel = context
         .kernel_cache
         .kernel(distribution, roughness, sample_count.max(1));
-    let base_width = context.base_cubemap[0].width.max(1);
+    let base_width = context.cubemap_mips[0][0].width.max(1);
 
     let faces = Face::all()
         .par_iter()
@@ -1158,7 +1158,7 @@ mod tests {
                 image
             });
             let expected_means = faces.each_ref().map(cube_uv_mean);
-            let chain = build_cubemap_mip_chain(&faces);
+            let chain = build_cubemap_mip_chain(faces.clone());
             for mip in &chain {
                 for (face, expected) in mip.iter().zip(expected_means) {
                     for (actual, expected) in cube_uv_mean(face).into_iter().zip(expected) {
@@ -1186,7 +1186,7 @@ mod tests {
             let faces = array::from_fn(|_| {
                 SourceImage::from_pixels(size, size, vec![color; (size * size) as usize])
             });
-            let chain = build_cubemap_mip_chain(&faces);
+            let chain = build_cubemap_mip_chain(faces.clone());
             for actual in chain.iter().flatten().flat_map(|face| &face.pixels) {
                 assert!(
                     (*actual - color).abs().max_element()

@@ -59,6 +59,40 @@ actual sample count from the source-LOD footprint. Linear-budget candidates stay
 experimental because of converged HDR and encoded subgroup regressions.
 Production keeps the existing r-squared budget and coupled source footprint.
 
+## Reuse Decoded Inputs
+
+`LoadedEnvironment::from_file(path)` and `LoadedEnvironment::from_cubemap(&paths)`
+decode and validate the source once. Reuse the result for sequential specular,
+irradiance and LUT targets with `bake_cubemap(options)` or
+`bake_asset_with_report(options)`. The existing convenience functions remain
+available with the same signatures. `BakeOptions` and output contracts are
+unchanged.
+
+```rust,no_run
+use ibl_core::{AssetKind, BakeOptions, LoadedEnvironment};
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+let source = LoadedEnvironment::from_file("environment.hdr")?;
+for asset_kind in [AssetKind::SpecularCubemap, AssetKind::IrradianceCubemap] {
+    let baked = source.bake_cubemap(BakeOptions { asset_kind, ..Default::default() })?;
+    let (bytes, report) = baked.to_ktx2_with_report()?;
+    // Write/use this output before advancing to the next target.
+    let _ = (bytes, report);
+}
+# Ok(())
+# }
+```
+
+This object owns the decoded input pixels, without exposing their layout or
+caching projections, source mips or filtered results across calls. Those working
+buffers remain scoped to each bake. Drop the object when input reuse is finished;
+retaining it during encoding increases that phase's live memory. For a single
+cubemap, `bake_to_cubemap` releases the input before the caller encodes the result.
+
+Source mip zero is owned by its mip chain and transferred into the finished
+specular output after filtering. It is not duplicated as a separate base cube
+or cloned into the output while filtering is still active. The pixel arithmetic,
+source mips, sample budgets and roughness mapping remain unchanged.
+
 ## Bake Reports And RGB Ranges
 
 `bake_to_cubemap(path, options)` and
