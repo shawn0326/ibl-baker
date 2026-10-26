@@ -36,6 +36,8 @@
 
 ## 待验证
 
+- [ ] 完成 Rust/CLI 0.3.0、npm CLI 0.2.0、IBLA loader 0.2.1、KTX2 loader 0.3.1 的版本 PR、四份发布说明和九包完整发布预演。
+- [ ] 完成上述九包正式发布、三平台 registry 消费者、完整性/provenance 校验和四个 GitHub Release 收尾，并记录真实证据。
 - [ ] 自然发生部分生产发布失败时，记录真实恢复证据；当前恢复顺序和 checksum 防护已有模拟测试覆盖，不人为制造生产发布故障。
 - [ ] 在 .ibla loader 下一次实际版本发布时，补充该包的生产 OIDC/provenance 和 registry 消费者验收。
 

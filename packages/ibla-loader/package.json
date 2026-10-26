@@ -1,6 +1,6 @@
 {
   "name": "@ibltools/ibla-loader",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": false,
   "description": "Parser-only TypeScript loader for .ibla assets.",
   "license": "MIT",
