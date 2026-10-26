@@ -11,6 +11,12 @@ version; this work does not change versions or publish assets.
 
 ## Verified release status
 
+The [2026-10-26 production attempt](release-history.md#release-preparation-and-partial-publication-2026-10-26)
+is incomplete: only `ktx2_writer@0.3.0` is accepted with the original candidate
+checksum. The remaining eight packages and Release finalization await Cargo
+index visibility and recovery of the original production run. Do not start a
+replacement production run for these versions.
+
 The [2026-09-29 production release](release-history.md#production-release-2026-09-29)
 verified OIDC publication, registry integrity, npm provenance, registry consumers
 and GitHub Release finalization for eight selected packages: Rust/CLI 0.2.3
@@ -284,6 +290,13 @@ visible before the full run completes.
 - After an upload timeout/error, query registry acceptance before retrying.
   Missing versions are polled for up to ten minutes; authentication, network,
   rate-limit, server and checksum errors fail instead of meaning "available".
+- A matching crates.io API receipt can precede Cargo index visibility. If a
+  dependent package's preparation cannot resolve the newly uploaded version,
+  check its sparse-index entry and checksum before rerunning failed jobs on the
+  original run. Do not interpret this as a missing upload, replace the candidate,
+  or upload an accepted version again. The 2026-10-26 partial-publication record
+  in [Release History](release-history.md#release-preparation-and-partial-publication-2026-10-26)
+  documents this distinction.
 - Missing/expired original candidates block automatic recovery. If preparation
   failed before any candidate/upload, investigate and start a fresh run.
 - If verification or Release creation fails after publication, rerun failed jobs.
