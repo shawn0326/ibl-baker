@@ -154,6 +154,8 @@ perceptual comparison is not needed to establish image equivalence here.
 
 Performance claims are scoped to the measured Windows host, four threads and
 512-pixel output faces. Other sizes, platforms and input distributions may have
-different gains. Fresh Linux/macOS CI remains a pre-merge/release requirement;
-historical successful builds are not substituted. No assets in consumer projects
-are overwritten and no version is published by this study.
+different gains. Fresh Linux Quality and Windows/macOS Cargo checks were obtained
+in the [subsequent filter optimization](lod-performance.md#cross-platform-integration),
+including the full branch's loader/site and archive consumer checks; historical
+successful builds are not substituted. No assets in consumer projects are
+overwritten and no version is published by this study.

@@ -16,6 +16,7 @@
 - [x] 调整工作重点并补齐运行时消费契约，明确 irradiance 的 E/π、BRDF LUT 线性 RG、roughness 查询、方向、RGBD 过滤近似、按层解压及零拷贝视图生命周期；精简 CLI 帮助的常用/高级参数分层，修正 README 的旋转单位为度，见[运行时契约](docs/runtime-contract.md)。
 - [x] 完成加载、投影、过滤、编码/打包/写出的耗时及阶段内存剖析；CLI 单作业共享一次源解码，基础 cubemap 改为所有权转移，LUT 写出借用字节。512 面宽九组产物逐字节一致，进程峰值提交内存降低 19.7%–37.0%，六面 JPEG 稳定提速 8.1%–10.5%；明确编码阶段因保留源图而增加内存的权衡，见[性能验收报告](docs/pipeline-performance.md)。
 - [x] 完成以 `a306d63` 为增量基线的过滤源 LOD/mip 插值预计算；浮点逐位回归和八组兼容矩阵通过，512 面宽三类输入/三种格式的九组产物逐字节一致，耗时下降 11.3%–20.5%，峰值提交内存基本持平。保持完整链、默认画质和消费契约，不新增公开参数；124 项 Rust 测试及本地静态检查通过，见[过滤优化验收报告](docs/lod-performance.md)。
+- [x] 取得本轮分支新的跨平台 CI 结果：`4e27532` 的 Linux Quality、Windows x64/macOS arm64 Cargo 和 CI Gate 全部通过，覆盖两个 loader、site、npm CLI 与归档消费者；见 [PR #27 的 CI #60](https://github.com/shawn0326/ibl-baker/actions/runs/40266949701)，不以历史结果替代本轮验收。
 
 - [x] 分离浮点 cubemap 烘焙与格式编码，CLI `both` 每个资产只烘焙一次；各格式独立截断告警及部分成功语义保持不变，见[核心库说明](crates/ibl_core/README.md)。
 - [x] 增加 `--specular-min-size` 与 `BakeOptions::specular_min_size`，覆盖 NPOT、极小尺寸、完整 roughness 重烘焙及两个真实 loader；补充消费方实际级数和禁用自动 mip 的约定，见[CLI 说明](crates/ibl_cli/README.md#specular-levels)。
@@ -34,8 +35,6 @@
 - [x] 补齐 KTX2 writer、Rust IBLA 读写/校验及两个 loader 的 mip 拓扑校验；保留合法截断链、非 2 幂尺寸和矩形单面纹理，提前拒绝超长尾链及错误尺寸记录，定向回归通过，契约见 [IBLA 规范](docs/format-spec.md) 与对应 README。
 
 ## 待验证
-
-- [ ] 本轮分支合入/发布前取得新的 Linux Quality 和 macOS Cargo CI 结果；本地 Windows Rust、两个 loader、site 和 npm CLI 验收通过，远端平台结果不得以历史绿灯替代。
 
 - [ ] 自然发生部分生产发布失败时，记录真实恢复证据；当前恢复顺序和 checksum 防护已有模拟测试覆盖，不人为制造生产发布故障。
 - [ ] 在 .ibla loader 下一次实际版本发布时，补充该包的生产 OIDC/provenance 和 registry 消费者验收。

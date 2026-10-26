@@ -119,6 +119,24 @@ All 124 Rust tests pass locally on Windows (32 CLI/integration, 69 core and
 23 writer), including the new float parity oracle. Formatting, Clippy,
 JavaScript/JSON syntax and workspace TypeScript checks also pass.
 
+## Cross-platform integration
+
+Fresh [CI #60](https://github.com/shawn0326/ibl-baker/actions/runs/40266949701)
+passes on source commit `4e2753253ee07695e1b6d5dd82ad0495a24f9ecc` in
+[draft PR #27](https://github.com/shawn0326/ibl-baker/pull/27):
+
+| Check | Result | Scope |
+| --- | --- | --- |
+| Linux Quality | Success | Rust tests/Clippy/format, TS, release tooling, generated fixtures, both loaders, site, npm CLI and archive consumers |
+| Windows x64 Cargo | Success | Offline locked workspace build check and pnpm/Cargo source consistency |
+| macOS arm64 Cargo | Success | Offline locked workspace build check and pnpm/Cargo source consistency |
+| CI Gate | Success | Required-check aggregation |
+
+Pages deployment is intentionally skipped for pull requests. The Windows/macOS
+jobs are compile checks; they do not claim runtime/performance acceptance on
+those platforms. The CI record is separate from the native benchmark evidence.
+This follow-up documentation does not change the tested production sources.
+
 The performance scope is the measured Windows host, four threads and 512-pixel
 output faces. Exact output parity establishes image equivalence for the tested
 matrix; speed improvements on other hosts, sizes or inputs require their own
